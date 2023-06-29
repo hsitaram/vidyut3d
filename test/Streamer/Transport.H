@@ -82,7 +82,11 @@ namespace plasmachem_transport
                         const Real time,
                         ProbParm const& prob_parm)
     {
-        dcoeff(i,j,k,E_ID)   = prob_parm.dcoeff;
+        Real elecfield_mag=std::sqrt(std::pow(phi(i,j,k,EFX_ID),2.0) +
+                                     std::pow(phi(i,j,k,EFY_ID),2.0) +
+                                     std::pow(phi(i,j,k,EFZ_ID),2.0) );
+        
+        dcoeff(i,j,k,E_ID)   = 4.3628e-3 * std::pow(elecfield_mag,0.22);
         dcoeff(i,j,k,I_ID)   = 0.0;
     }
 
@@ -109,8 +113,19 @@ namespace plasmachem_transport
         }
         else
         {
+
+           Real efield_magL = std::sqrt(std::pow(phi(left,EFX_ID),2.0) +
+                                        std::pow(phi(left,EFY_ID),2.0) +
+                                        std::pow(phi(left,EFZ_ID),2.0) );
+           
+           Real efield_magR = std::sqrt(std::pow(phi(right,EFX_ID),2.0) +
+                                        std::pow(phi(right,EFY_ID),2.0) +
+                                        std::pow(phi(right,EFZ_ID),2.0) );
+
+            Real efield_mag=0.5*(efield_magL+efield_magR);
+           
             Real efield = -(phi(right,POT_ID) - phi(left,POT_ID))/dx[dir];
-            Real mobility = -1.0; 
+            Real mobility = -2.3987*std::pow(efield_mag,-0.26); 
 
             vel(i,j,k,E_ID) = mobility*efield;
         }

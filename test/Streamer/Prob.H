@@ -60,8 +60,8 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                       + std::pow(y-prob_parm->loc_y,2.0)
                       + std::pow(z-prob_parm->loc_z,2.0);
                 
-                phi(i,j,k,E_ID)  = prob_parm->bg + prob_parm->ampl*exp(-dist2/prob_parm->rad/prob_parm->rad);
-                phi(i,j,k,I_ID)  = phi(i,j,k,E_ID);
+                phi(i,j,k,I_ID)  = prob_parm->bg + prob_parm->ampl*exp(-dist2/prob_parm->rad/prob_parm->rad);
+                phi(i,j,k,E_ID)  = prob_parm->bg;
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;

@@ -5,6 +5,7 @@
 #include <AMReX_FArrayBox.H>
 #include <AMReX_REAL.H>
 #include <Chemistry.H>
+#include <Constants.H>
 
 using namespace amrex;
 namespace plasmachem_reactions
@@ -24,7 +25,13 @@ namespace plasmachem_reactions
                                          std::pow(phi(i,j,k,EFY_ID),2.0) +
                                          std::pow(phi(i,j,k,EFZ_ID),2.0) );
 
-            Real react_term=phi(i,j,k,E_ID)*elecfield_mag*std::exp(-1.0/elecfield_mag);
+            Real alpha = (1.1944e6 + 4.3666e26/std::pow(elecfield_mag,3.0))
+            *std::exp(-2.73e7/elecfield_mag);
+            Real eta = 340.75;
+            Real alpha_bar = alpha-eta;
+            Real mu_e = 2.3987 * std::pow(elecfield_mag,-0.26);
+
+            Real react_term=alpha_bar*mu_e*elecfield_mag*phi(i,j,k,E_ID);
 
             reactsource(i,j,k,I_ID) = react_term;
             reactsource(i,j,k,E_ID) = react_term;
@@ -40,7 +47,8 @@ namespace plasmachem_reactions
                 const Real time,
                 ProbParm const& prob_parm)
         {
-            source(i,j,k)=(phi(i,j,k,E_ID)-phi(i,j,k,I_ID));
+            source(i,j,k)=(phi(i,j,k,E_ID)-phi(i,j,k,I_ID))*ECHARGE/EPS0;
+            //source(i,j,k)=0.0;
         }
 }
 #endif

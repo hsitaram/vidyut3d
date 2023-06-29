@@ -197,18 +197,21 @@ void echemAMR::solve_potential(Real current_time)
 
             for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
             {
+                //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
+                //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
+                //so the ghost cell index at left side is i-1 while it is i on the right
                 if (bx.smallEnd(idim) == domain.smallEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         plasmachem_transport::potential_bc(i, j, k, idim, -1, phi_arr, robin_a_arr, 
-                                      robin_b_arr, robin_f_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                                                           robin_b_arr, robin_f_arr, prob_lo, prob_hi, dx, time, *localprobparm);
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         plasmachem_transport::potential_bc(i, j, k, idim, +1, phi_arr, robin_a_arr, 
-                               robin_b_arr, robin_f_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                                                           robin_b_arr, robin_f_arr, prob_lo, prob_hi, dx, time, *localprobparm);
                     });
                 }
             }
@@ -216,10 +219,10 @@ void echemAMR::solve_potential(Real current_time)
 
         // bc's are stored in the ghost cells of potential
         mlabec.setLevelBC(ilev, &potential[ilev], &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
-        
+
         acoeff[ilev].setVal(1.0); //will be scaled by ascalar
         mlabec.setACoeffs(ilev, acoeff[ilev]);
-        
+
         // set b with diffusivities
         mlabec.setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
     }

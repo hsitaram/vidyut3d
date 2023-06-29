@@ -22,6 +22,9 @@ namespace plasmachem_transport
                            const Real time,
                            ProbParm const& prob_parm)
     {
+        //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
+        //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
+        //so the ghost cell index at left side is i-1 while it is i on the right
         const int im1 = (dir == 0) ? i-1 : i;
         const int jm1 = (dir == 1) ? j-1 : j;
         const int km1 = (dir == 2) ? k-1 : k;
@@ -42,17 +45,21 @@ namespace plasmachem_transport
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn, 
-                             int spec_id, Array4<Real> const &phi, 
-                              Array4<Real> const& robin_a,
-                              Array4<Real> const& robin_b,
-                             Array4<Real> const& robin_f,
-                             GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                            GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                              GpuArray<Real, AMREX_SPACEDIM> dx,
-                               const Real time,
-                              ProbParm const& prob_parm)
-                             
+                    int spec_id, Array4<Real> const &phi, 
+                    Array4<Real> const& robin_a,
+                    Array4<Real> const& robin_b,
+                    Array4<Real> const& robin_f,
+                    GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                    GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                    GpuArray<Real, AMREX_SPACEDIM> dx,
+                    const Real time,
+                    ProbParm const& prob_parm)
+
     {
+        //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
+        //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
+        //so the ghost cell index at left side is i-1 while it is i on the right
+        
         const int im1 = (dir == 0) ? i-1 : i;
         const int jm1 = (dir == 1) ? j-1 : j;
         const int km1 = (dir == 2) ? k-1 : k;
@@ -97,15 +104,15 @@ namespace plasmachem_transport
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void compute_vel(int i, int j, int k, int dir,
-                      Array4<Real> const& phi,
-                      Array4<Real> const& vel,
-                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                      GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                      const GpuArray<int, AMREX_SPACEDIM> domlo,
-                      const GpuArray<int, AMREX_SPACEDIM> domhi,
-                      GpuArray<Real, AMREX_SPACEDIM> dx,
-                      const Real time,
-                      ProbParm const& prob_parm)
+                     Array4<Real> const& phi,
+                     Array4<Real> const& vel,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                     const GpuArray<int, AMREX_SPACEDIM> domlo,
+                     const GpuArray<int, AMREX_SPACEDIM> domhi,
+                     GpuArray<Real, AMREX_SPACEDIM> dx,
+                     const Real time,
+                     ProbParm const& prob_parm)
     {
         Real xlen,ylen,zlen,maxlen;
         int bigdir=0;
