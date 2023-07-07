@@ -192,6 +192,7 @@ private:
     amrex::Real linsolve_abstol = 1e-10;
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
+    amrex::Real min_species_density=1e12;
 
     int linsolve_num_pre_smooth = 2;
     int linsolve_num_post_smooth = 2;
@@ -200,6 +201,7 @@ private:
 
     int linsolve_maxiter=100;
     int linsolve_max_coarsening_level=0;
+    int bound_specden=0;
 
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)

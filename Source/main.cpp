@@ -10,15 +10,14 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc, argv);
 
-    // timer for profiling
-    BL_PROFILE_VAR("main()", pmain);
-
-    // wallclock time
-    const Real strt_total = amrex::second();
-
-    plasmachem::init();
-
     {
+        // timer for profiling
+        BL_PROFILE_VAR("main()", pmain);
+
+        // wallclock time
+        const Real strt_total = amrex::second();
+
+        plasmachem::init();
         // constructor - reads in parameters from inputs file
         //             - sizes multilevel arrays and data structures
         echemAMR echem_obj;
@@ -38,11 +37,12 @@ int main(int argc, char* argv[])
         {
             amrex::Print() << "\nTotal Time: " << end_total << '\n';
         }
+
+        // destroy timer for profiling
+        BL_PROFILE_VAR_STOP(pmain);
+
+        plasmachem::close();
     }
 
-    // destroy timer for profiling
-    BL_PROFILE_VAR_STOP(pmain);
-
-    plasmachem::close();
     amrex::Finalize();
 }

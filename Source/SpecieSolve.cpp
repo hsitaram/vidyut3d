@@ -360,6 +360,28 @@ void echemAMR::implicit_solve_species(Real current_time,Real dt,int spec_id,
     mlabec.setScalars(ascalar, bscalar);
 
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
+   
+    //bound species density
+    if(bound_specden)
+    { 
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            amrex::Real minspecden=min_species_density; 
+            // fill cell centered diffusion coefficients and rhs
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                Array4<Real> soln_arr = solution[ilev].array(mfi);
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+
+                    if(soln_arr(i,j,k) < minspecden)
+                    {
+                        soln_arr(i,j,k)=minspecden;
+                    }
+                });
+            }
+        }
+    }
 
     // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)
@@ -368,3 +390,4 @@ void echemAMR::implicit_solve_species(Real current_time,Real dt,int spec_id,
     }
     Print()<<"spec id:"<<spec_id<<"\n";
 }
+

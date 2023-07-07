@@ -247,6 +247,8 @@ void echemAMR::ReadParameters()
 
         pp.query("linsolve_maxiter",linsolve_maxiter);
         pp.query("linsolve_max_coarsening_level",linsolve_max_coarsening_level);
+        pp.query("bound_specden", bound_specden);
+        pp.query("min_species_density",min_species_density);
     }
 }
 

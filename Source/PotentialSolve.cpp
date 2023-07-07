@@ -23,7 +23,7 @@ void echemAMR::solve_potential(Real current_time)
     int max_coarsening_level = linsolve_max_coarsening_level;
     int max_iter=200;
     Real ascalar = 0.0;
-    Real bscalar = 1.0;
+    Real bscalar = -1.0;
     ProbParm const* localprobparm = d_prob_parm;
 
     //==================================================
@@ -66,7 +66,6 @@ void echemAMR::solve_potential(Real current_time)
 
     Vector<MultiFab> potential;
     Vector<MultiFab> acoeff;
-    Vector<MultiFab> bcoeff;
     Vector<Array<MultiFab*, AMREX_SPACEDIM>> gradsoln;
     Vector<MultiFab> solution;
     Vector<MultiFab> rhs;
@@ -75,10 +74,9 @@ void echemAMR::solve_potential(Real current_time)
     Vector<MultiFab> robin_b;
     Vector<MultiFab> robin_f;
 
-    acoeff.resize(finest_level + 1);
-    bcoeff.resize(finest_level + 1);
-    gradsoln.resize(finest_level + 1);
     potential.resize(finest_level + 1);
+    acoeff.resize(finest_level + 1);
+    gradsoln.resize(finest_level + 1);
     solution.resize(finest_level + 1);
     rhs.resize(finest_level + 1);
 
@@ -86,13 +84,15 @@ void echemAMR::solve_potential(Real current_time)
     robin_b.resize(finest_level+1);
     robin_f.resize(finest_level+1);
 
+    //amrex::Print()<<"finest_level:"<<finest_level<<"\n";
+    //<<refRatio(finest_level)<<"\n";
+
     const int num_grow = 1;
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         potential[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
         acoeff[ilev].define(grids[ilev], dmap[ilev], 1, 0);
-        bcoeff[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         solution[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         rhs[ilev].define(grids[ilev], dmap[ilev], 1, 0);
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
@@ -108,11 +108,11 @@ void echemAMR::solve_potential(Real current_time)
     }
 
     LPInfo info;
+    info.setAgglomeration(true);
+    info.setConsolidation(true);
     info.setMaxCoarseningLevel(max_coarsening_level);
     MLABecLaplacian mlabec(geom, grids, dmap, info);
-    MLMG mlmg(mlabec);
-    mlmg.setMaxIter(linsolve_maxiter);
-    mlmg.setVerbose(verbose);
+    mlabec.setMaxOrder(2);
     mlabec.setDomainBC(bc_potsolve_lo, bc_potsolve_hi);
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
@@ -124,10 +124,6 @@ void echemAMR::solve_potential(Real current_time)
         // Copy (FabArray<FAB>& dst, FabArray<FAB> const& src, int srccomp, 
         // int dstcomp, int numcomp, const IntVect& nghost)
         amrex::Copy(potential[ilev], Sborder, POT_ID, 0, 1, num_grow);
-
-
-        //dcoeff is 1
-        bcoeff[ilev].setVal(1.0);
 
         solution[ilev].setVal(0.0);
         rhs[ilev].setVal(0.0);
@@ -158,7 +154,6 @@ void echemAMR::solve_potential(Real current_time)
             Real time = current_time; // for GPU capture
 
             Array4<Real> phi_arr = Sborder.array(mfi);
-            Array4<Real> bcoeff_arr = bcoeff[ilev].array(mfi);
             Array4<Real> rhs_arr = rhs[ilev].array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -171,12 +166,10 @@ void echemAMR::solve_potential(Real current_time)
         Array<MultiFab, AMREX_SPACEDIM> face_bcoeff;
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
         {
-            const BoxArray& ba = amrex::convert(bcoeff[ilev].boxArray(), IntVect::TheDimensionVector(idim));
-            face_bcoeff[idim].define(ba, bcoeff[ilev].DistributionMap(), 1, 0);
+            const BoxArray& ba = amrex::convert(acoeff[ilev].boxArray(), IntVect::TheDimensionVector(idim));
+            face_bcoeff[idim].define(ba, acoeff[ilev].DistributionMap(), 1, 0);
+            face_bcoeff[idim].setVal(1.0);
         }
-        // true argument for harmonic averaging
-        amrex::average_cellcenter_to_face(GetArrOfPtrs(face_bcoeff), bcoeff[ilev], geom[ilev], true);
-
         // set boundary conditions
         for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
@@ -219,15 +212,20 @@ void echemAMR::solve_potential(Real current_time)
 
         // bc's are stored in the ghost cells of potential
         mlabec.setLevelBC(ilev, &potential[ilev], &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
-
+        //mlabec.setLevelBC(ilev, &potential[ilev]);
+    
         acoeff[ilev].setVal(1.0); //will be scaled by ascalar
         mlabec.setACoeffs(ilev, acoeff[ilev]);
 
         // set b with diffusivities
         mlabec.setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
+        
     }
     mlabec.setScalars(ascalar, bscalar);
 
+    MLMG mlmg(mlabec);
+    mlmg.setMaxIter(linsolve_maxiter);
+    mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
     mlmg.getGradSolution(gradsoln);
 

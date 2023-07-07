@@ -1,7 +1,7 @@
 AMREX_HOME ?= ../../../..
-ECHEM_DIR   ?= ../../../vidyut3d
+VIDYUT_DIR   ?= ../../../vidyut3d
 
-TOP := $(ECHEM_DIR)
+TOP := $(VIDYUT_DIR)
 
 EBASE := vidyut
 
@@ -28,4 +28,3 @@ all: $(executable)
 	@echo SUCCESS
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
-
