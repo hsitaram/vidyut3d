@@ -1,1 +1,1 @@
-rm -rf plt* Backtrace*
+rm -rf plt* Backtrace* core.*
