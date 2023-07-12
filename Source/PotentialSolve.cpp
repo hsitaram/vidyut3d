@@ -111,7 +111,7 @@ void echemAMR::solve_potential(Real current_time)
     info.setAgglomeration(true);
     info.setConsolidation(true);
     info.setMaxCoarseningLevel(max_coarsening_level);
-    MLABecLaplacian mlabec(geom, grids, dmap, info);
+    MLABecLaplacian mlabec(Geom(0,finest_level), boxArray(0,finest_level), DistributionMap(0,finest_level), info);
     mlabec.setMaxOrder(2);
     mlabec.setDomainBC(bc_potsolve_lo, bc_potsolve_hi);
 

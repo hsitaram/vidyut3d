@@ -228,7 +228,7 @@ void echemAMR::implicit_solve_species(Real current_time,Real dt,int spec_id,
     
     LPInfo info;
     info.setMaxCoarseningLevel(max_coarsening_level);
-    MLABecLaplacian mlabec(geom, grids, dmap, info);
+    MLABecLaplacian mlabec(Geom(0,finest_level), boxArray(0,finest_level), DistributionMap(0,finest_level), info);
     MLMG mlmg(mlabec);
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
