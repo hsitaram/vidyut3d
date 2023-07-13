@@ -84,9 +84,6 @@ void echemAMR::solve_potential(Real current_time)
     robin_b.resize(finest_level+1);
     robin_f.resize(finest_level+1);
 
-    //amrex::Print()<<"finest_level:"<<finest_level<<"\n";
-    //<<refRatio(finest_level)<<"\n";
-
     const int num_grow = 1;
 
     for (int ilev = 0; ilev <= finest_level; ilev++)

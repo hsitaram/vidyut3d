@@ -18,4 +18,4 @@ USE_CUDA   = FALSE
 Bpack   := ./Make.package 
 Blocs   := . 
 
-include ../Make.vidyut
+include ${VIDYUT_DIR}/test/Make.vidyut

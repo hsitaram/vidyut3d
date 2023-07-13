@@ -85,7 +85,10 @@ namespace plasmachem_transport
         Real elecfield_mag=std::sqrt(std::pow(phi(i,j,k,EFX_ID),2.0) +
                                      std::pow(phi(i,j,k,EFY_ID),2.0) +
                                      std::pow(phi(i,j,k,EFZ_ID),2.0) );
-        
+
+        //Bagheri, Behnaz, et al. "Comparison of six simulation codes for 
+        //positive streamers in air." 
+        //Plasma Sources Science and Technology 27.9 (2018): 095002.        
         dcoeff(i,j,k,E_ID)   = 4.3628e-3 * std::pow(elecfield_mag,0.22);
         dcoeff(i,j,k,I_ID)   = 0.0;
     }
@@ -102,7 +105,10 @@ namespace plasmachem_transport
                       const Real time,
                       ProbParm const& prob_parm)
     {
-        vel(i,j,k,I_ID) = 0.0;
+        for(int v=0;v<NVAR;v++)
+        {
+            vel(i,j,k,v)=0.0;
+        }
         IntVect left(i, j, k);
         IntVect right(i, j, k);
         left[dir] -= 1;
@@ -113,21 +119,24 @@ namespace plasmachem_transport
         }
         else
         {
+            //Bagheri, Behnaz, et al. "Comparison of six simulation codes for 
+            //positive streamers in air." 
+            //Plasma Sources Science and Technology 27.9 (2018): 095002.        
 
-           Real efield_magL = std::sqrt(std::pow(phi(left,EFX_ID),2.0) +
-                                        std::pow(phi(left,EFY_ID),2.0) +
-                                        std::pow(phi(left,EFZ_ID),2.0) );
-           
-           Real efield_magR = std::sqrt(std::pow(phi(right,EFX_ID),2.0) +
-                                        std::pow(phi(right,EFY_ID),2.0) +
-                                        std::pow(phi(right,EFZ_ID),2.0) );
+            Real efield_magL = std::sqrt(std::pow(phi(left,EFX_ID),2.0) +
+                                         std::pow(phi(left,EFY_ID),2.0) +
+                                         std::pow(phi(left,EFZ_ID),2.0) );
+
+            Real efield_magR = std::sqrt(std::pow(phi(right,EFX_ID),2.0) +
+                                         std::pow(phi(right,EFY_ID),2.0) +
+                                         std::pow(phi(right,EFZ_ID),2.0) );
 
             Real efield_mag=0.5*(efield_magL+efield_magR);
-           
-            Real efield = -(phi(right,POT_ID) - phi(left,POT_ID))/dx[dir];
+
+            Real efield_face = -(phi(right,POT_ID) - phi(left,POT_ID))/dx[dir];
             Real mobility = -2.3987*std::pow(efield_mag,-0.26); 
 
-            vel(i,j,k,E_ID) = mobility*efield;
+            vel(i,j,k,E_ID) = mobility*efield_face;
         }
     }
 }

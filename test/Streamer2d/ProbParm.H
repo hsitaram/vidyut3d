@@ -18,6 +18,5 @@ struct ProbParm
 
     amrex::Real V1=1.0;
     amrex::Real V2=0.0;
-    amrex::Real dcoeff=0.1;
 };
 #endif
