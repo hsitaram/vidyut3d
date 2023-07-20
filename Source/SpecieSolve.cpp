@@ -228,7 +228,9 @@ void echemAMR::implicit_solve_species(Real current_time,Real dt,int spec_id,
     
     LPInfo info;
     info.setMaxCoarseningLevel(max_coarsening_level);
-    MLABecLaplacian mlabec(Geom(0,finest_level), boxArray(0,finest_level), DistributionMap(0,finest_level), info);
+    MLABecLaplacian mlabec(Geom(0,finest_level), 
+                           boxArray(0,finest_level), 
+                           DistributionMap(0,finest_level), info);
     MLMG mlmg(mlabec);
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
@@ -280,12 +282,14 @@ void echemAMR::implicit_solve_species(Real current_time,Real dt,int spec_id,
             FArrayBox dcoeff_fab(gbx, ncomp);
             Elixir dcoeff_fab_eli = dcoeff_fab.elixir();
             Array4<Real> dcoeff_arr = dcoeff_fab.array();
+            
+            dcoeff_fab.setVal<RunOn::Device>(0.0);
 
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 //FIXME: use component wise call
                 plasmachem_transport::compute_dcoeff(i, j, k, phi_arr, 
                                                       dcoeff_arr, prob_lo, 
-                                                      prob_hi, dx, time, *localprobparm);
+                                        prob_hi, dx, time, *localprobparm);
 
                 bcoeff_arr(i,j,k)=dcoeff_arr(i,j,k,spec_id);
             });
@@ -388,6 +392,6 @@ void echemAMR::implicit_solve_species(Real current_time,Real dt,int spec_id,
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, spec_id, 1, 0);
     }
-    Print()<<"spec id:"<<spec_id<<"\n";
+    Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
 }
 

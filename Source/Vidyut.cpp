@@ -10,6 +10,7 @@
 #include <Chemistry.H>
 #include <ProbParm.H>
 #include <stdio.h>
+#include <Constants.H>
 
 using namespace amrex;
 
@@ -25,6 +26,24 @@ echemAMR::echemAMR()
     h_prob_parm = new ProbParm{};
     d_prob_parm = (ProbParm*)The_Arena()->alloc(sizeof(ProbParm));
     amrex_probinit(*h_prob_parm, *d_prob_parm);
+
+    plasma_param_names.resize(NUM_PLASMAVARS);
+    plasma_param_names[0]="Electron_density";
+    plasma_param_names[1]="Electron_energy";
+    plasma_param_names[2]="Potential";
+    plasma_param_names[3]="Efieldx";
+    plasma_param_names[4]="Efieldy";
+    plasma_param_names[5]="Efieldz";
+    
+    allvarnames.resize(NVAR);
+    for (int i = 0; i < NUM_SPECIES; i++)
+    {
+        allvarnames[i] = plasmachem::specnames[i];
+    }
+    for(int i=0;i<NUM_PLASMAVARS;i++)
+    {
+        allvarnames[i+NUM_SPECIES] = plasma_param_names[i];
+    }
 
     // Geometry on all levels has been defined already.
 
@@ -163,13 +182,31 @@ void echemAMR::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
                 pp.get("tagged_vars", varname, i);
                 pp.get((varname + "_refine").c_str(), refine_phi[i]);
                 pp.get((varname + "_refinegrad").c_str(), refine_phigrad[i]);
-                int varname_id = plasmachem::find_id(varname);
-                if (varname_id == -1)
+
+                int spec_id = plasmachem::find_id(varname);
+                if (spec_id == -1)
                 {
-                    Print() << "Variable name:" << varname << " not found for tagging\n";
-                    amrex::Abort("Invalid tagging variable");
+                    int varname_id=-1;
+                    auto it=std::find(plasma_param_names.begin(),plasma_param_names.end(),varname);
+                    if(it != plasma_param_names.end())
+                    {
+                        varname_id=it-plasma_param_names.begin();
+                    }
+
+                    if (varname_id == -1)
+                    {
+                      Print() << "Variable name:" << varname << " not found for tagging\n";
+                      amrex::Abort("Invalid tagging variable");
+                    }
+                    else
+                    {
+                        refine_phi_comps[i] = varname_id+NUM_SPECIES;
+                    }
                 }
-                refine_phi_comps[i] = varname_id;
+                else
+                {
+                   refine_phi_comps[i] = spec_id;
+                }
             }
         }
     }
@@ -249,6 +286,7 @@ void echemAMR::ReadParameters()
         pp.query("linsolve_max_coarsening_level",linsolve_max_coarsening_level);
         pp.query("bound_specden", bound_specden);
         pp.query("min_species_density",min_species_density);
+        pp.query("elecenergy_solve",elecenergy_solve);
     }
 }
 

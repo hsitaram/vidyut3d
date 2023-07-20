@@ -80,7 +80,7 @@ namespace plasmachem_transport
             {
                 robin_f(i,j,k) = 1.0;
             }
-            else
+            else //also for elec energy and density
             {
                 robin_f(i,j,k) = 0.0;
             }

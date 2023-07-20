@@ -24,8 +24,6 @@ void echemAMR::Evolve()
     {
         amrex::Print() << "\nCoarse STEP " << step + 1 << " starts ..." << std::endl;
     
-        // BL_PROFILE_TINY_FLUSH()
-        
         ComputeDt();
 
         if (max_level > 0 && regrid_int > 0)  // We may need to regrid
@@ -35,7 +33,6 @@ void echemAMR::Evolve()
                 regrid(0, cur_time);
             }
         }
-        solve_potential(cur_time);
 
         for (int lev = 0; lev <= finest_level; lev++)
         {
@@ -43,7 +40,7 @@ void echemAMR::Evolve()
             amrex::Print() << "ADVANCE with time = " << t_new[lev]
             << " dt = " << dt[0] << std::endl;
         }
-
+        
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
         for (int lev = 0; lev <= finest_level; lev++)
         {
@@ -56,6 +53,8 @@ void echemAMR::Evolve()
             }
         }
 
+        solve_potential(cur_time);
+        
         Vector<MultiFab *> expl_src(finest_level+1);
         for(int lev=0;lev<=finest_level;lev++)
         {
@@ -89,6 +88,12 @@ void echemAMR::Evolve()
             compute_dsdt(lev, num_grow, Sborder,flux[lev], *expl_src[lev], 
                          cur_time, dt[0], false);
         }
+        
+        if(elecenergy_solve)
+        {
+           implicit_solve_species(cur_time,dt[0],EEN_ID,expl_src);
+        }
+        implicit_solve_species(cur_time,dt[0],EDN_ID,expl_src);
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
