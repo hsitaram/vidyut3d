@@ -57,6 +57,7 @@ namespace plasmachem_transport
         const int jm1 = (dir == 1) ? j-1 : j;
         const int km1 = (dir == 2) ? k-1 : k;
         
+        //for all species
         if(sgn == -1) 
         { // lo sides
             robin_a(im1,jm1,km1) = 0.0;
@@ -89,7 +90,8 @@ namespace plasmachem_transport
         //Bagheri, Behnaz, et al. "Comparison of six simulation codes for 
         //positive streamers in air." 
         //Plasma Sources Science and Technology 27.9 (2018): 095002.        
-        dcoeff(i,j,k,E_ID)   = 4.3628e-3 * std::pow(elecfield_mag,0.22);
+        
+        dcoeff(i,j,k,EDN_ID)   = 4.3628e-3 * std::pow(elecfield_mag,0.22);
         dcoeff(i,j,k,I_ID)   = 0.0;
     }
 
@@ -105,17 +107,13 @@ namespace plasmachem_transport
                       const Real time,
                       ProbParm const& prob_parm)
     {
-        for(int v=0;v<NVAR;v++)
-        {
-            vel(i,j,k,v)=0.0;
-        }
         IntVect left(i, j, k);
         IntVect right(i, j, k);
         left[dir] -= 1;
 
         if( (right[dir]==domlo[dir]) || (right[dir]==(domhi[dir]+1)) )
         {
-            vel(i,j,k,E_ID)=0.0;
+            vel(i,j,k,EDN_ID)=0.0;
         }
         else
         {
@@ -136,7 +134,7 @@ namespace plasmachem_transport
             Real efield_face = -(phi(right,POT_ID) - phi(left,POT_ID))/dx[dir];
             Real mobility = -2.3987*std::pow(efield_mag,-0.26); 
 
-            vel(i,j,k,E_ID) = mobility*efield_face;
+            vel(i,j,k,EDN_ID) = mobility*efield_face;
         }
     }
 }

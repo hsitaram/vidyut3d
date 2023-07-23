@@ -42,7 +42,7 @@ amr.chk_file = chk      # root name of checkpoint file
 amr.chk_int  = -1       # number of timesteps between checkpoint files
 
 vidyut.bound_specden=1
-vidyut.min_species_density=1e12
+vidyut.min_species_density=1e13
 vidyut.linsolve_maxiter=200
 
 prob.loc_x=0.0

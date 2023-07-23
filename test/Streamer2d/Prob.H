@@ -6,6 +6,7 @@
 #include <AMReX_Geometry.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
+#include <Constants.H>
 
 using namespace amrex;
 
@@ -62,8 +63,8 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 Real dist2xy = std::pow(x-prob_parm->loc_x,2.0)
                       + std::pow(y-prob_parm->loc_y,2.0);
                 
-                phi(i,j,k,I_ID)  = prob_parm->bg + prob_parm->ampl*exp(-dist2xy/prob_parm->rad/prob_parm->rad);
-                phi(i,j,k,E_ID)  = prob_parm->bg;
+                phi(i,j,k,I_ID)    = prob_parm->bg + prob_parm->ampl*exp(-dist2xy/prob_parm->rad/prob_parm->rad);
+                phi(i,j,k,EDN_ID)  = prob_parm->bg;
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;
