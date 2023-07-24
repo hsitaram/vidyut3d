@@ -65,29 +65,13 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 
                 phi(i,j,k,I_ID)    = prob_parm->bg + prob_parm->ampl*exp(-dist2xy/prob_parm->rad/prob_parm->rad);
                 phi(i,j,k,EDN_ID)  = prob_parm->bg;
+                phi(i,j,k,EEN_ID) = 0.0;
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;
                 phi(i,j,k,POT_ID) = 0.0;
             }
         }
-    }
-}
-
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void externalbc(const amrex::Real x[AMREX_SPACEDIM],
-        const amrex::Real s_int[],
-        amrex::Real s_ext[],
-        const int idir,
-        const int sgn,
-        const amrex::Real time,
-        amrex::GeometryData const& geomdata)
-{
-    //default to extrapolation
-    for(int c=0;c<NVAR;c++)
-    {
-        s_ext[c]=s_int[c];
     }
 }
 #endif

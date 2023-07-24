@@ -206,10 +206,6 @@ void echemAMR::ReadCheckpointFile()
         int nghost = 0;
         phi_old[lev].define(grids[lev], dmap[lev], ncomp, nghost);
         phi_new[lev].define(grids[lev], dmap[lev], ncomp, nghost);
-        if (lev > 0 && do_reflux)
-        {
-            flux_reg[lev].reset(new FluxRegister(grids[lev], dmap[lev], refRatio(lev - 1), lev, ncomp));
-        }
     }
 
     // read in the MultiFab data

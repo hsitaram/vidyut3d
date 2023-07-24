@@ -30,10 +30,13 @@ echemAMR::echemAMR()
     plasma_param_names.resize(NUM_PLASMAVARS);
     plasma_param_names[0]="Electron_density";
     plasma_param_names[1]="Electron_energy";
-    plasma_param_names[2]="Potential";
-    plasma_param_names[3]="Efieldx";
-    plasma_param_names[4]="Efieldy";
-    plasma_param_names[5]="Efieldz";
+    plasma_param_names[2]="Eden_gradx";
+    plasma_param_names[3]="Eden_grady";
+    plasma_param_names[4]="Eden_gradz";
+    plasma_param_names[5]="Potential";
+    plasma_param_names[6]="Efieldx";
+    plasma_param_names[7]="Efieldy";
+    plasma_param_names[8]="Efieldz";
     
     allvarnames.resize(NVAR);
     for (int i = 0; i < NUM_SPECIES; i++)
@@ -71,52 +74,26 @@ echemAMR::echemAMR()
     phi_new.resize(nlevs_max);
     phi_old.resize(nlevs_max);
 
-    ParmParse pp("vidyut");
-    pp.queryarr("lo_bc", bc_lo, 0, AMREX_SPACEDIM);
-    pp.queryarr("hi_bc", bc_hi, 0, AMREX_SPACEDIM);
-
     bcspec.resize(NVAR);
+   
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
     {
-        // lo-side BCs
-        if (bc_lo[idim] == BCType::int_dir ||  // periodic uses "internal Dirichlet"
-            bc_lo[idim] == BCType::foextrap || // first-order extrapolation
-            bc_lo[idim] == BCType::ext_dir || 
-            bc_lo[idim] == BCType::hoextrapcc)
-        {
-            for (int sp = 0; sp < NVAR; sp++)
-            {
-                bcspec[sp].setLo(idim, bc_lo[idim]);
-            }
-        } 
-        else
-        {
-            amrex::Abort("Invalid bc_lo");
-        }
 
-        // hi-side BCSs
-        if (bc_hi[idim] == BCType::int_dir ||  // periodic uses "internal Dirichlet"
-            bc_hi[idim] == BCType::foextrap || // first-order extrapolation
-            bc_hi[idim] == BCType::ext_dir || 
-            bc_hi[idim] == BCType::hoextrapcc)
-        {
-            for (int sp = 0; sp < NVAR; sp++)
-            {
-                bcspec[sp].setHi(idim, bc_hi[idim]);
-            }
-        } 
-        else
-        {
-            amrex::Abort("Invalid bc_hi");
-        }
+         int bctype=(geom[0].isPeriodic(idim))?BCType::int_dir:BCType::foextrap;
+         bc_lo[idim]=bctype;
+         bc_hi[idim]=bctype;
+
+         for (int sp=0; sp < NVAR; sp++) 
+         {
+             bcspec[sp].setLo(idim, bctype);
+             bcspec[sp].setHi(idim, bctype);
+         }
     }
 
     // stores fluxes at coarse-fine interface for synchronization
     // this will be sized "nlevs_max+1"
     // NOTE: the flux register associated with flux_reg[lev] is associated
     // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
-    // therefore flux_reg[0] is never actually used in the reflux operation
-    flux_reg.resize(nlevs_max + 1);
 }
 
 echemAMR::~echemAMR()
@@ -135,7 +112,7 @@ void echemAMR::InitData()
         const Real time = 0.0;
         InitFromScratch(time);
         AverageDown();
-        
+
         if (chk_int > 0)
         {
             WriteCheckpointFile();
@@ -195,8 +172,8 @@ void echemAMR::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
 
                     if (varname_id == -1)
                     {
-                      Print() << "Variable name:" << varname << " not found for tagging\n";
-                      amrex::Abort("Invalid tagging variable");
+                        Print() << "Variable name:" << varname << " not found for tagging\n";
+                        amrex::Abort("Invalid tagging variable");
                     }
                     else
                     {

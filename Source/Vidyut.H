@@ -16,7 +16,6 @@
 #endif
 
 #include <AMReX_AmrCore.H>
-#include <AMReX_FluxRegister.H>
 #include <AMReX_BCRec.H>
 #include <ProbParm.H>
 
@@ -166,8 +165,6 @@ private:
     // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
     // therefore flux_reg[0] and flux_reg[nlevs_max] are never actually
     // used in the reflux operation
-    amrex::Vector<std::unique_ptr<amrex::FluxRegister>> flux_reg;
-
     ////////////////
     // runtime parameters
 

@@ -21,13 +21,6 @@ amr.regrid_int      = 5       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 1e-12
 
-#periodic 0
-#extdir 3
-#foextrap 2 
-#highorderextrap 5
-vidyut.lo_bc = 0 3 0
-vidyut.hi_bc = 0 3 0
-
 # Tagging
 vidyut.tagged_vars = Potential 
 vidyut.Potential_refine = 1e20

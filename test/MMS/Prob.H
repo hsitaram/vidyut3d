@@ -64,34 +64,4 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
         }
     }
 }
-
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void externalbc(const amrex::Real x[AMREX_SPACEDIM],
-        const amrex::Real s_int[],
-        amrex::Real s_ext[],
-        const int idir,
-        const int sgn,
-        const amrex::Real time,
-        amrex::GeometryData const& geomdata)
-{
-    Real dirc_val_S1,dirc_val_S2;
-
-    //default to extrapolation
-    for(int c=0;c<NVAR;c++)
-    {
-        s_ext[c]=s_int[c];
-    }
-    //both sides
-    s_ext[POT_ID]=0.0;
-
-    if(sgn>0.0)
-    {
-        s_ext[S1_ID]=0.0;
-    }
-    else
-    {
-        s_ext[S1_ID]=1.0;
-    }
-}
 #endif
