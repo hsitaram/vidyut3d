@@ -15,7 +15,7 @@
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::solve_potential(Real current_time)
+void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
 {
     BL_PROFILE("echemAMR::solve_potential()");
 
@@ -92,10 +92,11 @@ void echemAMR::solve_potential(Real current_time)
         acoeff[ilev].define(grids[ilev], dmap[ilev], 1, 0);
         solution[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         rhs[ilev].define(grids[ilev], dmap[ilev], 1, 0);
+
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
         {
             const BoxArray& faceba = amrex::convert(grids[ilev], 
-                                                    IntVect::TheDimensionVector(idim));
+                                      IntVect::TheDimensionVector(idim));
             gradsoln[ilev][idim] = new MultiFab(faceba, dmap[ilev], 1, 0);
         }
 
@@ -116,13 +117,11 @@ void echemAMR::solve_potential(Real current_time)
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
-        MultiFab Sborder(grids[ilev], dmap[ilev], phi_new[ilev].nComp(), num_grow);
-        FillPatch(ilev, current_time, Sborder, 0, Sborder.nComp());
         potential[ilev].setVal(0.0);
 
         // Copy (FabArray<FAB>& dst, FabArray<FAB> const& src, int srccomp, 
         // int dstcomp, int numcomp, const IntVect& nghost)
-        amrex::Copy(potential[ilev], Sborder, POT_ID, 0, 1, num_grow);
+        amrex::Copy(potential[ilev], *Sborder[ilev], POT_ID, 0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
         rhs[ilev].setVal(0.0);
