@@ -26,17 +26,23 @@ namespace plasmachem_transport
         const int jm1 = (dir == 1) ? j-1 : j;
         const int km1 = (dir == 2) ? k-1 : k;
         
-        if(sgn == -1) 
+        if(sgn == -1 && dir==1) 
         { // lo sides
             robin_a(im1,jm1,km1) = 1.0;
             robin_b(im1,jm1,km1) = 0.0;
             robin_f(im1,jm1,km1) = prob_parm.V1;
         }
-        else
+        else if(sgn == 1 && dir==1)
         {
             robin_a(i,j,k) = 1.0;
             robin_b(i,j,k) = 0.0;
             robin_f(i,j,k) = prob_parm.V2;
+        }
+        else
+        {
+            robin_a(i,j,k) = 0.0;
+            robin_b(i,j,k) = 1.0;
+            robin_f(i,j,k) = 0.0;
         } 
     }
 

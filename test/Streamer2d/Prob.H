@@ -23,6 +23,7 @@ void amrex_probinit (ProbParm & h_prob_parm, ProbParm & d_prob_parm)
     pp.query("bg", h_prob_parm.bg );
     pp.query("V1", h_prob_parm.V1 );
     pp.query("V2", h_prob_parm.V2 );
+    pp.query("twod",h_prob_parm.twod);
 
 #ifdef AMREX_USE_GPU
     amrex::Gpu::htod_memcpy(&d_prob_parm, &h_prob_parm, sizeof(ProbParm));
@@ -56,14 +57,15 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 Real y = prob_lo[1] + (0.5+j) * dx[1];
                 Real x = prob_lo[0] + (0.5+i) * dx[0];
 
-                //Real dist2 = std::pow(x-prob_parm->loc_x,2.0)
-                //      + std::pow(y-prob_parm->loc_y,2.0)
-                //      + std::pow(z-prob_parm->loc_z,2.0);
-                
-                Real dist2xy = std::pow(x-prob_parm->loc_x,2.0)
+                Real dist2 = std::pow(x-prob_parm->loc_x,2.0)
                       + std::pow(y-prob_parm->loc_y,2.0);
                 
-                phi(i,j,k,I_ID)    = prob_parm->bg + prob_parm->ampl*exp(-dist2xy/prob_parm->rad/prob_parm->rad);
+                if(!prob_parm->twod)
+                {
+                    dist2 += std::pow(z-prob_parm->loc_z,2.0);
+                }
+                
+                phi(i,j,k,I_ID)    = prob_parm->bg + prob_parm->ampl*exp(-dist2/prob_parm->rad/prob_parm->rad);
                 phi(i,j,k,EDN_ID)  = prob_parm->bg;
                 phi(i,j,k,EEN_ID) = 0.0;
                 phi(i,j,k,EFX_ID) = 0.0;
