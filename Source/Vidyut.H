@@ -69,17 +69,24 @@ public:
     virtual void ErrorEst(int lev, amrex::TagBoxArray& tags, 
                           amrex::Real time, int ngrow) override;
 
-    void compute_fluxes(int lev, const int num_grow, MultiFab& Sborder, 
-        Array<MultiFab,AMREX_SPACEDIM>& flux, Real time);
+   void compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+                                             Array<MultiFab,AMREX_SPACEDIM>& flux, Real time,int specid);
 
-    void compute_dsdt(int lev, const int num_grow, MultiFab& Sborder, 
+    void compute_dsdt(int lev, const int num_grow, int specid, 
+                      MultiFab& Sborder, 
         Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
-        Real time, Real dt, bool reflux_this_stage);
+        Real time, Real dt);
 
-    void solve_potential(Real current_time);
+    void solve_potential(Real current_time, Vector<MultiFab *> Sborder);
+
+    void update_explsrc_at_all_levels(int specid, Vector<MultiFab *> Sborder,
+                                            Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
+                                            Vector<MultiFab *> expl_src, 
+                                            amrex::Real cur_time);
+
     
     void implicit_solve_species(Real current_time,Real dt,int spec_id,
-            Vector<MultiFab *> dsdt_expl);
+            Vector<MultiFab *> Sborder, Vector<MultiFab *> dsdt_expl);
 
     // compute dt from CFL considerations
     Real EstTimeStep(int lev);

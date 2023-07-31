@@ -151,7 +151,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
 
             Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder.array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev]->array(mfi);
             Array4<Real> rhs_arr = rhs[ilev].array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -178,7 +178,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
             auto prob_hi = geom[ilev].ProbHiArray();
             const Box& domain = geom[ilev].Domain();
 
-            Array4<Real> phi_arr = Sborder.array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev]->array(mfi);
             Array4<Real> bc_arr = potential[ilev].array(mfi);
 
             Array4<Real> robin_a_arr = robin_a[ilev].array(mfi);
@@ -232,6 +232,8 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
     mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
     mlmg.getGradSolution(gradsoln);
+
+    amrex::Print()<<"Solved Potential\n";
 
     // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)

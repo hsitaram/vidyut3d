@@ -17,8 +17,8 @@ void compute_flux(
         int i,
         int j,
         int k,
-        int n,
         int sweepdir,
+        int specid,
         Array4<Real> const& phi, // state variable
         Array4<Real> const& vel,
         Array4<Real> const& fx,
@@ -41,29 +41,29 @@ void compute_flux(
 
     // find face vel
     Real smallval = 1e-10;
-    Real dtr = phi(right, n) - phi(left, n);
+    Real dtr = phi(right, specid) - phi(left, specid);
     if (!(std::abs(dtr) > 0.0))
     {
         dtr = dtr + smallval;
     }
-    Real r_left = (phi(left, n) - phi(left1, n)) / dtr;
+    Real r_left = (phi(left, specid) - phi(left1, specid)) / dtr;
     Real lim_left = std::max(0.0, std::min(1.0, r_left));
 
-    dtr = phi(right1, n) - phi(right, n);
+    dtr = phi(right1, specid) - phi(right, specid);
     if (!(std::abs(dtr) > 0.0))
     {
         dtr = dtr + smallval;
     }
-    Real r_right = (phi(right, n) - phi(left, n)) / dtr;
+    Real r_right = (phi(right, specid) - phi(left, specid)) / dtr;
     Real lim_right = std::max(0.0, std::min(1.0, r_right));
 
-    //Real phi_L = phi(left, n) + 0.5 * lim_left * (phi(left, n) - phi(left1, n));
-    //Real phi_R = phi(right, n) - 0.5 * lim_right * (phi(right1, n) - phi(right, n));
+    //Real phi_L = phi(left, specid) + 0.5 * lim_left * (phi(left, specid) - phi(left1, specid));
+    //Real phi_R = phi(right, specid) - 0.5 * lim_right * (phi(right1, specid) - phi(right, specid));
     
-    Real phi_L = phi(left, n);
-    Real phi_R = phi(right, n);
+    Real phi_L = phi(left, specid);
+    Real phi_R = phi(right, specid);
 
-    Real vel_mid = vel(i, j, k, n);
-    fx(i, j, k, n) = phi_L * 0.5 * (vel_mid + fabs(vel_mid)) + phi_R * 0.5 * (vel_mid - fabs(vel_mid));
+    Real vel_mid = vel(i, j, k);
+    fx(i, j, k) = phi_L * 0.5 * (vel_mid + fabs(vel_mid)) + phi_R * 0.5 * (vel_mid - fabs(vel_mid));
 }
 #endif

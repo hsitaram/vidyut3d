@@ -11,6 +11,7 @@ namespace plasmachem_reactions
 {
     AMREX_GPU_DEVICE AMREX_INLINE
         void compute_react_source(int i, int j, int k,
+                                  int specid,
                 Array4<Real> const& phi,
                 Array4<Real> const& reactsource,
                 GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -19,8 +20,14 @@ namespace plasmachem_reactions
                 const Real time,
                 ProbParm const& prob_parm)
         {
-            reactsource(i,j,k,S1_ID) = prob_parm.r1;
-            reactsource(i,j,k,S2_ID) = prob_parm.r2;
+            if(specid==S1_ID)
+            {
+               reactsource(i,j,k) = prob_parm.r1;
+            }
+            else 
+            {
+               reactsource(i,j,k) = prob_parm.r2;
+            }
         }
 
     AMREX_GPU_DEVICE AMREX_INLINE

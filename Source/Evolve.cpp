@@ -60,7 +60,7 @@ void echemAMR::Evolve()
             int num_grow=2;
             Sborder[lev] = new MultiFab(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
             Sborder[lev]->setVal(0.0);
-            FillPatch(lev, cur_time, *Sborder[lev], 0, Sborder.nComp());
+            FillPatch(lev, cur_time, *Sborder[lev], 0, Sborder[lev]->nComp());
 
             for (int lev = 0; lev <= finest_level; lev++)
             {
@@ -78,18 +78,18 @@ void echemAMR::Evolve()
 
         solve_potential(cur_time, Sborder);
 
-        update_explsrc_at_all_levels(EDN_ID, Sborder,expl_src);
+        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, expl_src, cur_time);
         implicit_solve_species(cur_time,dt[0],EDN_ID,Sborder,expl_src);
 
         if(elecenergy_solve)
         {
-            update_explsrc_at_all_levels(EEN_ID, Sborder, expl_src)
+            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, expl_src, cur_time);
             implicit_solve_species(cur_time,dt[0],EEN_ID, Sborder, expl_src);
         }
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
-            update_explsrc_at_all_levels(ind, Sborder, expl_src);
+            update_explsrc_at_all_levels(ind, Sborder, flux, expl_src, cur_time);
             implicit_solve_species(cur_time, dt[0], ind, Sborder, expl_src);
         }
 
