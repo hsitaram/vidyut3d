@@ -15,7 +15,7 @@
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
+void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder)
 {
     BL_PROFILE("echemAMR::solve_potential()");
 
@@ -121,7 +121,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
 
         // Copy (FabArray<FAB>& dst, FabArray<FAB> const& src, int srccomp, 
         // int dstcomp, int numcomp, const IntVect& nghost)
-        amrex::Copy(potential[ilev], *Sborder[ilev], POT_ID, 0, 1, num_grow);
+        amrex::Copy(potential[ilev], Sborder[ilev], POT_ID, 0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
         rhs[ilev].setVal(0.0);
@@ -151,7 +151,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
 
             Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder[ilev]->array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Array4<Real> rhs_arr = rhs[ilev].array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -178,7 +178,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab *> Sborder)
             auto prob_hi = geom[ilev].ProbHiArray();
             const Box& domain = geom[ilev].Domain();
 
-            Array4<Real> phi_arr = Sborder[ilev]->array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Array4<Real> bc_arr = potential[ilev].array(mfi);
 
             Array4<Real> robin_a_arr = robin_a[ilev].array(mfi);

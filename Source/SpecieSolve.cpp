@@ -65,14 +65,14 @@ void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& S
     }
 }
 
-void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab *> Sborder,
+void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
-                                            Vector<MultiFab *> expl_src, 
+                                            Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time)
 {
     for(int lev=0; lev <= finest_level; lev++)
     {
-        expl_src[lev]->setVal(0.0);
+        expl_src[lev].setVal(0.0);
         flux[lev][0].setVal(0.0);
         flux[lev][1].setVal(0.0);
         flux[lev][2].setVal(0.0);
@@ -80,7 +80,7 @@ void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab *> Sbord
 
     for(int lev=0; lev <= finest_level; lev++)
     {
-        compute_specie_transport_flux(lev, Sborder[lev]->nGrow(), *Sborder[lev], 
+        compute_specie_transport_flux(lev, Sborder[lev].nGrow(), Sborder[lev], 
                                       flux[lev], cur_time, specid);
     }
 
@@ -97,14 +97,15 @@ void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab *> Sbord
     for(int lev=0;lev<=finest_level;lev++)
     {
         //FIXME: need to avoid this fillpatch
-        compute_dsdt(lev, Sborder[lev]->nGrow(), specid, *Sborder[lev], 
-                     flux[lev], *expl_src[lev], 
+        compute_dsdt(lev, Sborder[lev].nGrow(), specid, Sborder[lev], 
+                     flux[lev], expl_src[lev], 
                      cur_time, dt[lev]);
     }
 }
 
 void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
-                                             Array<MultiFab,AMREX_SPACEDIM>& flux, Real time,int specid)
+                                             Array<MultiFab,AMREX_SPACEDIM>& flux, 
+                                             Real time,int specid)
 {
     const auto dx = geom[lev].CellSizeArray();
     auto prob_lo = geom[lev].ProbLoArray();
@@ -187,7 +188,7 @@ void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiF
 }
 
 void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id, 
-        Vector<MultiFab *> Sborder, Vector<MultiFab *> dsdt_expl)
+        Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl)
 {
     BL_PROFILE("echemAMR::implicit_solve_species(" + std::to_string( spec_id ) + ")");
 
@@ -287,7 +288,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         // Copy args (FabArray<FAB>& dst, FabArray<FAB> const& src, 
         // int srccomp, int dstcomp, int numcomp, const IntVect& nghost)
         specdata[ilev].setVal(0.0);
-        amrex::Copy(specdata[ilev], *Sborder[ilev], captured_spec_id, 0, 1, num_grow);
+        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 0, 1, num_grow);
 
         acoeff[ilev].setVal(1.0);
         bcoeff[ilev].setVal(1.0);
@@ -299,11 +300,11 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
 
         rhs[ilev].setVal(0.0);
         MultiFab::LinComb(rhs[ilev], 1.0/dt, specdata[ilev], 0, 1.0, 
-                          *(dsdt_expl[ilev]), 0, 0, 1, 0);
+                          dsdt_expl[ilev], 0, 0, 1, 0);
 
         solution[ilev].setVal(0.0);
         amrex::MultiFab::Copy(solution[ilev], specdata[ilev], 0, 0, 1, 0);
-        int ncomp = Sborder[ilev]->nComp();
+        int ncomp = Sborder[ilev].nComp();
 
         // fill cell centered diffusion coefficients and rhs
         for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
@@ -317,7 +318,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
 
             Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder[ilev]->array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Array4<Real> acoeff_arr = acoeff[ilev].array(mfi);
             Array4<Real> bcoeff_arr = bcoeff[ilev].array(mfi);
 
@@ -359,7 +360,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             auto prob_hi = geom[ilev].ProbHiArray();
             const Box& domain = geom[ilev].Domain();
 
-            Array4<Real> phi_arr = Sborder[ilev]->array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Real time = current_time; // for GPU capture
             
             Array4<Real> robin_a_arr = robin_a[ilev].array(mfi);

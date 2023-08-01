@@ -82,7 +82,7 @@ namespace plasmachem_transport
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_dcoeff(int i, int j, int k,
+    void compute_dcoeff(int i, int j, int k,int specid,
                         Array4<Real> const& phi,
                         Array4<Real> const& dcoeff,
                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -91,17 +91,15 @@ namespace plasmachem_transport
                         const Real time,
                         ProbParm const& prob_parm)
     {
-        dcoeff(i,j,k,S1_ID)   = 1.0;
-
-        //not used, but filling with sane values
-        dcoeff(i,j,k,EFX_ID)   = 1.0;
-        dcoeff(i,j,k,EFY_ID)   = 1.0;
-        dcoeff(i,j,k,EFZ_ID)   = 1.0;
-        dcoeff(i,j,k,POT_ID)   = 1.0;
+        if(specid==S1_ID)
+        {
+                dcoeff(i,j,k)   = 1.0;
+        }
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void compute_vel(int i, int j, int k, int dir,
+                     int specid,
                      Array4<Real> const& phi,
                      Array4<Real> const& vel,
                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -133,7 +131,7 @@ namespace plasmachem_transport
         vel(i,j,k,S1_ID)=0.0;
         amrex::Real mu=-1.0;
         
-        if(dir==bigdir)
+        if(dir==bigdir && specid==S1_ID)
         {
             //use this condition if using a robin bc that involves
             //velocity
@@ -143,7 +141,7 @@ namespace plasmachem_transport
             }*/
             //else
             {
-                vel(i,j,k,S1_ID)
+                vel(i,j,k)
                 =mu*0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
             }
         }

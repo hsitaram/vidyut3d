@@ -77,16 +77,16 @@ public:
         Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
         Real time, Real dt);
 
-    void solve_potential(Real current_time, Vector<MultiFab *> Sborder);
+    void solve_potential(Real current_time, Vector<MultiFab>& Sborder);
 
-    void update_explsrc_at_all_levels(int specid, Vector<MultiFab *> Sborder,
+    void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
-                                            Vector<MultiFab *> expl_src, 
+                                            Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time);
 
     
     void implicit_solve_species(Real current_time,Real dt,int spec_id,
-            Vector<MultiFab *> Sborder, Vector<MultiFab *> dsdt_expl);
+            Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl);
 
     // compute dt from CFL considerations
     Real EstTimeStep(int lev);
