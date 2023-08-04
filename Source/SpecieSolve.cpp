@@ -436,5 +436,16 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, captured_spec_id, 1, 0);
     }
     Print()<<"Solved species:"<<allvarnames[captured_spec_id]<<"\n";
+    
+    //clean-up
+    specdata.clear();
+    acoeff.clear();
+    bcoeff.clear();
+    solution.clear();
+    rhs.clear();
+    
+    robin_a.clear();
+    robin_b.clear();
+    robin_f.clear();
 }
 

@@ -79,7 +79,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder)
     gradsoln.resize(finest_level + 1);
     solution.resize(finest_level + 1);
     rhs.resize(finest_level + 1);
-
+    
     robin_a.resize(finest_level+1);
     robin_b.resize(finest_level+1);
     robin_f.resize(finest_level+1);
@@ -244,4 +244,15 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder)
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
         phi_new[ilev].mult(-1.0, EFX_ID, 3);
     }
+    
+    //clean-up
+    potential.clear();
+    acoeff.clear();
+    gradsoln.clear();
+    solution.clear();
+    rhs.clear();
+
+    robin_a.clear();
+    robin_b.clear();
+    robin_f.clear();
 }

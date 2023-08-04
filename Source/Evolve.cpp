@@ -23,7 +23,7 @@ void echemAMR::Evolve()
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)
     {
         amrex::Print() << "\nCoarse STEP " << step + 1 << " starts ..." << std::endl;
-    
+
         ComputeDt();
 
         if (max_level > 0 && regrid_int > 0)  // We may need to regrid
@@ -44,7 +44,7 @@ void echemAMR::Evolve()
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
         Vector<MultiFab> expl_src(finest_level+1);
         Vector<MultiFab> Sborder(finest_level+1);
-        
+
         //copy new to old and update time
         for(int lev=0;lev<=finest_level;lev++)
         {
@@ -122,15 +122,21 @@ void echemAMR::Evolve()
         }
 
         if (chk_int > 0 && (step + 1) % chk_int == 0)
-            {
-                WriteCheckpointFile();
-            }
-
-            if (cur_time >= stop_time - 1.e-6 * dt[0]) break;
-        }
-
-        if (plot_int > 0 && istep[0] > last_plot_file_step)
         {
-            WritePlotFile();
+            WriteCheckpointFile();
         }
+
+        if (cur_time >= stop_time - 1.e-6 * dt[0]) break;
+
+
+        //local cleanup
+        flux.clear();
+        expl_src.clear();
+        Sborder.clear();
     }
+
+    if (plot_int > 0 && istep[0] > last_plot_file_step)
+    {
+        WritePlotFile();
+    }
+}
