@@ -275,13 +275,13 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
     
     LPInfo info;
     info.setMaxCoarseningLevel(max_coarsening_level);
-    MLABecLaplacian mlabec(Geom(0,finest_level), 
+    linsolve_ptr.reset(new MLABecLaplacian(Geom(0,finest_level), 
                            boxArray(0,finest_level), 
-                           DistributionMap(0,finest_level), info);
-    MLMG mlmg(mlabec);
+                           DistributionMap(0,finest_level), info));
+    MLMG mlmg(*linsolve_ptr);
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
-    mlabec.setDomainBC(bc_linsolve_lo, bc_linsolve_hi);
+    linsolve_ptr->setDomainBC(bc_linsolve_lo, bc_linsolve_hi);
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
@@ -398,13 +398,13 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
 
 
         // bc's are stored in the ghost cells
-        mlabec.setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
+        linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
 
         // set b with diffusivities
-        mlabec.setACoeffs(ilev, acoeff[ilev]);
-        mlabec.setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
+        linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
+        linsolve_ptr->setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
     }
-    mlabec.setScalars(ascalar, bscalar);
+    linsolve_ptr->setScalars(ascalar, bscalar);
 
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
    

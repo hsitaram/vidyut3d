@@ -19,6 +19,8 @@
 #include <AMReX_BCRec.H>
 #include <ProbParm.H>
 
+#include <AMReX_MLABecLaplacian.H>
+
 
 using namespace amrex;
 
@@ -93,58 +95,10 @@ public:
 
     static ProbParm* h_prob_parm;
     static ProbParm* d_prob_parm;
-
-private:
+   
+    std::unique_ptr<amrex::MLABecLaplacian> linsolve_ptr;
+    
     ////////////////
-    // private member functions
-
-    // read in some parameters from inputs file
-    void ReadParameters();
-
-    // set covered coarse cells to be the average of overlying fine cells
-    void AverageDown();
-
-    // more flexible version of AverageDown() that lets you average down across multiple levels
-    void AverageDownTo(int crse_lev);
-
-    // compute a new multifab by coping in phi from valid region and filling ghost cells
-    // works for single level and 2-level cases (fill fine grid ghost by interpolating from coarse)
-    void FillPatch(int lev, amrex::Real time, amrex::MultiFab& mf, int icomp, int ncomp);
-
-    // fill an entire multifab by interpolating from the coarser level
-    // this comes into play when a new level of refinement appears
-    void FillCoarsePatch(int lev, amrex::Real time, amrex::MultiFab& mf, int icomp, int ncomp);
-
-    // utility to copy in data from phi_old and/or phi_new into another multifab
-    void GetData(int lev, amrex::Real time, 
-                 amrex::Vector<amrex::MultiFab*>& data, amrex::Vector<amrex::Real>& datatime);
-
-    // a wrapper for EstTimeStep(0
-    void ComputeDt();
-
-    // get plotfile name
-    std::string PlotFileName(int lev) const;
-
-    // put together an array of multifabs for writing
-    amrex::Vector<const amrex::MultiFab*> PlotFileMF() const;
-
-    // set plotfile variables names
-    amrex::Vector<std::string> PlotFileVarNames() const;
-
-    // write plotfile to disk
-    void WritePlotFile() const;
-
-    // write checkpoint file to disk
-    void WriteCheckpointFile() const;
-
-    // read checkpoint file from disk
-    void ReadCheckpointFile();
-
-    // utility to skip to next line in Header
-    static void GotoNextLine(std::istream& is);
-
-    ////////////////
-    // private data members
     amrex::Gpu::ManagedVector<Real> refine_phi;
     amrex::Gpu::ManagedVector<Real> refine_phigrad;
     amrex::Gpu::ManagedVector<int> refine_phi_comps;
@@ -228,6 +182,55 @@ private:
     // checkpoint prefix and frequency
     std::string chk_file{"chk"};
     int chk_int = -1;
+
+private:
+    ////////////////
+    // private member functions
+
+    // read in some parameters from inputs file
+    void ReadParameters();
+
+    // set covered coarse cells to be the average of overlying fine cells
+    void AverageDown();
+
+    // more flexible version of AverageDown() that lets you average down across multiple levels
+    void AverageDownTo(int crse_lev);
+
+    // compute a new multifab by coping in phi from valid region and filling ghost cells
+    // works for single level and 2-level cases (fill fine grid ghost by interpolating from coarse)
+    void FillPatch(int lev, amrex::Real time, amrex::MultiFab& mf, int icomp, int ncomp);
+
+    // fill an entire multifab by interpolating from the coarser level
+    // this comes into play when a new level of refinement appears
+    void FillCoarsePatch(int lev, amrex::Real time, amrex::MultiFab& mf, int icomp, int ncomp);
+
+    // utility to copy in data from phi_old and/or phi_new into another multifab
+    void GetData(int lev, amrex::Real time, 
+                 amrex::Vector<amrex::MultiFab*>& data, amrex::Vector<amrex::Real>& datatime);
+
+    // a wrapper for EstTimeStep(0
+    void ComputeDt();
+
+    // get plotfile name
+    std::string PlotFileName(int lev) const;
+
+    // put together an array of multifabs for writing
+    amrex::Vector<const amrex::MultiFab*> PlotFileMF() const;
+
+    // set plotfile variables names
+    amrex::Vector<std::string> PlotFileVarNames() const;
+
+    // write plotfile to disk
+    void WritePlotFile() const;
+
+    // write checkpoint file to disk
+    void WriteCheckpointFile() const;
+
+    // read checkpoint file from disk
+    void ReadCheckpointFile();
+
+    // utility to skip to next line in Header
+    static void GotoNextLine(std::istream& is);
 
 };
 

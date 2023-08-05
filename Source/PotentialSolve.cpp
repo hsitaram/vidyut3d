@@ -109,11 +109,12 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder)
     info.setAgglomeration(true);
     info.setConsolidation(true);
     info.setMaxCoarseningLevel(max_coarsening_level);
-    MLABecLaplacian mlabec(Geom(0,finest_level), 
+    linsolve_ptr.reset(new MLABecLaplacian(Geom(0,finest_level), 
                            boxArray(0,finest_level), 
-                           DistributionMap(0,finest_level), info);
-    mlabec.setMaxOrder(2);
-    mlabec.setDomainBC(bc_potsolve_lo, bc_potsolve_hi);
+                           DistributionMap(0,finest_level), info));
+            
+    linsolve_ptr->setMaxOrder(2);
+    linsolve_ptr->setDomainBC(bc_potsolve_lo, bc_potsolve_hi);
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
@@ -214,20 +215,20 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder)
         }
 
         // bc's are stored in the ghost cells of potential
-        mlabec.setLevelBC(ilev, &potential[ilev], &(robin_a[ilev]), 
+        linsolve_ptr->setLevelBC(ilev, &potential[ilev], &(robin_a[ilev]), 
                           &(robin_b[ilev]), &(robin_f[ilev]));
-        //mlabec.setLevelBC(ilev, &potential[ilev]);
+        //linsolve_ptr->setLevelBC(ilev, &potential[ilev]);
     
         acoeff[ilev].setVal(1.0); //will be scaled by ascalar
-        mlabec.setACoeffs(ilev, acoeff[ilev]);
+        linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
 
         // set b with diffusivities
-        mlabec.setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
+        linsolve_ptr->setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
         
     }
-    mlabec.setScalars(ascalar, bscalar);
+    linsolve_ptr->setScalars(ascalar, bscalar);
 
-    MLMG mlmg(mlabec);
+    MLMG mlmg(*linsolve_ptr);
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
