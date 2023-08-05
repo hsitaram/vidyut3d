@@ -76,21 +76,21 @@ void echemAMR::Evolve()
             }
         }
 
-        solve_potential(cur_time, Sborder);
+        solve_potential(cur_time, Sborder, pot_bc_lo,pot_bc_hi);
 
         update_explsrc_at_all_levels(EDN_ID, Sborder, flux, expl_src, cur_time);
-        implicit_solve_species(cur_time,dt[0],EDN_ID,Sborder,expl_src);
+        implicit_solve_species(cur_time,dt[0],EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi);
 
         if(elecenergy_solve)
         {
             update_explsrc_at_all_levels(EEN_ID, Sborder, flux, expl_src, cur_time);
-            implicit_solve_species(cur_time,dt[0],EEN_ID, Sborder, expl_src);
+            implicit_solve_species(cur_time,dt[0],EEN_ID, Sborder, expl_src,eenrg_bc_lo,eenrg_bc_hi);
         }
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
             update_explsrc_at_all_levels(ind, Sborder, flux, expl_src, cur_time);
-            implicit_solve_species(cur_time, dt[0], ind, Sborder, expl_src);
+            implicit_solve_species(cur_time, dt[0], ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
         }
 
         AverageDown ();

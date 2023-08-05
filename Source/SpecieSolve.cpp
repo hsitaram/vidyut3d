@@ -188,7 +188,8 @@ void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiF
 }
 
 void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id, 
-        Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl)
+        Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
+        Vector<int>& bc_lo, Vector<int>& bc_hi)
 {
     BL_PROFILE("echemAMR::implicit_solve_species(" + std::to_string( spec_id ) + ")");
 

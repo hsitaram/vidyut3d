@@ -15,13 +15,14 @@
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder)
+void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
+                               amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi)
 {
     BL_PROFILE("echemAMR::solve_potential()");
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
-    int max_iter=200;
+    int max_iter=linsolve_maxiter;
     Real ascalar = 0.0;
     Real bscalar = -1.0;
     ProbParm const* localprobparm = d_prob_parm;

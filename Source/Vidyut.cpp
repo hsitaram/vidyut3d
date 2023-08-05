@@ -80,8 +80,21 @@ echemAMR::echemAMR()
     {
 
          int bctype=(geom[0].isPeriodic(idim))?BCType::int_dir:BCType::foextrap;
-         bc_lo[idim]=bctype;
-         bc_hi[idim]=bctype;
+         
+         pot_bc_lo[idim]=bctype;
+         pot_bc_hi[idim]=bctype;
+         
+         eden_bc_lo[idim]=bctype;
+         eden_bc_hi[idim]=bctype;
+         
+         eenrg_bc_lo[idim]=bctype;
+         eenrg_bc_hi[idim]=bctype;
+         
+         ion_bc_lo[idim]=bctype;
+         ion_bc_hi[idim]=bctype;
+
+         neutral_bc_hi[idim]=bctype;
+         neutral_bc_hi[idim]=bctype;
 
          for (int sp=0; sp < NVAR; sp++) 
          {

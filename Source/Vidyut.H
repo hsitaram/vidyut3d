@@ -79,7 +79,8 @@ public:
         Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
         Real time, Real dt);
 
-    void solve_potential(Real current_time, Vector<MultiFab>& Sborder);
+    void solve_potential(Real current_time, Vector<MultiFab>& Sborder, 
+                         Vector<int>& bc_lo, Vector<int>& bc_hi);
 
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
@@ -88,7 +89,8 @@ public:
 
     
     void implicit_solve_species(Real current_time,Real dt,int spec_id,
-            Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl);
+            Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl,
+                         Vector<int>& bc_lo, Vector<int>& bc_hi);
 
     // compute dt from CFL considerations
     Real EstTimeStep(int lev);
@@ -138,8 +140,20 @@ public:
     std::string restart_chkfile = "";
 
 
-    amrex::Vector<int> bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> pot_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> pot_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    
+    amrex::Vector<int> eden_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> eden_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    
+    amrex::Vector<int> eenrg_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> eenrg_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    
+    amrex::Vector<int> ion_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> ion_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    
+    amrex::Vector<int> neutral_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> neutral_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
     
     // advective cfl number - dt = cfl*dx/umax
     amrex::Real cfl = 0.7;
