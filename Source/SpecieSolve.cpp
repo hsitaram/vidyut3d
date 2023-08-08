@@ -222,20 +222,58 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_lo 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin};
+    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
 
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_hi 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin};
+    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
 
+    int mixedbc=0;
     for (int idim = 0; idim < AMREX_SPACEDIM; idim++)
     {
-        if (bc_lo[idim] == BCType::int_dir)
+        //lower side bcs
+        if (bc_lo[idim] == PERBC)
         {
             bc_linsolve_lo[idim] = LinOpBCType::Periodic;
         }
-        if (bc_hi[idim] == BCType::int_dir)
+        if (bc_lo[idim] == DIRCBC)
+        {
+            bc_linsolve_lo[idim] = LinOpBCType::Dirichlet;
+        }
+        if (bc_lo[idim] == HNEUBC)
+        {
+            bc_linsolve_lo[idim] = LinOpBCType::Neumann;
+        }
+        if (bc_lo[idim] == IHNEUBC)
+        {
+            bc_linsolve_lo[idim] = LinOpBCType::inhomogNeumann;
+        }
+        if (bc_lo[idim] == ROBINBC)
+        {
+            bc_linsolve_lo[idim] = LinOpBCType::Robin;
+            mixedbc=1;
+        }
+        
+        //higher side bcs
+        if (bc_hi[idim] == PERBC)
         {
             bc_linsolve_hi[idim] = LinOpBCType::Periodic;
+        }
+        if (bc_hi[idim] == DIRCBC)
+        {
+            bc_linsolve_hi[idim] = LinOpBCType::Dirichlet;
+        }
+        if (bc_hi[idim] == HNEUBC)
+        {
+            bc_linsolve_hi[idim] = LinOpBCType::Neumann;
+        }
+        if (bc_hi[idim] == IHNEUBC)
+        {
+            bc_linsolve_hi[idim] = LinOpBCType::inhomogNeumann;
+        }
+        if (bc_hi[idim] == ROBINBC)
+        {
+            bc_linsolve_hi[idim] = LinOpBCType::Robin;
+            mixedbc=1;
         }
     }
 
@@ -283,6 +321,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
     linsolve_ptr->setDomainBC(bc_linsolve_lo, bc_linsolve_hi);
+    linsolve_ptr->setScalars(ascalar, bscalar);
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
@@ -361,6 +400,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             auto prob_hi = geom[ilev].ProbHiArray();
             const Box& domain = geom[ilev].Domain();
 
+            Array4<Real> bc_arr = specdata[ilev].array(mfi);
             Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Real time = current_time; // for GPU capture
             
@@ -379,7 +419,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
                     {
                         amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                             plasmachem_transport::species_bc(i, j, k, idim, -1, 
-                                                             captured_spec_id, phi_arr, robin_a_arr,
+                                                             captured_spec_id, phi_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
                                                              prob_lo, prob_hi, dx, time, *localprobparm);
                         });
@@ -388,7 +428,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
                     {
                         amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                             plasmachem_transport::species_bc(i, j, k, idim, +1, 
-                                                             captured_spec_id, phi_arr, robin_a_arr, 
+                                                             captured_spec_id, phi_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,
                                                              prob_lo, prob_hi, dx, time, *localprobparm);
                         });
@@ -396,16 +436,22 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
                 }
             }
         }
-
+        
+        linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
+        
+        // set b with diffusivities
+        linsolve_ptr->setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
 
         // bc's are stored in the ghost cells
-        linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
-
-        // set b with diffusivities
-        linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
-        linsolve_ptr->setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
+        if(mixedbc)
+        {
+           linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
+        }
+        else
+        {
+            linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]));
+        }
     }
-    linsolve_ptr->setScalars(ascalar, bscalar);
 
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
    

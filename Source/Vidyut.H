@@ -20,6 +20,7 @@
 #include <ProbParm.H>
 
 #include <AMReX_MLABecLaplacian.H>
+#include <Constants.H>
 
 
 using namespace amrex;
@@ -140,20 +141,20 @@ public:
     std::string restart_chkfile = "";
 
 
-    amrex::Vector<int> pot_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> pot_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> pot_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> pot_bc_hi{ROBINBC, ROBINBC, ROBINBC};
     
-    amrex::Vector<int> eden_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> eden_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> eden_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> eden_bc_hi{ROBINBC, ROBINBC, ROBINBC};
     
-    amrex::Vector<int> eenrg_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> eenrg_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> eenrg_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> eenrg_bc_hi{ROBINBC, ROBINBC, ROBINBC};
     
-    amrex::Vector<int> ion_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> ion_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> ion_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> ion_bc_hi{ROBINBC, ROBINBC, ROBINBC};
     
-    amrex::Vector<int> neutral_bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> neutral_bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
+    amrex::Vector<int> neutral_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> neutral_bc_hi{ROBINBC, ROBINBC, ROBINBC};
     
     // advective cfl number - dt = cfl*dx/umax
     amrex::Real cfl = 0.7;

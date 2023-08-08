@@ -73,34 +73,34 @@ echemAMR::echemAMR()
 
     phi_new.resize(nlevs_max);
     phi_old.resize(nlevs_max);
+    
+    ParmParse pp("vidyut");
+    pp.queryarr("pot_bc_lo", pot_bc_lo, 0, AMREX_SPACEDIM);
+    pp.queryarr("pot_bc_hi", pot_bc_hi, 0, AMREX_SPACEDIM);
+    
+    pp.queryarr("eden_bc_lo", eden_bc_lo, 0, AMREX_SPACEDIM);
+    pp.queryarr("eden_bc_hi", eden_bc_hi, 0, AMREX_SPACEDIM);
+    
+    pp.queryarr("eenrg_bc_lo", eenrg_bc_lo, 0, AMREX_SPACEDIM);
+    pp.queryarr("eenrg_bc_hi", eenrg_bc_hi, 0, AMREX_SPACEDIM);
+    
+    pp.queryarr("ion_bc_lo", ion_bc_lo, 0, AMREX_SPACEDIM);
+    pp.queryarr("ion_bc_hi", ion_bc_hi, 0, AMREX_SPACEDIM);
+    
+    pp.queryarr("neutral_bc_lo", neutral_bc_lo, 0, AMREX_SPACEDIM);
+    pp.queryarr("neutral_bc_hi", neutral_bc_hi, 0, AMREX_SPACEDIM);
 
     bcspec.resize(NVAR);
-   
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
     {
 
-         int bctype=(geom[0].isPeriodic(idim))?BCType::int_dir:BCType::foextrap;
-         
-         pot_bc_lo[idim]=bctype;
-         pot_bc_hi[idim]=bctype;
-         
-         eden_bc_lo[idim]=bctype;
-         eden_bc_hi[idim]=bctype;
-         
-         eenrg_bc_lo[idim]=bctype;
-         eenrg_bc_hi[idim]=bctype;
-         
-         ion_bc_lo[idim]=bctype;
-         ion_bc_hi[idim]=bctype;
+        int bctype=(geom[0].isPeriodic(idim))?BCType::int_dir:BCType::foextrap;
 
-         neutral_bc_hi[idim]=bctype;
-         neutral_bc_hi[idim]=bctype;
-
-         for (int sp=0; sp < NVAR; sp++) 
-         {
-             bcspec[sp].setLo(idim, bctype);
-             bcspec[sp].setHi(idim, bctype);
-         }
+        for (int sp=0; sp < NVAR; sp++) 
+        {
+            bcspec[sp].setLo(idim, bctype);
+            bcspec[sp].setHi(idim, bctype);
+        }
     }
 
     // stores fluxes at coarse-fine interface for synchronization
@@ -160,7 +160,7 @@ void echemAMR::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
         // in subroutine state_error, you could use more elaborate tagging, such
         // as more advanced logical expressions, or gradients, etc.
         ParmParse pp("vidyut");
-        if (pp.contains("tagged_vars"))
+            if (pp.contains("tagged_vars"))
         {
             int nvars = pp.countval("tagged_vars");
             refine_phi.resize(nvars);
