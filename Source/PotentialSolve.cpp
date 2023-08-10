@@ -105,7 +105,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
     Vector<MultiFab> potential;
     Vector<MultiFab> acoeff;
-    Vector<Array<MultiFab*, AMREX_SPACEDIM>> gradsoln;
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln;
     Vector<MultiFab> solution;
     Vector<MultiFab> rhs;
 
@@ -136,7 +136,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         {
             const BoxArray& faceba = amrex::convert(grids[ilev], 
                                                     IntVect::TheDimensionVector(idim));
-            gradsoln[ilev][idim] = new MultiFab(faceba, dmap[ilev], 1, 0);
+            gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
         }
 
         robin_a[ilev].define(grids[ilev], dmap[ilev], 1, 1);
@@ -277,7 +277,7 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
-    mlmg.getGradSolution(gradsoln);
+    mlmg.getGradSolution(GetVecOfArrOfPtrs(gradsoln));
 
     amrex::Print()<<"Solved Potential\n";
 
@@ -285,8 +285,8 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
-        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {gradsoln[ilev][0], 
-            gradsoln[ilev][1], gradsoln[ilev][2]};
+        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
+            &gradsoln[ilev][1], &gradsoln[ilev][2]};
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
         phi_new[ilev].mult(-1.0, EFX_ID, 3);
     }

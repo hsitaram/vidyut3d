@@ -13,6 +13,7 @@ namespace plasmachem_transport
     void potential_bc(int i, int j, int k,
                       int dir, int sgn,
                       Array4<Real> const& phi,
+                      Array4<Real> const& bc_arr,
                       Array4<Real> const& robin_a,
                       Array4<Real> const& robin_b,
                       Array4<Real> const& robin_f,
@@ -30,25 +31,29 @@ namespace plasmachem_transport
         { // lo sides
             robin_a(im1,jm1,km1) = 1.0;
             robin_b(im1,jm1,km1) = 0.0;
-            robin_f(im1,jm1,km1) = prob_parm.V1;
+            robin_f(im1,jm1,km1) = prob_parm.V1/prob_parm.phis;
+            bc_arr(im1,jm1,km1) = prob_parm.V1/prob_parm.phis;
         }
         else if(sgn == 1 && dir==1)
         {
             robin_a(i,j,k) = 1.0;
             robin_b(i,j,k) = 0.0;
-            robin_f(i,j,k) = prob_parm.V2;
+            robin_f(i,j,k) = prob_parm.V2/prob_parm.phis;
+            bc_arr(i,j,k) = prob_parm.V2/prob_parm.phis;
         }
         else
         {
             robin_a(i,j,k) = 0.0;
             robin_b(i,j,k) = 1.0;
             robin_f(i,j,k) = 0.0;
+            bc_arr(i,j,k) = 0.0;
         } 
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn, 
                     int spec_id, Array4<Real> const &phi, 
+                    Array4<Real> const& bc_arr,
                     Array4<Real> const& robin_a,
                     Array4<Real> const& robin_b,
                     Array4<Real> const& robin_f,
@@ -95,7 +100,7 @@ namespace plasmachem_transport
         {
             Real elecfield_mag=std::sqrt(std::pow(phi(i,j,k,EFX_ID),2.0) +
                                          std::pow(phi(i,j,k,EFY_ID),2.0) +
-                                         std::pow(phi(i,j,k,EFZ_ID),2.0) );
+                                         std::pow(phi(i,j,k,EFZ_ID),2.0) )*prob_parm.phis;
 
             //Bagheri, Behnaz, et al. "Comparison of six simulation codes for 
             //positive streamers in air." 
@@ -145,12 +150,12 @@ namespace plasmachem_transport
                                              std::pow(phi(right,EFY_ID),2.0) +
                                              std::pow(phi(right,EFZ_ID),2.0) );
 
-                Real efield_mag=0.5*(efield_magL+efield_magR);
+                Real efield_mag=0.5*(efield_magL+efield_magR)*prob_parm.phis;
 
                 Real efield_face = -(phi(right,POT_ID) - phi(left,POT_ID))/dx[dir];
                 Real mobility = -2.3987*std::pow(efield_mag,-0.26); 
 
-                vel(i,j,k) = mobility*efield_face;
+                vel(i,j,k) = mobility*efield_face*prob_parm.phis;
             }
         }
     }

@@ -19,6 +19,9 @@ struct ProbParm
     amrex::Real V1=1.0;
     amrex::Real V2=0.0;
 
+    amrex::Real ns=1.0;
+    amrex::Real phis=1.0;
+
     int twod=1;
 };
 #endif

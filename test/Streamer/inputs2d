@@ -2,7 +2,7 @@ max_step  = 2000000
 stop_time = 6e-9
 
 # PROBLEM SIZE & GEOMETRY
-geometry.is_periodic =  1  0  1
+geometry.is_periodic =  0  0  1
 geometry.coord_sys   =  0       # 0 => cart
 geometry.prob_lo     =  -0.0125  0.0     0.0 
 geometry.prob_hi     =  0.0125   0.0125 3.90625e-4
@@ -26,6 +26,27 @@ vidyut.tagged_vars = Potential
 vidyut.Potential_refine = 1e20
 vidyut.Potential_refinegrad = 400.0
 
+#0 - periodic
+#1 - Dirichlet
+#2 - Homogenous Neumann
+#3 - Inhomogenous Neumann
+#4 - Robin
+
+vidyut.pot_bc_lo = 2 1 0
+vidyut.pot_bc_hi = 2 1 0
+
+vidyut.eden_bc_lo = 2 2 0
+vidyut.eden_bc_hi = 2 2 0 
+
+vidyut.eenrg_bc_lo = 2 2 0
+vidyut.eenrg_bc_hi = 2 2 0
+
+vidyut.ion_bc_lo = 2 2 0
+vidyut.ion_bc_hi = 2 2 0
+
+vidyut.neutral_bc_lo = 2 2 0
+vidyut.neutral_bc_hi = 2 2 0
+
 # PLOTFILES
 amr.plot_file  = plt    # root name of plot file
 amr.plot_int   = 100     # number of timesteps between plot files
@@ -46,4 +67,6 @@ prob.ampl=5e18
 prob.bg=1e13
 prob.V1=0.0
 prob.V2=18.75e3
-prob.dcoeff=0.001
+prob.twod=1
+prob.nscale=1.0
+prob.potscale=1.0

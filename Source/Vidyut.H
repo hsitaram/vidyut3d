@@ -123,15 +123,6 @@ public:
     // condition types at the lo/hi walls in each direction
     amrex::Vector<BCRec> bcspec; // 1-component
 
-    // stores fluxes at coarse-fine interface for synchronization
-    // this will be sized "nlevs_max+1"
-    // NOTE: the flux register associated with flux_reg[lev] is associated
-    // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
-    // therefore flux_reg[0] and flux_reg[nlevs_max] are never actually
-    // used in the reflux operation
-    ////////////////
-    // runtime parameters
-
     // maximum number of steps and stop time
     int max_step = std::numeric_limits<int>::max();
     amrex::Real stop_time = std::numeric_limits<amrex::Real>::max();
