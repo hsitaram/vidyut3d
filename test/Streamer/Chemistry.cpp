@@ -2,16 +2,11 @@
 
 namespace plasmachem
 {
-    amrex::Vector<std::string> specnames(NVAR);
+    amrex::Vector<std::string> specnames(NUM_SPECIES);
 
     void init()
     {
-        specnames[E_ID]="Electron_density";
         specnames[I_ID]="Ion_density";
-        specnames[EFX_ID] = "Efieldx";
-        specnames[EFY_ID] = "Efieldy";
-        specnames[EFZ_ID] = "Efieldz";
-        specnames[POT_ID] = "Potential";
     }    
     void close()
     {

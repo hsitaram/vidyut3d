@@ -23,11 +23,6 @@ void echemAMR::MakeNewLevelFromCoarse(int lev, Real time, const BoxArray& ba, co
     t_new[lev] = time;
     t_old[lev] = time - 1.e200;
 
-    if (lev > 0 && do_reflux)
-    {
-        flux_reg[lev].reset(new FluxRegister(ba, dm, refRatio(lev - 1), lev, ncomp));
-    }
-
     FillCoarsePatch(lev, time, phi_new[lev], 0, ncomp);
 }
 
@@ -49,11 +44,6 @@ void echemAMR::RemakeLevel(int lev, Real time, const BoxArray& ba, const Distrib
 
     t_new[lev] = time;
     t_old[lev] = time - 1.e200;
-
-    if (lev > 0 && do_reflux)
-    {
-        flux_reg[lev].reset(new FluxRegister(ba, dm, refRatio(lev - 1), lev, ncomp));
-    }
 }
 
 // Delete level data
@@ -62,7 +52,6 @@ void echemAMR::ClearLevel(int lev)
 {
     phi_new[lev].clear();
     phi_old[lev].clear();
-    flux_reg[lev].reset(nullptr);
 }
 
 // Make a new level from scratch using provided BoxArray and DistributionMapping.
@@ -79,13 +68,9 @@ void echemAMR::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, c
     t_new[lev] = time;
     t_old[lev] = time - 1.e200;
 
-    if (lev > 0 && do_reflux)
-    {
-        flux_reg[lev].reset(new FluxRegister(ba, dm, refRatio(lev - 1), lev, ncomp));
-    }
-
     Real cur_time = t_new[lev];
     MultiFab& state = phi_new[lev];
+    state.setVal(0.0);
 
     ProbParm* localprobparm = d_prob_parm;
 
@@ -96,7 +81,6 @@ void echemAMR::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, c
         const Box& box = mfi.validbox();
 
         amrex::launch(box, [=] AMREX_GPU_DEVICE(Box const& tbx) {
-            // init just mesh refinement stuff
             initdomaindata(tbx, fab, geomData, localprobparm);
         });
     }

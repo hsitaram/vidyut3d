@@ -7,7 +7,7 @@
 #include <AMReX_PhysBCFunct.H>
 #include <Kernels_3d.H>
 #include <Vidyut.H>
-#include <Chemistry.H>
+#include <Constants.H>
 
 // utility to skip to next line in Header
 void echemAMR::GotoNextLine(std::istream& is)
@@ -17,7 +17,10 @@ void echemAMR::GotoNextLine(std::istream& is)
 }
 
 // get plotfile name
-std::string echemAMR::PlotFileName(int lev) const { return amrex::Concatenate(plot_file, lev, 5); }
+std::string echemAMR::PlotFileName(int lev) const 
+{ 
+    return amrex::Concatenate(plot_file, lev, 5); 
+}
 
 // put together an array of multifabs for writing
 Vector<const MultiFab*> echemAMR::PlotFileMF() const
@@ -29,35 +32,16 @@ Vector<const MultiFab*> echemAMR::PlotFileMF() const
     }
     return r;
 }
-
-// set plotfile variable names
-Vector<std::string> echemAMR::PlotFileVarNames() const
-{
-    Vector<std::string> allnames;
-
-    allnames.resize(NVAR);
-
-    for (int i = 0; i < NVAR; i++)
-    {
-        allnames[i] = plasmachem::specnames[i];
-    }
-    //allnames[NVAR - 3] = "Efieldx";
-    //allnames[NVAR - 2] = "Efieldy";
-    //allnames[NVAR - 1] = "Efieldz";
-    return {allnames};
-}
-
 // write plotfile to disk
 void echemAMR::WritePlotFile() const
 {
     const std::string& plotfilename = PlotFileName(istep[0]);
     const auto& mf = PlotFileMF();
-    const auto& varnames = PlotFileVarNames();
 
     amrex::Print() << "Writing plotfile " << plotfilename << "\n";
 
     amrex::WriteMultiLevelPlotfile(plotfilename, finest_level + 1, mf, 
-                                   varnames, Geom(), t_new[0], istep, refRatio());
+                                   allvarnames, Geom(), t_new[0], istep, refRatio());
 }
 
 void echemAMR::WriteCheckpointFile() const
@@ -93,7 +77,8 @@ void echemAMR::WriteCheckpointFile() const
         VisMF::IO_Buffer io_buffer(VisMF::IO_Buffer_Size);
         std::ofstream HeaderFile;
         HeaderFile.rdbuf()->pubsetbuf(io_buffer.dataPtr(), io_buffer.size());
-        HeaderFile.open(HeaderFileName.c_str(), std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
+        HeaderFile.open(HeaderFileName.c_str(), std::ofstream::out | 
+                        std::ofstream::trunc | std::ofstream::binary);
         if (!HeaderFile.good())
         {
             amrex::FileOpenFailed(HeaderFileName);
@@ -139,7 +124,8 @@ void echemAMR::WriteCheckpointFile() const
     // write the MultiFab data to, e.g., chk00010/Level_0/
     for (int lev = 0; lev <= finest_level; ++lev)
     {
-        VisMF::Write(phi_new[lev], amrex::MultiFabFileFullPrefix(lev, checkpointname, "Level_", "phi"));
+        VisMF::Write(phi_new[lev], 
+                     amrex::MultiFabFileFullPrefix(lev, checkpointname, "Level_", "phi"));
     }
 }
 
@@ -220,10 +206,6 @@ void echemAMR::ReadCheckpointFile()
         int nghost = 0;
         phi_old[lev].define(grids[lev], dmap[lev], ncomp, nghost);
         phi_new[lev].define(grids[lev], dmap[lev], ncomp, nghost);
-        if (lev > 0 && do_reflux)
-        {
-            flux_reg[lev].reset(new FluxRegister(grids[lev], dmap[lev], refRatio(lev - 1), lev, ncomp));
-        }
     }
 
     // read in the MultiFab data

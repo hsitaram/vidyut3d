@@ -15,13 +15,14 @@
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::solve_potential(Real current_time)
+void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
+                               amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi)
 {
     BL_PROFILE("echemAMR::solve_potential()");
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
-    int max_iter=200;
+    int max_iter=linsolve_maxiter;
     Real ascalar = 0.0;
     Real bscalar = -1.0;
     ProbParm const* localprobparm = d_prob_parm;
@@ -47,26 +48,64 @@ void echemAMR::solve_potential(Real current_time)
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_lo 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin};
+    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
 
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_hi 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin};
+    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
 
+    int mixedbc=0;
     for (int idim = 0; idim < AMREX_SPACEDIM; idim++)
     {
-        if (bc_lo[idim] == BCType::int_dir)
+        //lower side bcs
+        if (bc_lo[idim] == PERBC)
         {
             bc_potsolve_lo[idim] = LinOpBCType::Periodic;
         }
-        if (bc_hi[idim] == BCType::int_dir)
+        if (bc_lo[idim] == DIRCBC)
+        {
+            bc_potsolve_lo[idim] = LinOpBCType::Dirichlet;
+        }
+        if (bc_lo[idim] == HNEUBC)
+        {
+            bc_potsolve_lo[idim] = LinOpBCType::Neumann;
+        }
+        if (bc_lo[idim] == IHNEUBC)
+        {
+            bc_potsolve_lo[idim] = LinOpBCType::inhomogNeumann;
+        }
+        if (bc_lo[idim] == ROBINBC)
+        {
+            bc_potsolve_lo[idim] = LinOpBCType::Robin;
+            mixedbc=1;
+        }
+        
+        //higher side bcs
+        if (bc_hi[idim] == PERBC)
         {
             bc_potsolve_hi[idim] = LinOpBCType::Periodic;
+        }
+        if (bc_hi[idim] == DIRCBC)
+        {
+            bc_potsolve_hi[idim] = LinOpBCType::Dirichlet;
+        }
+        if (bc_hi[idim] == HNEUBC)
+        {
+            bc_potsolve_hi[idim] = LinOpBCType::Neumann;
+        }
+        if (bc_hi[idim] == IHNEUBC)
+        {
+            bc_potsolve_hi[idim] = LinOpBCType::inhomogNeumann;
+        }
+        if (bc_hi[idim] == ROBINBC)
+        {
+            bc_potsolve_hi[idim] = LinOpBCType::Robin;
+            mixedbc=1;
         }
     }
 
     Vector<MultiFab> potential;
     Vector<MultiFab> acoeff;
-    Vector<Array<MultiFab*, AMREX_SPACEDIM>> gradsoln;
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln;
     Vector<MultiFab> solution;
     Vector<MultiFab> rhs;
 
@@ -92,11 +131,12 @@ void echemAMR::solve_potential(Real current_time)
         acoeff[ilev].define(grids[ilev], dmap[ilev], 1, 0);
         solution[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         rhs[ilev].define(grids[ilev], dmap[ilev], 1, 0);
+
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
         {
             const BoxArray& faceba = amrex::convert(grids[ilev], 
                                                     IntVect::TheDimensionVector(idim));
-            gradsoln[ilev][idim] = new MultiFab(faceba, dmap[ilev], 1, 0);
+            gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
         }
 
         robin_a[ilev].define(grids[ilev], dmap[ilev], 1, 1);
@@ -108,19 +148,21 @@ void echemAMR::solve_potential(Real current_time)
     info.setAgglomeration(true);
     info.setConsolidation(true);
     info.setMaxCoarseningLevel(max_coarsening_level);
-    MLABecLaplacian mlabec(Geom(0,finest_level), boxArray(0,finest_level), DistributionMap(0,finest_level), info);
-    mlabec.setMaxOrder(2);
-    mlabec.setDomainBC(bc_potsolve_lo, bc_potsolve_hi);
+    linsolve_ptr.reset(new MLABecLaplacian(Geom(0,finest_level), 
+                                           boxArray(0,finest_level), 
+                                           DistributionMap(0,finest_level), info));
+
+    linsolve_ptr->setMaxOrder(2);
+    linsolve_ptr->setDomainBC(bc_potsolve_lo, bc_potsolve_hi);
+    linsolve_ptr->setScalars(ascalar, bscalar);
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
-        MultiFab Sborder(grids[ilev], dmap[ilev], phi_new[ilev].nComp(), num_grow);
-        FillPatch(ilev, current_time, Sborder, 0, Sborder.nComp());
         potential[ilev].setVal(0.0);
 
         // Copy (FabArray<FAB>& dst, FabArray<FAB> const& src, int srccomp, 
         // int dstcomp, int numcomp, const IntVect& nghost)
-        amrex::Copy(potential[ilev], Sborder, POT_ID, 0, 1, num_grow);
+        amrex::Copy(potential[ilev], Sborder[ilev], POT_ID, 0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
         rhs[ilev].setVal(0.0);
@@ -150,12 +192,12 @@ void echemAMR::solve_potential(Real current_time)
 
             Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder.array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Array4<Real> rhs_arr = rhs[ilev].array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_reactions::compute_potential_source(i, j, k, phi_arr, 
-                             rhs_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                                                               rhs_arr, prob_lo, prob_hi, dx, time, *localprobparm);
             });
         }
 
@@ -163,7 +205,8 @@ void echemAMR::solve_potential(Real current_time)
         Array<MultiFab, AMREX_SPACEDIM> face_bcoeff;
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
         {
-            const BoxArray& ba = amrex::convert(acoeff[ilev].boxArray(), IntVect::TheDimensionVector(idim));
+            const BoxArray& ba = amrex::convert(acoeff[ilev].boxArray(), 
+                                                IntVect::TheDimensionVector(idim));
             face_bcoeff[idim].define(ba, acoeff[ilev].DistributionMap(), 1, 0);
             face_bcoeff[idim].setVal(1.0);
         }
@@ -176,7 +219,7 @@ void echemAMR::solve_potential(Real current_time)
             auto prob_hi = geom[ilev].ProbHiArray();
             const Box& domain = geom[ilev].Domain();
 
-            Array4<Real> phi_arr = Sborder.array(mfi);
+            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Array4<Real> bc_arr = potential[ilev].array(mfi);
 
             Array4<Real> robin_a_arr = robin_a[ilev].array(mfi);
@@ -193,45 +236,69 @@ void echemAMR::solve_potential(Real current_time)
                 if (bx.smallEnd(idim) == domain.smallEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                        plasmachem_transport::potential_bc(i, j, k, idim, -1, phi_arr, robin_a_arr, 
-                                                           robin_b_arr, robin_f_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                        plasmachem_transport::potential_bc(i, j, k, idim, -1, 
+                                                           phi_arr, bc_arr, robin_a_arr, 
+                                                           robin_b_arr, robin_f_arr, 
+                                                           prob_lo, prob_hi, dx, time, *localprobparm);
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                        plasmachem_transport::potential_bc(i, j, k, idim, +1, phi_arr, robin_a_arr, 
-                                                           robin_b_arr, robin_f_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                        plasmachem_transport::potential_bc(i, j, k, idim, +1, 
+                                                           phi_arr, bc_arr, robin_a_arr, 
+                                                           robin_b_arr, robin_f_arr, 
+                                                           prob_lo, prob_hi, dx, time, *localprobparm);
                     });
                 }
             }
         }
+        
+        acoeff[ilev].setVal(1.0); //will be scaled by ascalar
+        linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
+        
+        // set b with diffusivities
+        linsolve_ptr->setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
 
         // bc's are stored in the ghost cells of potential
-        mlabec.setLevelBC(ilev, &potential[ilev], &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
-        //mlabec.setLevelBC(ilev, &potential[ilev]);
-    
-        acoeff[ilev].setVal(1.0); //will be scaled by ascalar
-        mlabec.setACoeffs(ilev, acoeff[ilev]);
+        if(mixedbc)
+        {
+            linsolve_ptr->setLevelBC(ilev, &potential[ilev], &(robin_a[ilev]), 
+                                     &(robin_b[ilev]), &(robin_f[ilev]));
+        }
+        else
+        {
+            linsolve_ptr->setLevelBC(ilev, &potential[ilev]);
+        }
 
-        // set b with diffusivities
-        mlabec.setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
-        
     }
-    mlabec.setScalars(ascalar, bscalar);
 
-    MLMG mlmg(mlabec);
+    MLMG mlmg(*linsolve_ptr);
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
-    mlmg.getGradSolution(gradsoln);
+    mlmg.getGradSolution(GetVecOfArrOfPtrs(gradsoln));
+
+    amrex::Print()<<"Solved Potential\n";
 
     // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
-        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {gradsoln[ilev][0], gradsoln[ilev][1], gradsoln[ilev][2]};
+        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
+            &gradsoln[ilev][1], &gradsoln[ilev][2]};
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
         phi_new[ilev].mult(-1.0, EFX_ID, 3);
     }
+
+    //clean-up
+    potential.clear();
+    acoeff.clear();
+    gradsoln.clear();
+    solution.clear();
+    rhs.clear();
+
+    robin_a.clear();
+    robin_b.clear();
+    robin_f.clear();
 }

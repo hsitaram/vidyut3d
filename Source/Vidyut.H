@@ -16,9 +16,11 @@
 #endif
 
 #include <AMReX_AmrCore.H>
-#include <AMReX_FluxRegister.H>
 #include <AMReX_BCRec.H>
 #include <ProbParm.H>
+
+#include <AMReX_MLABecLaplacian.H>
+#include <Constants.H>
 
 
 using namespace amrex;
@@ -70,23 +72,122 @@ public:
     virtual void ErrorEst(int lev, amrex::TagBoxArray& tags, 
                           amrex::Real time, int ngrow) override;
 
-    void compute_fluxes(int lev, const int num_grow, MultiFab& Sborder, 
-        Array<MultiFab,AMREX_SPACEDIM>& flux, Real time);
+   void compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+                                             Array<MultiFab,AMREX_SPACEDIM>& flux, Real time,int specid);
 
-    void compute_dsdt(int lev, const int num_grow, MultiFab& Sborder, 
+    void compute_dsdt(int lev, const int num_grow, int specid, 
+                      MultiFab& Sborder, 
         Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
-        Real time, Real dt, bool reflux_this_stage);
+        Real time, Real dt);
 
-    void solve_potential(Real current_time);
+    void solve_potential(Real current_time, Vector<MultiFab>& Sborder, 
+                         Vector<int>& bc_lo, Vector<int>& bc_hi);
+
+    void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
+                                            Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
+                                            Vector<MultiFab>& expl_src, 
+                                            amrex::Real cur_time);
+
     
     void implicit_solve_species(Real current_time,Real dt,int spec_id,
-            Vector<MultiFab *> dsdt_expl);
+            Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl,
+                         Vector<int>& bc_lo, Vector<int>& bc_hi);
 
     // compute dt from CFL considerations
     Real EstTimeStep(int lev);
 
     static ProbParm* h_prob_parm;
     static ProbParm* d_prob_parm;
+   
+    std::unique_ptr<amrex::MLABecLaplacian> linsolve_ptr;
+    
+    ////////////////
+    amrex::Gpu::ManagedVector<Real> refine_phi;
+    amrex::Gpu::ManagedVector<Real> refine_phigrad;
+    amrex::Gpu::ManagedVector<int> refine_phi_comps;
+
+    amrex::Vector<int> istep;     // which step?
+    amrex::Vector<int> nsubsteps; // how many substeps on each level?
+
+    // keep track of old time, new time, and time step at each level
+    amrex::Vector<amrex::Real> t_new;
+    amrex::Vector<amrex::Real> t_old;
+    amrex::Vector<amrex::Real> dt;
+
+    // array of multifabs to store the solution at each level of refinement
+    // after advancing a level we use "swap".
+    amrex::Vector<amrex::MultiFab> phi_new;
+    amrex::Vector<amrex::MultiFab> phi_old;
+
+    // this is essentially a 2*DIM integer array storing the physical boundary
+    // condition types at the lo/hi walls in each direction
+    amrex::Vector<BCRec> bcspec; // 1-component
+
+    // maximum number of steps and stop time
+    int max_step = std::numeric_limits<int>::max();
+    amrex::Real stop_time = std::numeric_limits<amrex::Real>::max();
+
+
+    // if >= 0 we restart from a checkpoint
+    std::string restart_chkfile = "";
+
+
+    amrex::Vector<int> pot_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> pot_bc_hi{ROBINBC, ROBINBC, ROBINBC};
+    
+    amrex::Vector<int> eden_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> eden_bc_hi{ROBINBC, ROBINBC, ROBINBC};
+    
+    amrex::Vector<int> eenrg_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> eenrg_bc_hi{ROBINBC, ROBINBC, ROBINBC};
+    
+    amrex::Vector<int> ion_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> ion_bc_hi{ROBINBC, ROBINBC, ROBINBC};
+    
+    amrex::Vector<int> neutral_bc_lo{ROBINBC, ROBINBC, ROBINBC};
+    amrex::Vector<int> neutral_bc_hi{ROBINBC, ROBINBC, ROBINBC};
+    
+    // advective cfl number - dt = cfl*dx/umax
+    amrex::Real cfl = 0.7;
+
+    amrex::Real fixed_dt=1e-12;
+
+    amrex::Real linsolve_reltol = 1e-10;
+    amrex::Real linsolve_abstol = 1e-10;
+    amrex::Real linsolve_bot_reltol = 1e-10;
+    amrex::Real linsolve_bot_abstol = -1.0;
+    amrex::Real min_species_density=1e12;
+
+    amrex::Vector<std::string> plasma_param_names;
+    amrex::Vector<std::string> allvarnames;
+
+    int linsolve_num_pre_smooth = 2;
+    int linsolve_num_post_smooth = 2;
+    int linsolve_num_final_smooth = 8;
+    int linsolve_num_bottom_smooth = 0;
+
+    int linsolve_maxiter=100;
+    int linsolve_max_coarsening_level=10;
+    int bound_specden=0;
+
+    int elecenergy_solve=0;
+
+    // how often each level regrids the higher levels of refinement
+    // (after a level advances that many time steps)
+    int regrid_int = 2;
+
+    // hyperbolic refluxing as part of multilevel synchronization
+    int do_reflux = 1;
+
+    int use_hypre=0;
+
+    // plotfile prefix and frequency
+    std::string plot_file{"plt"};
+    int plot_int = -1;
+
+    // checkpoint prefix and frequency
+    std::string chk_file{"chk"};
+    int chk_int = -1;
 
 private:
     ////////////////
@@ -136,89 +237,6 @@ private:
 
     // utility to skip to next line in Header
     static void GotoNextLine(std::istream& is);
-
-    ////////////////
-    // private data members
-    amrex::Gpu::ManagedVector<Real> refine_phi;
-    amrex::Gpu::ManagedVector<Real> refine_phigrad;
-    amrex::Gpu::ManagedVector<int> refine_phi_comps;
-
-    amrex::Vector<int> istep;     // which step?
-    amrex::Vector<int> nsubsteps; // how many substeps on each level?
-
-    // keep track of old time, new time, and time step at each level
-    amrex::Vector<amrex::Real> t_new;
-    amrex::Vector<amrex::Real> t_old;
-    amrex::Vector<amrex::Real> dt;
-
-    // array of multifabs to store the solution at each level of refinement
-    // after advancing a level we use "swap".
-    amrex::Vector<amrex::MultiFab> phi_new;
-    amrex::Vector<amrex::MultiFab> phi_old;
-
-    // this is essentially a 2*DIM integer array storing the physical boundary
-    // condition types at the lo/hi walls in each direction
-    amrex::Vector<BCRec> bcspec; // 1-component
-
-    // stores fluxes at coarse-fine interface for synchronization
-    // this will be sized "nlevs_max+1"
-    // NOTE: the flux register associated with flux_reg[lev] is associated
-    // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
-    // therefore flux_reg[0] and flux_reg[nlevs_max] are never actually
-    // used in the reflux operation
-    amrex::Vector<std::unique_ptr<amrex::FluxRegister>> flux_reg;
-
-    ////////////////
-    // runtime parameters
-
-    // maximum number of steps and stop time
-    int max_step = std::numeric_limits<int>::max();
-    amrex::Real stop_time = std::numeric_limits<amrex::Real>::max();
-
-
-    // if >= 0 we restart from a checkpoint
-    std::string restart_chkfile = "";
-
-
-    amrex::Vector<int> bc_lo{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    amrex::Vector<int> bc_hi{BCType::foextrap, BCType::foextrap, BCType::foextrap};
-    
-    // advective cfl number - dt = cfl*dx/umax
-    amrex::Real cfl = 0.7;
-
-    amrex::Real fixed_dt=1e-12;
-
-    amrex::Real linsolve_reltol = 1e-10;
-    amrex::Real linsolve_abstol = 1e-10;
-    amrex::Real linsolve_bot_reltol = 1e-10;
-    amrex::Real linsolve_bot_abstol = -1.0;
-    amrex::Real min_species_density=1e12;
-
-    int linsolve_num_pre_smooth = 2;
-    int linsolve_num_post_smooth = 2;
-    int linsolve_num_final_smooth = 8;
-    int linsolve_num_bottom_smooth = 0;
-
-    int linsolve_maxiter=100;
-    int linsolve_max_coarsening_level=10;
-    int bound_specden=0;
-
-    // how often each level regrids the higher levels of refinement
-    // (after a level advances that many time steps)
-    int regrid_int = 2;
-
-    // hyperbolic refluxing as part of multilevel synchronization
-    int do_reflux = 1;
-
-    int use_hypre=0;
-
-    // plotfile prefix and frequency
-    std::string plot_file{"plt"};
-    int plot_int = -1;
-
-    // checkpoint prefix and frequency
-    std::string chk_file{"chk"};
-    int chk_int = -1;
 
 };
 

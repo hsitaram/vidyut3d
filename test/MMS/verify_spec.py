@@ -6,15 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
     
 
-axialdir = int(argv[2])
 clength   = 1.0
 cwidth    = 0.125
 cdepth    = 0.125
 ar     = (clength/cwidth)
 
-axialdir_char=chr(ord('x')+axialdir)
-
 ds=yt.load(argv[1])
+axialdir=np.argmax(ds.domain_dimensions)
+axialdir_char=chr(ord('x')+axialdir)
 res=100
 slicedepth = cdepth/2
 slc = ds.slice((axialdir+2)%3,slicedepth)
@@ -44,7 +43,7 @@ ax[1][0].legend(loc="best")
 im=ax[1][1].imshow(np.array(frb["Potential"]),origin="lower")
 fig.colorbar(im, ax=ax[1][1])
 
-dir_char=chr(ord('x')+int(argv[2]))
+dir_char=axialdir_char
 fig.suptitle("S1 and S2 solution along "+dir_char+" direction ")
 plt.savefig("species_"+dir_char+".png")
 plt.show()

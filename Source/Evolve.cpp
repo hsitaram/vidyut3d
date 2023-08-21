@@ -23,9 +23,7 @@ void echemAMR::Evolve()
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)
     {
         amrex::Print() << "\nCoarse STEP " << step + 1 << " starts ..." << std::endl;
-    
-        // BL_PROFILE_TINY_FLUSH()
-        
+
         ComputeDt();
 
         if (max_level > 0 && regrid_int > 0)  // We may need to regrid
@@ -35,7 +33,6 @@ void echemAMR::Evolve()
                 regrid(0, cur_time);
             }
         }
-        solve_potential(cur_time);
 
         for (int lev = 0; lev <= finest_level; lev++)
         {
@@ -45,55 +42,57 @@ void echemAMR::Evolve()
         }
 
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
-        for (int lev = 0; lev <= finest_level; lev++)
+        Vector<MultiFab> expl_src(finest_level+1);
+        Vector<MultiFab> Sborder(finest_level+1);
+
+        //copy new to old and update time
+        for(int lev=0;lev<=finest_level;lev++)
         {
-            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
+            amrex::MultiFab::Copy(phi_old[lev], phi_new[lev], 
+                                  0, 0, phi_new[lev].nComp(), 0);
+            t_old[lev] = t_new[lev];
+            t_new[lev] += dt[0];
+        }
+
+        //allocate flux, expl_src, Sborder
+        for(int lev=0;lev<=finest_level;lev++)
+        {
+            int num_grow=2;
+            Sborder[lev].define(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
+            Sborder[lev].setVal(0.0);
+            FillPatch(lev, cur_time, Sborder[lev], 0, Sborder[lev].nComp());
+
+            for (int lev = 0; lev <= finest_level; lev++)
             {
-                BoxArray ba = grids[lev];
-                ba.surroundingNodes(idim);
-                flux[lev][idim].define(ba, dmap[lev], phi_new[lev].nComp(), 0);
-                flux[lev][idim].setVal(0.0);
+                for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
+                {
+                    BoxArray ba = grids[lev];
+                    ba.surroundingNodes(idim);
+                    flux[lev][idim].define(ba, dmap[lev], 1, 0);
+                    flux[lev][idim].setVal(0.0);
+                }
+                expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
+                expl_src[lev].setVal(0.0);
             }
         }
 
-        Vector<MultiFab *> expl_src(finest_level+1);
-        for(int lev=0;lev<=finest_level;lev++)
-        {
-            amrex::MultiFab::Copy(phi_old[lev], phi_new[lev], 0, 0, phi_new[lev].nComp(), 0);
-            t_old[lev] = t_new[lev];
-            t_new[lev] += dt[0];
+        solve_potential(cur_time, Sborder, pot_bc_lo,pot_bc_hi);
 
-            int num_grow=2;
-            MultiFab Sborder(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
-            FillPatch(lev, cur_time, Sborder, 0, Sborder.nComp());
-            compute_fluxes(lev, num_grow, Sborder, flux[lev], cur_time);
-        }
-        // =======================================================
-        // Average down the fluxes before using them to update phi
-        // =======================================================
-        for (int lev = finest_level; lev > 0; lev--)
-        {
-            average_down_faces(amrex::GetArrOfConstPtrs(flux[lev  ]),
-                               amrex::GetArrOfPtrs(flux[lev-1]),
-                               refRatio(lev-1), Geom(lev-1));
-        }
-        for(int lev=0;lev<=finest_level;lev++)
-        {
-            int num_grow=2;
-            MultiFab Sborder(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
-            expl_src[lev]=new MultiFab(grids[lev], dmap[lev], phi_new[lev].nComp(), 0);
-            expl_src[lev]->setVal(0.0);
+        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, expl_src, cur_time);
+        implicit_solve_species(cur_time,dt[0],EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi);
 
-            //FIXME: need to avoid this fillpatch
-            FillPatch(lev, cur_time, Sborder, 0, Sborder.nComp());
-            compute_dsdt(lev, num_grow, Sborder,flux[lev], *expl_src[lev], 
-                         cur_time, dt[0], false);
+        if(elecenergy_solve)
+        {
+            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, expl_src, cur_time);
+            implicit_solve_species(cur_time,dt[0],EEN_ID, Sborder, expl_src,eenrg_bc_lo,eenrg_bc_hi);
         }
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
-            implicit_solve_species(cur_time,dt[0],ind,expl_src);
+            update_explsrc_at_all_levels(ind, Sborder, flux, expl_src, cur_time);
+            implicit_solve_species(cur_time, dt[0], ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
         }
+
         AverageDown ();
 
         for (int lev = 0; lev <= finest_level; lev++)
@@ -128,6 +127,12 @@ void echemAMR::Evolve()
         }
 
         if (cur_time >= stop_time - 1.e-6 * dt[0]) break;
+
+
+        //local cleanup
+        flux.clear();
+        expl_src.clear();
+        Sborder.clear();
     }
 
     if (plot_int > 0 && istep[0] > last_plot_file_step)

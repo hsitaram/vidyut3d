@@ -21,19 +21,33 @@ amr.regrid_int      = 2       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 0.1
 
-#periodic 0
-#extdir 3
-#foextrap 2 
-#highorderextrap 5
-vidyut.lo_bc = 0 3 0
-vidyut.hi_bc = 0 3 0
-
 # Tagging
 vidyut.tagged_vars = S1 S2
 vidyut.S1_refine = 1e20
 vidyut.S2_refine = 0.11
 vidyut.S1_refinegrad = 0.2
 vidyut.S2_refinegrad = 1e20
+
+#0 - periodic
+#1 - Dirichlet
+#2 - Homogenous Neumann
+#3 - Inhomogenous Neumann
+#4 - Robin
+
+vidyut.pot_bc_lo = 0 4 0
+vidyut.pot_bc_hi = 0 4 0
+
+vidyut.eden_bc_lo = 0 4 0
+vidyut.eden_bc_hi = 0 4 0
+
+vidyut.eenrg_bc_lo = 0 4 0
+vidyut.eenrg_bc_hi = 0 4 0
+
+vidyut.ion_bc_lo = 0 4 0
+vidyut.ion_bc_hi = 0 4 0
+
+vidyut.neutral_bc_lo = 0 4 0
+vidyut.neutral_bc_hi = 0 4 0
 
 # PLOTFILES
 amr.plot_file  = plt    # root name of plot file

@@ -13,6 +13,7 @@ namespace plasmachem_transport
     void potential_bc(int i, int j, int k,
                            int dir, int sgn,
                            Array4<Real> const& phi,
+                           Array4<Real> const& bcarr,
                            Array4<Real> const& robin_a,
                            Array4<Real> const& robin_b,
                            Array4<Real> const& robin_f,
@@ -46,6 +47,7 @@ namespace plasmachem_transport
     AMREX_GPU_DEVICE AMREX_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn, 
                     int spec_id, Array4<Real> const &phi, 
+                    Array4<Real> const& bcarr,
                     Array4<Real> const& robin_a,
                     Array4<Real> const& robin_b,
                     Array4<Real> const& robin_f,
@@ -80,7 +82,7 @@ namespace plasmachem_transport
             {
                 robin_f(i,j,k) = 1.0;
             }
-            else
+            else //also for elec energy and density
             {
                 robin_f(i,j,k) = 0.0;
             }
@@ -90,6 +92,7 @@ namespace plasmachem_transport
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void compute_dcoeff(int i, int j, int k,
+                        int specid,
                         Array4<Real> const& phi,
                         Array4<Real> const& dcoeff,
                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -98,12 +101,19 @@ namespace plasmachem_transport
                         const Real time,
                         ProbParm const& prob_parm)
     {
-        dcoeff(i,j,k,S1_ID)   = 0.1;
-        dcoeff(i,j,k,S2_ID)   = 1.0;
+        if(specid==S1_ID)
+        {
+           dcoeff(i,j,k)   = 0.1;
+        }
+        else
+        {
+          dcoeff(i,j,k)   = 1.0;
+        }
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void compute_vel(int i, int j, int k, int dir,
+                     int specid,
                      Array4<Real> const& phi,
                      Array4<Real> const& vel,
                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -132,12 +142,11 @@ namespace plasmachem_transport
         if(maxlen==ylen) bigdir=1;
         if(maxlen==zlen) bigdir=2;
 
-        vel(i,j,k,S1_ID)=0.0;
-        vel(i,j,k,S2_ID)=0.0;
+        vel(i,j,k)=0.0;
 
-        if(bigdir==dir)
+        if(bigdir==dir && specid==S1_ID)
         {
-            vel(i,j,k,S1_ID)
+            vel(i,j,k)
             =0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
         }
     }

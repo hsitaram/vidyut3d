@@ -6,6 +6,7 @@
 #include <AMReX_Geometry.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
+#include <Constants.H>
 
 using namespace amrex;
 
@@ -53,47 +54,15 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 Real x = prob_lo[0] + (0.5+i) * dx[0];
                 phi(i,j,k,S1_ID)  = 0.0;
                 phi(i,j,k,S2_ID)  = 0.0;
+                
+                phi(i,j,k,POT_ID) = 0.0;
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;
-                phi(i,j,k,POT_ID) = 0.0;
+                phi(i,j,k,EEN_ID) = 0.0;
+                phi(i,j,k,EDN_ID) = 0.0;
             }
         }
     }
-}
-
-AMREX_GPU_DEVICE
-AMREX_FORCE_INLINE
-void externalbc(const amrex::Real x[AMREX_SPACEDIM],
-        const amrex::Real s_int[],
-        amrex::Real s_ext[],
-        const int idir,
-        const int sgn,
-        const amrex::Real time,
-        amrex::GeometryData const& geomdata)
-{
-    Real dirc_val_S1,dirc_val_S2;
-
-    //default to extrapolation
-    for(int c=0;c<NVAR;c++)
-    {
-        s_ext[c]=s_int[c];
-    }
-
-    if(sgn > 0) //left lo side
-    {
-        dirc_val_S1=0.0;
-        dirc_val_S2=0.0;
-        s_ext[POT_ID]=1.0;
-    }
-    else
-    {
-        dirc_val_S1=1.0;
-        dirc_val_S2=0.0;
-        s_ext[POT_ID]=0.0;
-    }
-
-    s_ext[S1_ID]=2.0*dirc_val_S1-s_int[S1_ID];
-    s_ext[S2_ID]=2.0*dirc_val_S2-s_int[S2_ID];
 }
 #endif
