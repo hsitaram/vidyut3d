@@ -217,20 +217,14 @@ private:
     // a wrapper for EstTimeStep(0
     void ComputeDt();
 
-    // get plotfile name
-    std::string PlotFileName(int lev) const;
-
     // put together an array of multifabs for writing
     amrex::Vector<const amrex::MultiFab*> PlotFileMF() const;
 
-    // set plotfile variables names
-    amrex::Vector<std::string> PlotFileVarNames() const;
-
     // write plotfile to disk
-    void WritePlotFile() const;
+    void WritePlotFile(int plotfilenum) const;
 
     // write checkpoint file to disk
-    void WriteCheckpointFile() const;
+    void WriteCheckpointFile(int chkfilenum) const;
 
     // read checkpoint file from disk
     void ReadCheckpointFile();

@@ -128,7 +128,7 @@ void echemAMR::InitData()
 
         if (chk_int > 0)
         {
-            WriteCheckpointFile();
+            WriteCheckpointFile(0);
         }
 
     } 
@@ -140,7 +140,7 @@ void echemAMR::InitData()
 
     if (plot_int > 0)
     {
-        WritePlotFile();
+        WritePlotFile(0);
     }
 }
 

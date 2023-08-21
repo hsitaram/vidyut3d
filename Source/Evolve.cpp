@@ -19,6 +19,8 @@ void echemAMR::Evolve()
 {
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;
+    int plotfilenum=0;
+    int chkfilenum=0;
 
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)
     {
@@ -118,12 +120,14 @@ void echemAMR::Evolve()
         if (plot_int > 0 && (step + 1) % plot_int == 0)
         {
             last_plot_file_step = step + 1;
-            WritePlotFile();
+            plotfilenum++;
+            WritePlotFile(plotfilenum);
         }
 
         if (chk_int > 0 && (step + 1) % chk_int == 0)
         {
-            WriteCheckpointFile();
+            chkfilenum++;
+            WriteCheckpointFile(chkfilenum);
         }
 
         if (cur_time >= stop_time - 1.e-6 * dt[0]) break;
@@ -137,6 +141,7 @@ void echemAMR::Evolve()
 
     if (plot_int > 0 && istep[0] > last_plot_file_step)
     {
-        WritePlotFile();
+        plotfilenum++;
+        WritePlotFile(plotfilenum);
     }
 }

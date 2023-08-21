@@ -16,12 +16,6 @@ void echemAMR::GotoNextLine(std::istream& is)
     is.ignore(bl_ignore_max, '\n');
 }
 
-// get plotfile name
-std::string echemAMR::PlotFileName(int lev) const 
-{ 
-    return amrex::Concatenate(plot_file, lev, 5); 
-}
-
 // put together an array of multifabs for writing
 Vector<const MultiFab*> echemAMR::PlotFileMF() const
 {
@@ -33,9 +27,9 @@ Vector<const MultiFab*> echemAMR::PlotFileMF() const
     return r;
 }
 // write plotfile to disk
-void echemAMR::WritePlotFile() const
+void echemAMR::WritePlotFile(int plotfilenum) const
 {
-    const std::string& plotfilename = PlotFileName(istep[0]);
+    const std::string& plotfilename = amrex::Concatenate(plot_file, plotfilenum, 5);
     const auto& mf = PlotFileMF();
 
     amrex::Print() << "Writing plotfile " << plotfilename << "\n";
@@ -44,7 +38,7 @@ void echemAMR::WritePlotFile() const
                                    allvarnames, Geom(), t_new[0], istep, refRatio());
 }
 
-void echemAMR::WriteCheckpointFile() const
+void echemAMR::WriteCheckpointFile(int chkfilenum) const
 {
 
     // chk00010            write a checkpoint file with this root directory
@@ -55,7 +49,7 @@ void echemAMR::WriteCheckpointFile() const
     // etc.                these subdirectories will hold the MultiFab data at each level of refinement
 
     // checkpoint file name, e.g., chk00010
-    const std::string& checkpointname = amrex::Concatenate(chk_file, istep[0]);
+    const std::string& checkpointname = amrex::Concatenate(chk_file, chkfilenum);
 
     amrex::Print() << "Writing checkpoint " << checkpointname << "\n";
 
