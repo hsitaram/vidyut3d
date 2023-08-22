@@ -15,7 +15,7 @@
 #include <AMReX_MLABecLaplacian.H>
 
 // advance solution to final time
-void echemAMR::Evolve()
+void Vidyut::Evolve()
 {
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;

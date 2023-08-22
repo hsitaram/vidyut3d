@@ -11,7 +11,7 @@
 #include <Transport.H>
 
 // a wrapper for EstTimeStep
-void echemAMR::ComputeDt()
+void Vidyut::ComputeDt()
 {
     for (int lev = 1; lev <= finest_level; ++lev)
     {
@@ -20,9 +20,9 @@ void echemAMR::ComputeDt()
 }
 
 // compute dt from CFL considerations
-Real echemAMR::EstTimeStep(int lev)
+Real Vidyut::EstTimeStep(int lev)
 {
-    BL_PROFILE("echemAMR::EstTimeStep()");
+    BL_PROFILE("Vidyut::EstTimeStep()");
     amrex::Real dt_est=fixed_dt;
     return dt_est;
 }

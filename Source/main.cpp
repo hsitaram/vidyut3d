@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
         plasmachem::init();
         // constructor - reads in parameters from inputs file
         //             - sizes multilevel arrays and data structures
-        echemAMR echem_obj;
+        Vidyut echem_obj;
 
         // initialize AMR data
         echem_obj.InitData();

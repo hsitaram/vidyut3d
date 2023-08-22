@@ -14,10 +14,10 @@
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
+void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                                amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi)
 {
-    BL_PROFILE("echemAMR::solve_potential()");
+    BL_PROFILE("Vidyut::solve_potential()");
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;

@@ -14,7 +14,7 @@
 #include <compute_flux_3d.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
+void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
                             Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
                             Real time, Real dt)
 {
@@ -60,7 +60,7 @@ void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& S
     }
 }
 
-void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
+void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
                                             Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time)
@@ -98,7 +98,7 @@ void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborde
     }
 }
 
-void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Real time,int specid)
 {
@@ -182,11 +182,11 @@ void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiF
     }
 }
 
-void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id, 
+void Vidyut::implicit_solve_species(Real current_time, Real dt, int spec_id, 
                                       Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
                                       Vector<int>& bc_lo, Vector<int>& bc_hi)
 {
-    BL_PROFILE("echemAMR::implicit_solve_species(" + std::to_string( spec_id ) + ")");
+    BL_PROFILE("Vidyut::implicit_solve_species(" + std::to_string( spec_id ) + ")");
 
 
     // FIXME: add these as inputs

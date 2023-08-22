@@ -1,5 +1,5 @@
-#ifndef echemAMR_constants_H_
-#define echemAMR_constants_H_
+#ifndef Vidyut_constants_H_
+#define Vidyut_constants_H_
 #include <Chemistry.H>
 
 #define N_A 6.02214076e23

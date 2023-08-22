@@ -15,13 +15,13 @@
 
 using namespace amrex;
 
-ProbParm* echemAMR::h_prob_parm = nullptr;
-ProbParm* echemAMR::d_prob_parm = nullptr;
+ProbParm* Vidyut::h_prob_parm = nullptr;
+ProbParm* Vidyut::d_prob_parm = nullptr;
 
 // constructor - reads in parameters from inputs file
 //             - sizes multilevel arrays and data structures
 //             - initializes BCRec boundary condition object
-echemAMR::echemAMR()
+Vidyut::Vidyut()
 {
     ReadParameters();
     h_prob_parm = new ProbParm{};
@@ -110,13 +110,13 @@ echemAMR::echemAMR()
     // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
 }
 
-echemAMR::~echemAMR()
+Vidyut::~Vidyut()
 {
     delete h_prob_parm;
     The_Arena()->free(d_prob_parm);
 }
 // initializes multilevel data
-void echemAMR::InitData()
+void Vidyut::InitData()
 {
     ProbParm* localprobparm = d_prob_parm;
 
@@ -147,7 +147,7 @@ void echemAMR::InitData()
 
 // tag all cells for refinement
 // overrides the pure virtual function in AmrCore
-void echemAMR::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
+void Vidyut::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
 {
     static bool first = true;
 
@@ -239,7 +239,7 @@ void echemAMR::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
 }
 
 // read in some parameters from inputs file
-void echemAMR::ReadParameters()
+void Vidyut::ReadParameters()
 {
     {
         ParmParse pp; // Traditionally, max_step and stop_time do not have prefix.
@@ -282,7 +282,7 @@ void echemAMR::ReadParameters()
 }
 
 // utility to copy in data from phi_old and/or phi_new into another multifab
-void echemAMR::GetData(int lev, Real time, Vector<MultiFab*>& data, Vector<Real>& datatime)
+void Vidyut::GetData(int lev, Real time, Vector<MultiFab*>& data, Vector<Real>& datatime)
 {
     data.clear();
     datatime.clear();

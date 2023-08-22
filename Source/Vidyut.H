@@ -25,7 +25,7 @@
 
 using namespace amrex;
 
-class echemAMR : public amrex::AmrCore
+class Vidyut : public amrex::AmrCore
 {
 public:
     ////////////////
@@ -33,8 +33,8 @@ public:
 
     // constructor - reads in parameters from inputs file
     //             - sizes multilevel arrays and data structures
-    echemAMR();
-    virtual ~echemAMR();
+    Vidyut();
+    virtual ~Vidyut();
 
     // advance solution to final time
     void Evolve();
