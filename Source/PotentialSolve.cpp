@@ -7,7 +7,6 @@
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_MLTensorOp.H>
 
-#include <Kernels_3d.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <Transport.H>
@@ -103,25 +102,15 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         }
     }
 
-    Vector<MultiFab> potential;
-    Vector<MultiFab> acoeff;
-    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln;
-    Vector<MultiFab> solution;
-    Vector<MultiFab> rhs;
+    Vector<MultiFab> potential(finest_level+1);
+    Vector<MultiFab> acoeff(finest_level+1);
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln(finest_level+1);
+    Vector<MultiFab> solution(finest_level+1);
+    Vector<MultiFab> rhs(finest_level+1);
 
-    Vector<MultiFab> robin_a;
-    Vector<MultiFab> robin_b;
-    Vector<MultiFab> robin_f;
-
-    potential.resize(finest_level + 1);
-    acoeff.resize(finest_level + 1);
-    gradsoln.resize(finest_level + 1);
-    solution.resize(finest_level + 1);
-    rhs.resize(finest_level + 1);
-
-    robin_a.resize(finest_level+1);
-    robin_b.resize(finest_level+1);
-    robin_f.resize(finest_level+1);
+    Vector<MultiFab> robin_a(finest_level+1);
+    Vector<MultiFab> robin_b(finest_level+1);
+    Vector<MultiFab> robin_f(finest_level+1);
 
     const int num_grow = 1;
 

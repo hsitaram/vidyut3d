@@ -1,4 +1,4 @@
 CEXE_sources += main.cpp Vidyut.cpp Evolve.cpp Plot.cpp
 CEXE_sources += GridWork.cpp TimeStep.cpp PotentialSolve.cpp SpecieSolve.cpp
 
-CEXE_headers += Vidyut.H Kernels_3d.H Tagging.H BCfill.H Constants.H
+CEXE_headers += Vidyut.H Tagging.H BCfill.H Constants.H

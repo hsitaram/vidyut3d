@@ -5,7 +5,6 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
-#include <Kernels_3d.H>
 #include <Vidyut.H>
 #include <Constants.H>
 

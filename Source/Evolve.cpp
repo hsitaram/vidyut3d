@@ -6,12 +6,12 @@
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_MLTensorOp.H>
-#include <Kernels_3d.H>
+#include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <Transport.H>
 #include <Reactions.H>
-#include <ProbParm.H>
+#include <compute_flux_3d.H>
 #include <AMReX_MLABecLaplacian.H>
 
 // advance solution to final time

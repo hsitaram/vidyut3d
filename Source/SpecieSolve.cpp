@@ -6,12 +6,12 @@
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_MLTensorOp.H>
-#include <Kernels_3d.H>
+#include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <Transport.H>
 #include <Reactions.H>
-#include <ProbParm.H>
+#include <compute_flux_3d.H>
 #include <AMReX_MLABecLaplacian.H>
 
 void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
@@ -46,7 +46,7 @@ void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& S
 
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
             plasmachem_reactions::compute_react_source(i, j, k, captured_specid, sborder_arr, 
-                                reactsource_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                                                       reactsource_arr, prob_lo, prob_hi, dx, time, *localprobparm);
         });
 
         // update residual
@@ -193,6 +193,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
     int max_coarsening_level = linsolve_max_coarsening_level;
     int verbose = 1;
     int captured_spec_id=spec_id;
+    int electron_flag=(spec_id==EDN_ID)?1:0;
 
     //==================================================
     // amrex solves
@@ -272,25 +273,16 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         }
     }
 
-    Vector<MultiFab> specdata;
-    Vector<MultiFab> acoeff;
-    Vector<MultiFab> bcoeff;
-    Vector<MultiFab> solution;
-    Vector<MultiFab> rhs;
+    Vector<MultiFab> specdata(finest_level+1);
+    Vector<MultiFab> acoeff(finest_level+1);
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln(finest_level+1);
+    Vector<MultiFab> bcoeff(finest_level+1);
+    Vector<MultiFab> solution(finest_level+1);
+    Vector<MultiFab> rhs(finest_level+1);
 
-    Vector<MultiFab> robin_a;
-    Vector<MultiFab> robin_b;
-    Vector<MultiFab> robin_f;
-
-    specdata.resize(finest_level + 1);
-    acoeff.resize(finest_level + 1);
-    bcoeff.resize(finest_level + 1);
-    solution.resize(finest_level + 1);
-    rhs.resize(finest_level + 1);
-
-    robin_a.resize(finest_level+1);
-    robin_b.resize(finest_level+1);
-    robin_f.resize(finest_level+1);
+    Vector<MultiFab> robin_a(finest_level+1);
+    Vector<MultiFab> robin_b(finest_level+1);
+    Vector<MultiFab> robin_f(finest_level+1);
 
     const int num_grow = 1;
 
@@ -305,6 +297,16 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         robin_a[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         robin_b[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         robin_f[ilev].define(grids[ilev], dmap[ilev], 1, 1);
+
+        if(electron_flag)
+        {
+            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
+            {
+                const BoxArray& faceba = amrex::convert(grids[ilev], 
+                                                        IntVect::TheDimensionVector(idim));
+                gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
+            }
+        }
     }
 
     LPInfo info;
@@ -456,7 +458,6 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {
             amrex::Real minspecden=min_species_density; 
-            // fill cell centered diffusion coefficients and rhs
             for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
             {
                 const Box& bx = mfi.tilebox();
@@ -471,18 +472,33 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             }
         }
     }
+    if(electron_flag)
+    {
+        mlmg.getGradSolution(GetVecOfArrOfPtrs(gradsoln));
+    }
 
     // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
-        amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, captured_spec_id, 1, 0);
+        amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, spec_id, 1, 0);
     }
-    Print()<<"Solved species:"<<allvarnames[captured_spec_id]<<"\n";
+    Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
+
+    if(electron_flag)
+    {
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
+                &gradsoln[ilev][1], &gradsoln[ilev][2]};
+            average_face_to_cellcenter(phi_new[ilev], EDGX_ID, allgrad);
+        }
+    }
 
     //clean-up
     specdata.clear();
     acoeff.clear();
     bcoeff.clear();
+    gradsoln.clear();
     solution.clear();
     rhs.clear();
 

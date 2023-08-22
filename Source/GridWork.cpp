@@ -5,7 +5,9 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
-#include <Kernels_3d.H>
+#include <Prob.H>
+#include <Tagging.H>
+#include <BCFill.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 
