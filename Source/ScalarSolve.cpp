@@ -182,7 +182,7 @@ void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab
     }
 }
 
-void Vidyut::implicit_solve_species(Real current_time, Real dt, int spec_id, 
+void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id, 
                                       Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
                                       Vector<int>& bc_lo, Vector<int>& bc_hi)
 {
@@ -294,16 +294,16 @@ void Vidyut::implicit_solve_species(Real current_time, Real dt, int spec_id,
         solution[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
         rhs[ilev].define(grids[ilev], dmap[ilev], 1, 0);
 
-        robin_a[ilev].define(grids[ilev], dmap[ilev], 1, 1);
-        robin_b[ilev].define(grids[ilev], dmap[ilev], 1, 1);
-        robin_f[ilev].define(grids[ilev], dmap[ilev], 1, 1);
+        robin_a[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
+        robin_b[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
+        robin_f[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
 
         if(electron_flag)
         {
             for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
             {
                 const BoxArray& faceba = amrex::convert(grids[ilev], 
-                                                        IntVect::TheDimensionVector(idim));
+                               IntVect::TheDimensionVector(idim));
                 gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
             }
         }
@@ -325,7 +325,8 @@ void Vidyut::implicit_solve_species(Real current_time, Real dt, int spec_id,
         // Copy args (FabArray<FAB>& dst, FabArray<FAB> const& src, 
         // int srccomp, int dstcomp, int numcomp, const IntVect& nghost)
         specdata[ilev].setVal(0.0);
-        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 0, 1, num_grow);
+        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 
+                    0, 1, num_grow);
 
         acoeff[ilev].setVal(1.0);
         bcoeff[ilev].setVal(1.0);

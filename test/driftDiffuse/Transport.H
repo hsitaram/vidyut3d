@@ -5,6 +5,7 @@
 #include <AMReX_FArrayBox.H>
 #include <AMReX_REAL.H>
 #include <Chemistry.H>
+#include <VarDefines.H>
 
 using namespace amrex;
 namespace plasmachem_transport
@@ -150,5 +151,51 @@ namespace plasmachem_transport
             =0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
         }
     }
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real mobility(int i, int j, int k,
+                     int specid,
+                     Array4<Real> const& phi,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                     GpuArray<Real, AMREX_SPACEDIM> dx,
+                     const Real time,
+                     ProbParm const& prob_parm,
+                     Real Tg, Real Pg)
+
+    {
+        return(1.0);
+    }
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real diffusion_coeff(int i, int j, int k,
+                     int specid,
+                     Array4<Real> const& phi,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                     GpuArray<Real, AMREX_SPACEDIM> dx,
+                     const Real time,
+                     ProbParm const& prob_parm,
+                     Real Tg, Real Pg)
+
+    {
+        return(1.0);
+    }
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real collision_freq(int i, int j, int k,
+                     int specid,
+                     Array4<Real> const& phi,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                     GpuArray<Real, AMREX_SPACEDIM> dx,
+                     const Real time,
+                     ProbParm const& prob_parm,
+                     Real Tg, Real Pg)
+
+    {
+        return(1.0);
+    }
+            
 }
 #endif

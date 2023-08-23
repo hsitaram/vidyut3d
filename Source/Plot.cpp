@@ -6,7 +6,7 @@
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
 #include <Vidyut.H>
-#include <Constants.H>
+#include <VarDefines.H>
 
 // utility to skip to next line in Header
 void Vidyut::GotoNextLine(std::istream& is)

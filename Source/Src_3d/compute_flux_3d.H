@@ -4,8 +4,8 @@
 #include <AMReX_BLFort.H>
 #include <AMReX_Box.H>
 #include <AMReX_Geometry.H>
-#include <Constants.H>
-#include <Reactions.H>
+#include <UnivConstants.H>
+#include <VarDefines.H>
 
 using namespace amrex;
 

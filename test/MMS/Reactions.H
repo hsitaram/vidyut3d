@@ -52,5 +52,19 @@ namespace plasmachem_reactions
 
         source(i,j,k)=phi(i,j,k,S1_ID);
     }
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real compute_electron_inelastic_heating(int i, int j, int k,
+                     Array4<Real> const& phi,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                     GpuArray<Real, AMREX_SPACEDIM> dx,
+                     const Real time,
+                     ProbParm const& prob_parm,
+                     amrex::Real Tg,
+                     amrex::Real pres)
+    {
+        return(0.0);
+    }
 }
 #endif

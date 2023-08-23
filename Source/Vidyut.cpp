@@ -11,7 +11,7 @@
 #include <Chemistry.H>
 #include <ProbParm.H>
 #include <stdio.h>
-#include <Constants.H>
+#include <VarDefines.H>
 
 using namespace amrex;
 
@@ -278,6 +278,9 @@ void Vidyut::ReadParameters()
         pp.query("bound_specden", bound_specden);
         pp.query("min_species_density",min_species_density);
         pp.query("elecenergy_solve",elecenergy_solve);
+
+        pp.query("gas_temperature",gas_temperature);
+        pp.query("gas_pressure",gas_pressure);
     }
 }
 

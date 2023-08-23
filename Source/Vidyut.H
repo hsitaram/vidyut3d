@@ -20,7 +20,8 @@
 #include <ProbParm.H>
 
 #include <AMReX_MLABecLaplacian.H>
-#include <Constants.H>
+#include <UnivConstants.H>
+#include <VarDefines.H>
 
 
 using namespace amrex;
@@ -89,9 +90,14 @@ public:
                                             amrex::Real cur_time);
 
     
-    void implicit_solve_species(Real current_time,Real dt,int spec_id,
+    void implicit_solve_scalar(Real current_time,Real dt,int spec_id,
             Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl,
                          Vector<int>& bc_lo, Vector<int>& bc_hi);
+
+    void compute_elecenergy_source(int lev, const int num_grow, 
+                            MultiFab& Sborder, 
+                            MultiFab& dsdt,
+                            Real time, Real dt);
 
     // compute dt from CFL considerations
     Real EstTimeStep(int lev);
@@ -157,6 +163,9 @@ public:
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
     amrex::Real min_species_density=1e12;
+
+    amrex::Real gas_pressure=101325.0;
+    amrex::Real gas_temperature=300.0;
 
     amrex::Vector<std::string> plasma_param_names;
     amrex::Vector<std::string> allvarnames;

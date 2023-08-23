@@ -6,7 +6,8 @@
 #include <AMReX_Geometry.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
-#include <Constants.H>
+#include <UnivConstants.H>
+#include <VarDefines.H>
 
 using namespace amrex;
 

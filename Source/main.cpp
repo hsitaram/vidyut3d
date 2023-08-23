@@ -20,20 +20,20 @@ int main(int argc, char* argv[])
         plasmachem::init();
         // constructor - reads in parameters from inputs file
         //             - sizes multilevel arrays and data structures
-        Vidyut echem_obj;
+        Vidyut vidyut_obj;
 
         // initialize AMR data
-        echem_obj.InitData();
+        vidyut_obj.InitData();
 
         // advance solution to final time
-        echem_obj.Evolve();
+        vidyut_obj.Evolve();
 
         // wallclock time
         Real end_total = amrex::second() - strt_total;
 
         // print wallclock time
         ParallelDescriptor::ReduceRealMax(end_total, ParallelDescriptor::IOProcessorNumber());
-        if (echem_obj.Verbose())
+        if (vidyut_obj.Verbose())
         {
             amrex::Print() << "\nTotal Time: " << end_total << '\n';
         }
