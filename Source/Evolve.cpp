@@ -92,7 +92,17 @@ void Vidyut::Evolve()
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
             update_explsrc_at_all_levels(ind, Sborder, flux, expl_src, cur_time);
-            implicit_solve_scalar(cur_time, dt[0], ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
+
+            //ions
+            if(plasmachem::get_charge(ind)!=0.0)
+            {
+                implicit_solve_scalar(cur_time, dt[0], ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
+            }
+            //neutrals
+            else
+            {
+                implicit_solve_scalar(cur_time, dt[0], ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi);
+            }
         }
 
         AverageDown ();
