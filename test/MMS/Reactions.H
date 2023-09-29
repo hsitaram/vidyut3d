@@ -10,17 +10,18 @@ using namespace amrex;
 namespace plasmachem_reactions
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_react_source(int i, int j, int k,
+    amrex::Real compute_react_source(int i, int j, int k,
                               int specid,
                               Array4<Real> const& phi,
-                              Array4<Real> const& reactsource,
                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                               GpuArray<Real, AMREX_SPACEDIM> dx,
                               const Real time,
-                              ProbParm const& prob_parm)
+                              ProbParm const& prob_parm,
+                              amrex::Real Tg,amrex::Real Pg)
     {
         int bigdir=0;
+        amrex::Real src=0.0;
         amrex::Real xlen=prob_hi[0]-prob_lo[0];
         amrex::Real ylen=prob_hi[1]-prob_lo[1];
         amrex::Real zlen=prob_hi[2]-prob_lo[2];
@@ -35,8 +36,10 @@ namespace plasmachem_reactions
         amrex::Real x=prob_lo[bigdir]+(iv[bigdir]+0.5)*dx[bigdir];
         if(specid==S1_ID)
         {
-                reactsource(i,j,k) = 5.0*std::pow(x,4.0)/3.0-x/6.0-2.0;
+                src = 5.0*std::pow(x,4.0)/3.0-x/6.0-2.0;
         }
+
+        return(src);
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE

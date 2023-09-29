@@ -31,13 +31,14 @@ Vidyut::Vidyut()
     plasma_param_names.resize(NUM_PLASMAVARS);
     plasma_param_names[0]="Electron_density";
     plasma_param_names[1]="Electron_energy";
-    plasma_param_names[2]="Eden_gradx";
-    plasma_param_names[3]="Eden_grady";
-    plasma_param_names[4]="Eden_gradz";
-    plasma_param_names[5]="Potential";
-    plasma_param_names[6]="Efieldx";
-    plasma_param_names[7]="Efieldy";
-    plasma_param_names[8]="Efieldz";
+    plasma_param_names[2]="Electron_Temp";
+    plasma_param_names[3]="Eden_gradx";
+    plasma_param_names[4]="Eden_grady";
+    plasma_param_names[5]="Eden_gradz";
+    plasma_param_names[6]="Potential";
+    plasma_param_names[7]="Efieldx";
+    plasma_param_names[8]="Efieldy";
+    plasma_param_names[9]="Efieldz";
     
     allvarnames.resize(NVAR);
     for (int i = 0; i < NUM_SPECIES; i++)
@@ -277,6 +278,7 @@ void Vidyut::ReadParameters()
         pp.query("linsolve_max_coarsening_level",linsolve_max_coarsening_level);
         pp.query("bound_specden", bound_specden);
         pp.query("min_species_density",min_species_density);
+        pp.query("min_electron_temp",min_electron_temp);
         pp.query("elecenergy_solve",elecenergy_solve);
 
         pp.query("gas_temperature",gas_temperature);

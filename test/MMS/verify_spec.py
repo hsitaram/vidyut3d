@@ -44,7 +44,7 @@ im=ax[1][1].imshow(np.array(frb["Potential"]),origin="lower")
 fig.colorbar(im, ax=ax[1][1])
 
 dir_char=axialdir_char
-fig.suptitle("S1 and S2 solution along "+dir_char+" direction ")
+fig.suptitle("S1 and potential solution along "+dir_char+" direction ")
 plt.savefig("species_"+dir_char+".png")
 plt.show()
 #=======================================

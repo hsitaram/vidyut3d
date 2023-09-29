@@ -15,4 +15,6 @@
 #define ME 9.10938188e-31 //electron mass
 #define M_AMU 1.66054e-27 //atomic mass units
 #define TDUNIT 1e-21 //townsend in V m2
+#define fivebythree 5.0/3.0
+#define twothird 2.0/3.0
 #endif

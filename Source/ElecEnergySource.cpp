@@ -76,7 +76,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
 
             amrex::Real molwt_bg=plasmachem::get_bg_molwt(i, j, k, sborder_arr, *localprobparm);
 
-            amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID)/K_B;
+            //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID)/K_B;
+            amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
 
             amrex::Real elec_elastic_coll_term= 3.0/2.0 
                 * sborder_arr(i,j,k,EDN_ID) 
@@ -90,7 +91,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                                   *localprobparm,captured_gastemp,
                                   captured_gaspres);
 
-            dsdt_arr(i, j, k) = elec_jheat - elec_elastic_coll_term + elec_inelastic_coll_term;
+            dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term + elec_inelastic_coll_term);
                
         });
     }

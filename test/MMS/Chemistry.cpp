@@ -43,4 +43,11 @@ namespace plasmachem
         }
         return(charge);
     }
+    
+    AMREX_GPU_HOST_DEVICE 
+    amrex::Real get_molwt(int specid)
+    {
+        amrex::Real molwt=M_AMU;
+        return(molwt);
+    }
 }

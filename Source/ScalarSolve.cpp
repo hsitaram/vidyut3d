@@ -25,37 +25,31 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
 
     int ncomp = Sborder.nComp();
     int captured_specid = specid;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
         const Box& gbx = amrex::grow(bx, 1);
-        FArrayBox reactsource_fab(bx, 1);
-
-        Elixir reactsource_fab_eli = reactsource_fab.elixir();
 
         Array4<Real> sborder_arr = Sborder.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
-        Array4<Real> reactsource_arr = reactsource_fab.array();
 
         GpuArray<Array4<Real>, AMREX_SPACEDIM> flux_arr{
             AMREX_D_DECL(flux[0].array(mfi), 
                          flux[1].array(mfi), flux[2].array(mfi))};
 
-        reactsource_fab.setVal<RunOn::Device>(0.0);
-
-        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-            plasmachem_reactions::compute_react_source(i, j, k, captured_specid, sborder_arr, 
-                                                       reactsource_arr, prob_lo, prob_hi, dx, time, *localprobparm);
-        });
-
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
+            amrex::Real reactsource=plasmachem_reactions::compute_react_source(i, j, k, captured_specid, sborder_arr, 
+                                                       prob_lo, prob_hi, dx, time, *localprobparm,captured_gastemp,
+                                                       captured_gaspres);
+                
             dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
             + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
-            + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] 
-            + reactsource_arr(i,j,k);
+            + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] + reactsource;
         });
     }
 }
@@ -109,6 +103,8 @@ void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab
 
     int ncomp = Sborder.nComp();
     int captured_specid = specid;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     // Get the boundary ids
     const int* domlo_arr = geom[lev].Domain().loVect();
@@ -151,17 +147,20 @@ void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, velx_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm);
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, vely_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm);
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, velz_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm);
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -194,6 +193,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     int verbose = 1;
     int captured_spec_id=spec_id;
     int electron_flag=(spec_id==EDN_ID)?1:0;
+    int electron_energy_flag=(spec_id==EEN_ID)?1:0;
 
     //==================================================
     // amrex solves
@@ -215,6 +215,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     // set A and B, A=1/dt, B=1
     Real ascalar = 1.0/dt;
     Real bscalar = 1.0;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_lo 
@@ -360,19 +362,12 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             Array4<Real> acoeff_arr = acoeff[ilev].array(mfi);
             Array4<Real> bcoeff_arr = bcoeff[ilev].array(mfi);
 
-            FArrayBox dcoeff_fab(gbx, 1);
-            Elixir dcoeff_fab_eli = dcoeff_fab.elixir();
-            Array4<Real> dcoeff_arr = dcoeff_fab.array();
-
-            dcoeff_fab.setVal<RunOn::Device>(0.0);
-
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 //FIXME: use component wise call
-                plasmachem_transport::compute_dcoeff(i, j, k, captured_spec_id, phi_arr, 
-                                                     dcoeff_arr, prob_lo, 
-                                                     prob_hi, dx, time, *localprobparm);
+                bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(i, j, k, captured_spec_id, phi_arr, 
+                                            prob_lo,prob_hi, dx, time, *localprobparm,
+                                            captured_gastemp,captured_gaspres);
 
-                bcoeff_arr(i,j,k)=dcoeff_arr(i,j,k);
             });
         }
 
@@ -382,11 +377,13 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         Array<MultiFab, AMREX_SPACEDIM> face_bcoeff;
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
         {
-            const BoxArray& ba = amrex::convert(bcoeff[ilev].boxArray(), IntVect::TheDimensionVector(idim));
+            const BoxArray& ba = amrex::convert(bcoeff[ilev].boxArray(), 
+                                                IntVect::TheDimensionVector(idim));
             face_bcoeff[idim].define(ba, bcoeff[ilev].DistributionMap(), 1, 0);
         }
         // true argument for harmonic averaging
-        amrex::average_cellcenter_to_face(GetArrOfPtrs(face_bcoeff), bcoeff[ilev], geom[ilev], true);
+        amrex::average_cellcenter_to_face(GetArrOfPtrs(face_bcoeff), 
+                                          bcoeff[ilev], geom[ilev], true);
 
 
         // set boundary conditions
@@ -419,7 +416,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                             plasmachem_transport::species_bc(i, j, k, idim, -1, 
                                                              captured_spec_id, phi_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
-                                                             prob_lo, prob_hi, dx, time, *localprobparm);
+                                                             prob_lo, prob_hi, dx, time, *localprobparm,
+                                                             captured_gastemp,captured_gaspres);
                         });
                     }
                     if (bx.bigEnd(idim) == domain.bigEnd(idim))
@@ -428,7 +426,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                             plasmachem_transport::species_bc(i, j, k, idim, +1, 
                                                              captured_spec_id, phi_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,
-                                                             prob_lo, prob_hi, dx, time, *localprobparm);
+                                                             prob_lo, prob_hi, dx, time, *localprobparm,
+                                                             captured_gastemp,captured_gaspres);
                         });
                     }
                 }
@@ -443,7 +442,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         // bc's are stored in the ghost cells
         if(mixedbc)
         {
-            linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
+            linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), 
+                                     &(robin_b[ilev]), &(robin_f[ilev]));
         }
         else
         {
@@ -492,6 +492,36 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
                 &gradsoln[ilev][1], &gradsoln[ilev][2]};
             average_face_to_cellcenter(phi_new[ilev], EDGX_ID, allgrad);
+        }
+    }
+
+    if(electron_energy_flag)
+    {
+        /*for(int ilev=0; ilev <= finest_level; ilev++)
+        {
+           phi_new[ilev].setVal(1.0,ETEMP_ID,1);
+           amrex::MultiFab::Multiply(phi_new[ilev],solution[ilev],EEN_ID, ETEMP_ID, 1, 0);
+           amrex::MultiFab::Divide(phi_new[ilev],phi_new[ilev],EDN_ID, ETEMP_ID, 1, 0);
+           phi_new[ilev].mult(twothird/K_B, ETEMP_ID, 1);
+        }*/
+
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            amrex::Real minetemp=min_electron_temp; 
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                Array4<Real> soln_arr = solution[ilev].array(mfi);
+                Array4<Real> phi_arr = phi_new[ilev].array(mfi);
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*soln_arr(i,j,k)/phi_arr(i,j,k,EDN_ID);
+                    if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
+                    {
+                        phi_arr(i,j,k,ETEMP_ID)=minetemp;
+                    }
+                });
+            }
         }
     }
 

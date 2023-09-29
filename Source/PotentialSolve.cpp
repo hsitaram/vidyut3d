@@ -44,6 +44,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     // intercalation reaction or sign mistakes...
     const Real tol_rel = linsolve_reltol;
     const Real tol_abs = linsolve_abstol;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_lo 
@@ -186,7 +188,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_reactions::compute_potential_source(i, j, k, phi_arr, 
-                                                               rhs_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                                                               rhs_arr, prob_lo, prob_hi, 
+                                                               dx, time, *localprobparm);
             });
         }
 
@@ -228,7 +231,9 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                         plasmachem_transport::potential_bc(i, j, k, idim, -1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
-                                                           prob_lo, prob_hi, dx, time, *localprobparm);
+                                                           prob_lo, prob_hi, dx, time, 
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres);
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
@@ -237,7 +242,9 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                         plasmachem_transport::potential_bc(i, j, k, idim, +1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
-                                                           prob_lo, prob_hi, dx, time, *localprobparm);
+                                                           prob_lo, prob_hi, dx, time,
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres);
                     });
                 }
             }

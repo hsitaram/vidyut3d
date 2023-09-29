@@ -11,6 +11,59 @@ using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real mobility(int i, int j, int k,
+                         int specid,
+                         Array4<Real> const& phi,
+                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                         GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                         GpuArray<Real, AMREX_SPACEDIM> dx,
+                         const Real time,
+                         ProbParm const& prob_parm,
+                         Real Tg, Real Pg)
+
+    {
+        return(1.0);
+    }
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real diffusion_coeff(int i, int j, int k,
+                                int specid,
+                                Array4<Real> const& phi,
+                                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                                GpuArray<Real, AMREX_SPACEDIM> dx,
+                                const Real time,
+                                ProbParm const& prob_parm,
+                                Real Tg, Real Pg)
+
+    {
+        amrex::Real dcoeff=0.0;
+        if(specid==S1_ID)
+        {
+           dcoeff = 0.1;
+        }
+        else
+        {
+          dcoeff = 1.0;
+        }
+        return(dcoeff);
+    }
+
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real collision_freq(int i, int j, int k,
+                               int specid,
+                               Array4<Real> const& phi,
+                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                               GpuArray<Real, AMREX_SPACEDIM> dx,
+                               const Real time,
+                               ProbParm const& prob_parm,
+                               Real Tg, Real Pg)
+
+    {
+        return(1.0);
+    }
+    AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
                            int dir, int sgn,
                            Array4<Real> const& phi,
@@ -22,7 +75,8 @@ namespace plasmachem_transport
                            GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                            GpuArray<Real, AMREX_SPACEDIM> dx,
                            const Real time,
-                           ProbParm const& prob_parm)
+                           ProbParm const& prob_parm,
+                           Real Tg, Real Pg)
     {
         //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
@@ -56,7 +110,8 @@ namespace plasmachem_transport
                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                     GpuArray<Real, AMREX_SPACEDIM> dx,
                     const Real time,
-                    ProbParm const& prob_parm)
+                    ProbParm const& prob_parm,
+                    Real Tg, Real Pg)
 
     {
         //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
@@ -92,27 +147,6 @@ namespace plasmachem_transport
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_dcoeff(int i, int j, int k,
-                        int specid,
-                        Array4<Real> const& phi,
-                        Array4<Real> const& dcoeff,
-                        GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                        GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                        GpuArray<Real, AMREX_SPACEDIM> dx,
-                        const Real time,
-                        ProbParm const& prob_parm)
-    {
-        if(specid==S1_ID)
-        {
-           dcoeff(i,j,k)   = 0.1;
-        }
-        else
-        {
-          dcoeff(i,j,k)   = 1.0;
-        }
-    }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
     void compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
@@ -123,7 +157,8 @@ namespace plasmachem_transport
                      const GpuArray<int, AMREX_SPACEDIM> domhi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
                      const Real time,
-                     ProbParm const& prob_parm)
+                     ProbParm const& prob_parm,
+                     amrex::Real Tg, amrex::Real Pg)
     {
         Real xlen,ylen,zlen,maxlen;
         int bigdir=0;
@@ -151,51 +186,5 @@ namespace plasmachem_transport
             =0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
         }
     }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int i, int j, int k,
-                     int specid,
-                     Array4<Real> const& phi,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                     GpuArray<Real, AMREX_SPACEDIM> dx,
-                     const Real time,
-                     ProbParm const& prob_parm,
-                     Real Tg, Real Pg)
-
-    {
-        return(1.0);
-    }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int i, int j, int k,
-                     int specid,
-                     Array4<Real> const& phi,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                     GpuArray<Real, AMREX_SPACEDIM> dx,
-                     const Real time,
-                     ProbParm const& prob_parm,
-                     Real Tg, Real Pg)
-
-    {
-        return(1.0);
-    }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real collision_freq(int i, int j, int k,
-                     int specid,
-                     Array4<Real> const& phi,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                     GpuArray<Real, AMREX_SPACEDIM> dx,
-                     const Real time,
-                     ProbParm const& prob_parm,
-                     Real Tg, Real Pg)
-
-    {
-        return(1.0);
-    }
-            
 }
 #endif
