@@ -10,21 +10,22 @@ using namespace amrex;
 namespace plasmachem_reactions
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_react_source(int i, int j, int k,
+    amrex::Real compute_react_source(int i, int j, int k,
                               int specid,
                               Array4<Real> const& phi,
-                              Array4<Real> const& reactsource,
                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                               GpuArray<Real, AMREX_SPACEDIM> dx,
                               const Real time,
-                              ProbParm const& prob_parm)
+                              ProbParm const& prob_parm,
+                              amrex::Real Tg,amrex::Real Pg)
     {
 
         //Bagheri, Behnaz, et al. "Comparison of six simulation codes for 
         //positive streamers in air." 
         //Plasma Sources Science and Technology 27.9 (2018): 095002.        
 
+        amrex::Real src=0.0;
         if(specid==I_ID || specid==EDN_ID)
         {
             Real elecfield_mag=std::sqrt(std::pow(phi(i,j,k,EFX_ID),2.0) +
@@ -39,10 +40,9 @@ namespace plasmachem_reactions
 
             Real react_term=alpha_bar*mu_e*elecfield_mag*phi(i,j,k,EDN_ID);
 
-            reactsource(i,j,k)=react_term/prob_parm.ns;
-            //reactsource(i,j,k,I_ID)   = react_term;
-            //reactsource(i,j,k,EDN_ID) = react_term;
+            src=react_term/prob_parm.ns;
         }
+        return(src);
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
@@ -55,7 +55,8 @@ namespace plasmachem_reactions
                                   const Real time,
                                   ProbParm const& prob_parm)
     {
-        source(i,j,k)=(phi(i,j,k,EDN_ID)-phi(i,j,k,I_ID))*(ECHARGE/EPS0)*prob_parm.ns/prob_parm.phis;
+        source(i,j,k)=(phi(i,j,k,EDN_ID)-phi(i,j,k,I_ID))*(ECHARGE/EPS0)
+        *prob_parm.ns/prob_parm.phis;
     }
     
     AMREX_GPU_DEVICE AMREX_INLINE

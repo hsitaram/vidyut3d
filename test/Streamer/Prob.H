@@ -71,7 +71,8 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 phi(i,j,k,I_ID)    = (prob_parm->bg + 
                                       prob_parm->ampl*exp(-dist2/prob_parm->rad/prob_parm->rad))/prob_parm->ns;
                 phi(i,j,k,EDN_ID)  = prob_parm->bg/prob_parm->ns;
-                phi(i,j,k,EEN_ID) = 0.0;
+                phi(i,j,k,ETEMP_ID) = 0.5*eV;
+                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,EDN_ID)*K_B*phi(i,j,k,ETEMP_ID);
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;

@@ -168,22 +168,25 @@ namespace plasmachem_transport
         if(maxlen==zlen) bigdir=2;
 
         vel(i,j,k)=0.0;
-        amrex::Real mu = mobility(i,j,k,specid,phi,prob_lo,
-                                   prob_hi,dx,time,prob_parm,Tg,Pg);
         
         if(dir==bigdir && specid==S1_ID)
         {
             //use this condition if using a robin bc that involves
             //velocity
             /*if( (right[dir]==domlo[dir]) || (right[dir]==(domhi[dir]+1)) )
-            {
-                vel(i,j,k,S1_ID)=0.0;
-            }*/
+              {
+              vel(i,j,k,S1_ID)=0.0;
+              }*/
             //else
-            {
-                vel(i,j,k)
-                =mu*0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
-            }
+            amrex::Real mu_left = mobility(left[0],left[1],left[2],specid,phi,prob_lo,
+                                           prob_hi,dx,time,prob_parm,Tg,Pg);
+
+            amrex::Real mu_right = mobility(right[0],right[1],right[2],specid,phi,prob_lo,
+                                            prob_hi,dx,time,prob_parm,Tg,Pg);
+
+            amrex::Real mu_face = 0.5*(mu_left+mu_right);
+            amrex::Real Efld_face = 0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
+            vel(i,j,k) = mu_face*Efld_face;
         }
     }
 }
