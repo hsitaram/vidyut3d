@@ -454,7 +454,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
 
     //bound species density
-    if(bound_specden)
+    if(bound_specden && !electron_energy_flag)
     { 
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {

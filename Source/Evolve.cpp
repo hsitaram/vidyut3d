@@ -80,9 +80,22 @@ void Vidyut::Evolve()
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo,pot_bc_hi);
+        // note that phi_new is updated instead of sborder
+        // so older potential and efield are used as opposed to new ones
+        // call fillpatch to improve implicitness
+
+        /*for(int lev=0;lev<=finest_level;lev++)
+          {
+          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+          }*/
 
         update_explsrc_at_all_levels(EDN_ID, Sborder, flux, expl_src, cur_time);
         implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi);
+
+        /*for(int lev=0;lev<=finest_level;lev++)
+          {
+          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+          }*/
 
         if(elecenergy_solve)
         {
@@ -94,6 +107,11 @@ void Vidyut::Evolve()
             }
             implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
                                   expl_src,eenrg_bc_lo,eenrg_bc_hi);
+
+            /*for(int lev=0;lev<=finest_level;lev++)
+              {
+              FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+              }*/
         }
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
@@ -110,6 +128,11 @@ void Vidyut::Evolve()
             {
                 implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi);
             }
+
+            /*for(int lev=0;lev<=finest_level;lev++)
+              {
+              FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+              }*/
         }
 
         AverageDown ();

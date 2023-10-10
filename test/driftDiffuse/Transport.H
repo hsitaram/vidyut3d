@@ -81,21 +81,38 @@ namespace plasmachem_transport
         //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
         //so the ghost cell index at left side is i-1 while it is i on the right
-        const int im1 = (dir == 0) ? i-1 : i;
-        const int jm1 = (dir == 1) ? j-1 : j;
-        const int km1 = (dir == 2) ? k-1 : k;
+        IntVect cell_int(i,j,k);
+        IntVect ghost_cell(i,j,k);
+        amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
+        outward_normal[dir]=sgn;
+        
+        //low side
+        if(sgn==-1)
+        {
+           //cell is i,j,k
+           //ghost_cell is one behind
+           ghost_cell[dir]-=1;
+        }
+        
+        //high side
+        if(sgn==1)
+        {
+           //ghost_cell is i,j,k
+           //cell is one behind
+           cell_int[dir]-=1;
+        }
 
         if(sgn == -1) 
         { // lo sides
-            robin_a(im1,jm1,km1) = 1.0;
-            robin_b(im1,jm1,km1) = 0.0;
-            robin_f(im1,jm1,km1) = 1.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 1.0;
         }
         else
         {
-            robin_a(i,j,k) = 1.0;
-            robin_b(i,j,k) = 0.0;
-            robin_f(i,j,k) = 0.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 0.0;
         } 
     }
 
@@ -114,33 +131,49 @@ namespace plasmachem_transport
                     Real Tg, Real Pg)
 
     {
-        //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
+        //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
         //so the ghost cell index at left side is i-1 while it is i on the right
+        IntVect cell_int(i,j,k);
+        IntVect ghost_cell(i,j,k);
+        amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
+        outward_normal[dir]=sgn;
         
-        const int im1 = (dir == 0) ? i-1 : i;
-        const int jm1 = (dir == 1) ? j-1 : j;
-        const int km1 = (dir == 2) ? k-1 : k;
-
+        //low side
+        if(sgn==-1)
+        {
+           //cell is i,j,k
+           //ghost_cell is one behind
+           ghost_cell[dir]-=1;
+        }
+        
+        //high side
+        if(sgn==1)
+        {
+           //ghost_cell is i,j,k
+           //cell is one behind
+           cell_int[dir]-=1;
+        }
+        
         if(sgn == -1) 
         { 
             // lo sides
-            robin_a(im1,jm1,km1) = 1.0;
-            robin_b(im1,jm1,km1) = 0.0;
-            robin_f(im1,jm1,km1) = 0.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 0.0;
 
         }
         else
         {
-            robin_a(i,j,k) = 1.0;
-            robin_b(i,j,k) = 0.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
             if(spec_id==S1_ID)
             {
-                robin_f(i,j,k) = 1.0;
+                robin_f(ghost_cell) = 1.0;
             }
             else //also for elec energy and density
             {
-                robin_f(i,j,k) = 0.0;
+                robin_f(ghost_cell) = 0.0;
             }
         } 
 

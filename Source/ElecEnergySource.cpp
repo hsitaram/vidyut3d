@@ -79,9 +79,9 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID)/K_B;
             amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
 
-            amrex::Real elec_elastic_coll_term= 3.0/2.0 
+            amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B 
                 * sborder_arr(i,j,k,EDN_ID) 
-                * (electemp-captured_gastemp) * nu;
+                * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
 
             //electron energy loss is -ve
             amrex::Real elec_inelastic_coll_term =  plasmachem_reactions::compute_electron_inelastic_heating

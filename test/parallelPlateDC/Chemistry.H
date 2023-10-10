@@ -12,7 +12,7 @@
 #include <ProbParm.H>
 
 #define I_ID 0
-#define NUM_SPECIES 1
+#define NUM_SPECIES (I_ID+1)
 
 using namespace amrex;
 
@@ -28,7 +28,7 @@ namespace plasmachem
                      Array4<Real> const& phi,
                      ProbParm const& prob_parm)
     {
-        amrex::Real molwt=40.0*M_AMU;    
+        amrex::Real molwt=4.0*M_AMU;    
         return(molwt);
     }
     

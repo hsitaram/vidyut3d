@@ -277,7 +277,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
     amrex::Print()<<"Solved Potential\n";
 
-    // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);

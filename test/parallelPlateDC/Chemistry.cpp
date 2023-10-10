@@ -7,9 +7,8 @@ namespace plasmachem
 
     void init()
     {
-        specnames[I_ID]="Ion_density";
+        specnames[I_ID]="Ion";
     }    
-    
     void close()
     {
         specnames.clear();
@@ -32,7 +31,7 @@ namespace plasmachem
         switch(specid)
         {
             case I_ID:
-                charge=0.0;
+                charge=1.0;
                 break;               
             case EDN_ID:
                 charge=-1.0;
@@ -43,13 +42,14 @@ namespace plasmachem
         return(charge);
     }
     
-    AMREX_GPU_HOST_DEVICE amrex::Real get_molwt(int specid)
+    AMREX_GPU_HOST_DEVICE 
+    amrex::Real get_molwt(int specid)
     {
         amrex::Real molwt=M_AMU;
         switch(specid)
         {
             case I_ID:
-                molwt=28.0*M_AMU; //for air
+                molwt=4.0*M_AMU;
                 break;               
             case EDN_ID:
                 molwt=ME;
