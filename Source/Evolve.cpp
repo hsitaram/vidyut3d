@@ -80,10 +80,10 @@ void Vidyut::Evolve()
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo,pot_bc_hi);
+        
         // note that phi_new is updated instead of sborder
         // so older potential and efield are used as opposed to new ones
         // call fillpatch to improve implicitness
-
         /*for(int lev=0;lev<=finest_level;lev++)
           {
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());

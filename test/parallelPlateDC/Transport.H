@@ -191,6 +191,11 @@ namespace plasmachem_transport
            //cell is one behind
            cell_int[dir]-=1;
         }
+        
+        //default
+        robin_a(ghost_cell) = 0.0;
+        robin_b(ghost_cell) = 1.0;
+        robin_f(ghost_cell) = 0.0;
 
         if(spec_id==EDN_ID)
         {
@@ -213,7 +218,7 @@ namespace plasmachem_transport
             robin_b(ghost_cell) = -D;
             robin_f(ghost_cell) = ne*cbar/4.0;
         }
-        
+
         if(spec_id==I_ID)
         {
             amrex::Real mob = mobility(cell_int[0],cell_int[1],cell_int[2],spec_id,phi,prob_lo,
@@ -231,7 +236,7 @@ namespace plasmachem_transport
             if(driftvel*outward_normal[dir] >= 0.0)
             {
                 /*amrex::Prit()<<"ion neumann,sgn:"<<sgn<<"\t"<<driftvel<<"\t"<<
-                mob<<"\t"<<Efield<<"\n";*/
+                  mob<<"\t"<<Efield<<"\n";*/
                 //drift dominated flux and quenching
                 //mu n E - D grad n = mu n E
                 //implied D grad n = 0
@@ -252,9 +257,31 @@ namespace plasmachem_transport
                 robin_b(ghost_cell) = -D;
                 robin_f(ghost_cell) = 0.0;
                 /*robin_a(ghost_cell) = 0.0;
-                robin_b(ghost_cell) = 1.0;
-                robin_f(ghost_cell) = 0.0;*/
+                  robin_b(ghost_cell) = 1.0;
+                  robin_f(ghost_cell) = 0.0;*/
             }
+        }
+
+        if(spec_id==EEN_ID)
+        {
+            amrex::Real mob = mobility(cell_int[0],cell_int[1],cell_int[2],spec_id,phi,prob_lo,
+                                       prob_hi,dx,time,prob_parm,Tg,Pg);
+            amrex::Real Efield=phi(cell_int,EFX_ID+dir);
+            amrex::Real driftvel=mob*Efield;
+
+            amrex::Real ne=phi(cell_int,EDN_ID);
+            amrex::Real D=diffusion_coeff(cell_int[0],cell_int[1],cell_int[2], 
+                                          spec_id, phi, 
+                                          prob_lo,prob_hi, dx, time, prob_parm,
+                                          Tg,Pg);
+
+            amrex::Real Te=phi(cell_int,ETEMP_ID);
+
+            amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
+
+            robin_a(ghost_cell) = driftvel;
+            robin_b(ghost_cell) = -D;
+            robin_f(ghost_cell) = 2.0*K_B*Te*ne*cbar/4.0;
         }
 
     }

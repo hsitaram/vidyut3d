@@ -44,8 +44,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             amrex::Real Efield[AMREX_SPACEDIM];
 
             Efield[0]=sborder_arr(i,j,k,EFX_ID);
-            Efield[1]=sborder_arr(i,j,k,EFX_ID);
-            Efield[2]=sborder_arr(i,j,k,EFX_ID);
+            Efield[1]=sborder_arr(i,j,k,EFY_ID);
+            Efield[2]=sborder_arr(i,j,k,EFZ_ID);
              
             //includes sign (negative for electrons/neg-ions)
             amrex::Real mu = plasmachem_transport::mobility(i, j, k, EDN_ID, 
@@ -79,8 +79,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID)/K_B;
             amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
 
-            amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B 
-                * sborder_arr(i,j,k,EDN_ID) 
+            amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
                 * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
 
             //electron energy loss is -ve
@@ -92,6 +91,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                                   captured_gaspres);
 
             dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term + elec_inelastic_coll_term);
+            //dsdt_arr(i, j, k) += elec_jheat;
                
         });
     }
