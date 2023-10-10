@@ -6,7 +6,8 @@
 #include <AMReX_Geometry.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
-#include <Constants.H>
+#include <UnivConstants.H>
+#include <VarDefines.H>
 
 using namespace amrex;
 
@@ -61,6 +62,7 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 phi(i,j,k,EFZ_ID) = 0.0;
                 phi(i,j,k,EEN_ID) = 0.0;
                 phi(i,j,k,EDN_ID) = 0.0;
+                phi(i,j,k,ETEMP_ID) = 0.5*eV;
             }
         }
     }

@@ -7,7 +7,6 @@
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_MLTensorOp.H>
 
-#include <Kernels_3d.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <Transport.H>
@@ -15,10 +14,10 @@
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
+void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                                amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi)
 {
-    BL_PROFILE("echemAMR::solve_potential()");
+    BL_PROFILE("Vidyut::solve_potential()");
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
@@ -45,6 +44,8 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     // intercalation reaction or sign mistakes...
     const Real tol_rel = linsolve_reltol;
     const Real tol_abs = linsolve_abstol;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_lo 
@@ -103,25 +104,15 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         }
     }
 
-    Vector<MultiFab> potential;
-    Vector<MultiFab> acoeff;
-    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln;
-    Vector<MultiFab> solution;
-    Vector<MultiFab> rhs;
+    Vector<MultiFab> potential(finest_level+1);
+    Vector<MultiFab> acoeff(finest_level+1);
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln(finest_level+1);
+    Vector<MultiFab> solution(finest_level+1);
+    Vector<MultiFab> rhs(finest_level+1);
 
-    Vector<MultiFab> robin_a;
-    Vector<MultiFab> robin_b;
-    Vector<MultiFab> robin_f;
-
-    potential.resize(finest_level + 1);
-    acoeff.resize(finest_level + 1);
-    gradsoln.resize(finest_level + 1);
-    solution.resize(finest_level + 1);
-    rhs.resize(finest_level + 1);
-
-    robin_a.resize(finest_level+1);
-    robin_b.resize(finest_level+1);
-    robin_f.resize(finest_level+1);
+    Vector<MultiFab> robin_a(finest_level+1);
+    Vector<MultiFab> robin_b(finest_level+1);
+    Vector<MultiFab> robin_f(finest_level+1);
 
     const int num_grow = 1;
 
@@ -197,7 +188,8 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_reactions::compute_potential_source(i, j, k, phi_arr, 
-                                                               rhs_arr, prob_lo, prob_hi, dx, time, *localprobparm);
+                                                               rhs_arr, prob_lo, prob_hi, 
+                                                               dx, time, *localprobparm);
             });
         }
 
@@ -239,7 +231,9 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                         plasmachem_transport::potential_bc(i, j, k, idim, -1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
-                                                           prob_lo, prob_hi, dx, time, *localprobparm);
+                                                           prob_lo, prob_hi, dx, time, 
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres);
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
@@ -248,7 +242,9 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                         plasmachem_transport::potential_bc(i, j, k, idim, +1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
-                                                           prob_lo, prob_hi, dx, time, *localprobparm);
+                                                           prob_lo, prob_hi, dx, time,
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres);
                     });
                 }
             }
@@ -281,7 +277,6 @@ void echemAMR::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
     amrex::Print()<<"Solved Potential\n";
 
-    // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);

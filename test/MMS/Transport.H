@@ -5,15 +5,65 @@
 #include <AMReX_FArrayBox.H>
 #include <AMReX_REAL.H>
 #include <Chemistry.H>
+#include <VarDefines.H>
 
 using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real mobility(int i, int j, int k,
+                         int specid,
+                         Array4<Real> const& phi,
+                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                         GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                         GpuArray<Real, AMREX_SPACEDIM> dx,
+                         const Real time,
+                         ProbParm const& prob_parm,
+                         Real Tg, Real Pg)
+
+    {
+        return(-1.0);
+    }
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real diffusion_coeff(int i, int j, int k,
+                                int specid,
+                                Array4<Real> const& phi,
+                                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                                GpuArray<Real, AMREX_SPACEDIM> dx,
+                                const Real time,
+                                ProbParm const& prob_parm,
+                                Real Tg, Real Pg)
+
+    {
+        amrex::Real dcoeff=0.0;
+        if(specid==S1_ID)
+        {
+           dcoeff = 1.0;
+        }
+        return(dcoeff);
+    }
+
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real collision_freq(int i, int j, int k,
+                               int specid,
+                               Array4<Real> const& phi,
+                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+                               GpuArray<Real, AMREX_SPACEDIM> dx,
+                               const Real time,
+                               ProbParm const& prob_parm,
+                               Real Tg, Real Pg)
+
+    {
+        return(1.0);
+    }
+    AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
                            int dir, int sgn,
                            Array4<Real> const& phi,
-                           Array4<Real> const& bc_arr,
+                           Array4<Real> const& bcarr,
                            Array4<Real> const& robin_a,
                            Array4<Real> const& robin_b,
                            Array4<Real> const& robin_f,
@@ -21,33 +71,51 @@ namespace plasmachem_transport
                            GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                            GpuArray<Real, AMREX_SPACEDIM> dx,
                            const Real time,
-                           ProbParm const& prob_parm)
+                           ProbParm const& prob_parm,
+                           Real Tg, Real Pg)
     {
-        //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
+        //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
         //so the ghost cell index at left side is i-1 while it is i on the right
-        const int im1 = (dir == 0) ? i-1 : i;
-        const int jm1 = (dir == 1) ? j-1 : j;
-        const int km1 = (dir == 2) ? k-1 : k;
+        IntVect cell_int(i,j,k);
+        IntVect ghost_cell(i,j,k);
+        amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
+        outward_normal[dir]=sgn;
+        
+        //low side
+        if(sgn==-1)
+        {
+           //cell is i,j,k
+           //ghost_cell is one behind
+           ghost_cell[dir]-=1;
+        }
+        
+        //high side
+        if(sgn==1)
+        {
+           //ghost_cell is i,j,k
+           //cell is one behind
+           cell_int[dir]-=1;
+        }
 
         if(sgn == -1) 
         { // lo sides
-            robin_a(im1,jm1,km1) = 1.0;
-            robin_b(im1,jm1,km1) = 0.0;
-            robin_f(im1,jm1,km1) = 0.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 0.0;
         }
         else
         {
-            robin_a(i,j,k) = 1.0;
-            robin_b(i,j,k) = 0.0;
-            robin_f(i,j,k) = 0.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 0.0;
         } 
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn, 
                     int spec_id, Array4<Real> const &phi, 
-                    Array4<Real> const& bc_arr,
+                    Array4<Real> const& bcarr,
                     Array4<Real> const& robin_a,
                     Array4<Real> const& robin_b,
                     Array4<Real> const& robin_f,
@@ -55,48 +123,49 @@ namespace plasmachem_transport
                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                     GpuArray<Real, AMREX_SPACEDIM> dx,
                     const Real time,
-                    ProbParm const& prob_parm)
+                    ProbParm const& prob_parm,
+                    Real Tg, Real Pg)
 
     {
-        //note: bdryLo/bdryHi grabs the face indices from bx that are the boundary
+        //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
         //so the ghost cell index at left side is i-1 while it is i on the right
+        IntVect cell_int(i,j,k);
+        IntVect ghost_cell(i,j,k);
+        amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
+        outward_normal[dir]=sgn;
         
-        const int im1 = (dir == 0) ? i-1 : i;
-        const int jm1 = (dir == 1) ? j-1 : j;
-        const int km1 = (dir == 2) ? k-1 : k;
-
+        //low side
+        if(sgn==-1)
+        {
+           //cell is i,j,k
+           //ghost_cell is one behind
+           ghost_cell[dir]-=1;
+        }
+        
+        //high side
+        if(sgn==1)
+        {
+           //ghost_cell is i,j,k
+           //cell is one behind
+           cell_int[dir]-=1;
+        }
+        
         if(sgn == -1) 
         { 
             // lo sides
-            robin_a(im1,jm1,km1) = 1.0;
-            robin_b(im1,jm1,km1) = 0.0;
-            robin_f(im1,jm1,km1) = 0.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 0.0;
 
         }
         else
         {
-            robin_a(i,j,k) = 1.0;
-            robin_b(i,j,k) = 0.0;
-            robin_f(i,j,k) = 1.0;
+            robin_a(ghost_cell) = 1.0;
+            robin_b(ghost_cell) = 0.0;
+            robin_f(ghost_cell) = 1.0;
         } 
 
-    }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_dcoeff(int i, int j, int k,int specid,
-                        Array4<Real> const& phi,
-                        Array4<Real> const& dcoeff,
-                        GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                        GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                        GpuArray<Real, AMREX_SPACEDIM> dx,
-                        const Real time,
-                        ProbParm const& prob_parm)
-    {
-        if(specid==S1_ID)
-        {
-                dcoeff(i,j,k)   = 1.0;
-        }
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
@@ -110,7 +179,8 @@ namespace plasmachem_transport
                      const GpuArray<int, AMREX_SPACEDIM> domhi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
                      const Real time,
-                     ProbParm const& prob_parm)
+                     ProbParm const& prob_parm,
+                     amrex::Real Tg, amrex::Real Pg)
     {
         Real xlen,ylen,zlen,maxlen;
         int bigdir=0;
@@ -129,23 +199,27 @@ namespace plasmachem_transport
         if(maxlen==xlen) bigdir=0;
         if(maxlen==ylen) bigdir=1;
         if(maxlen==zlen) bigdir=2;
-        
-        vel(i,j,k,S1_ID)=0.0;
-        amrex::Real mu=-1.0;
+
+        vel(i,j,k)=0.0;
         
         if(dir==bigdir && specid==S1_ID)
         {
             //use this condition if using a robin bc that involves
             //velocity
             /*if( (right[dir]==domlo[dir]) || (right[dir]==(domhi[dir]+1)) )
-            {
-                vel(i,j,k,S1_ID)=0.0;
-            }*/
+              {
+              vel(i,j,k,S1_ID)=0.0;
+              }*/
             //else
-            {
-                vel(i,j,k)
-                =mu*0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
-            }
+            amrex::Real mu_left = mobility(left[0],left[1],left[2],specid,phi,prob_lo,
+                                           prob_hi,dx,time,prob_parm,Tg,Pg);
+
+            amrex::Real mu_right = mobility(right[0],right[1],right[2],specid,phi,prob_lo,
+                                            prob_hi,dx,time,prob_parm,Tg,Pg);
+
+            amrex::Real mu_face = 0.5*(mu_left+mu_right);
+            amrex::Real Efld_face = 0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
+            vel(i,j,k) = mu_face*Efld_face;
         }
     }
 }

@@ -6,16 +6,16 @@
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_MLTensorOp.H>
-#include <Kernels_3d.H>
+#include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <Transport.H>
 #include <Reactions.H>
-#include <ProbParm.H>
+#include <compute_flux_3d.H>
 #include <AMReX_MLABecLaplacian.H>
 
 // advance solution to final time
-void echemAMR::Evolve()
+void Vidyut::Evolve()
 {
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;
@@ -42,6 +42,8 @@ void echemAMR::Evolve()
             amrex::Print() << "ADVANCE with time = " << t_new[lev]
             << " dt = " << dt[0] << std::endl;
         }
+        amrex::Real dt_common=dt[0]; //no subcycling
+        int num_grow=2;
 
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
         Vector<MultiFab> expl_src(finest_level+1);
@@ -53,13 +55,12 @@ void echemAMR::Evolve()
             amrex::MultiFab::Copy(phi_old[lev], phi_new[lev], 
                                   0, 0, phi_new[lev].nComp(), 0);
             t_old[lev] = t_new[lev];
-            t_new[lev] += dt[0];
+            t_new[lev] += dt_common;
         }
 
         //allocate flux, expl_src, Sborder
         for(int lev=0;lev<=finest_level;lev++)
         {
-            int num_grow=2;
             Sborder[lev].define(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
             Sborder[lev].setVal(0.0);
             FillPatch(lev, cur_time, Sborder[lev], 0, Sborder[lev].nComp());
@@ -79,20 +80,59 @@ void echemAMR::Evolve()
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo,pot_bc_hi);
+        // note that phi_new is updated instead of sborder
+        // so older potential and efield are used as opposed to new ones
+        // call fillpatch to improve implicitness
+
+        /*for(int lev=0;lev<=finest_level;lev++)
+          {
+          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+          }*/
 
         update_explsrc_at_all_levels(EDN_ID, Sborder, flux, expl_src, cur_time);
-        implicit_solve_species(cur_time,dt[0],EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi);
+        implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi);
+
+        /*for(int lev=0;lev<=finest_level;lev++)
+          {
+          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+          }*/
 
         if(elecenergy_solve)
         {
             update_explsrc_at_all_levels(EEN_ID, Sborder, flux, expl_src, cur_time);
-            implicit_solve_species(cur_time,dt[0],EEN_ID, Sborder, expl_src,eenrg_bc_lo,eenrg_bc_hi);
+            for (int lev = 0; lev <= finest_level; lev++)
+            {
+                compute_elecenergy_source(lev, num_grow, Sborder[lev],
+                                          expl_src[lev], cur_time, dt_common);
+            }
+            implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
+                                  expl_src,eenrg_bc_lo,eenrg_bc_hi);
+
+            /*for(int lev=0;lev<=finest_level;lev++)
+              {
+              FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+              }*/
         }
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
             update_explsrc_at_all_levels(ind, Sborder, flux, expl_src, cur_time);
-            implicit_solve_species(cur_time, dt[0], ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
+
+            //ions
+            if(plasmachem::get_charge(ind)!=0.0)
+            {
+                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
+            }
+            //neutrals
+            else
+            {
+                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi);
+            }
+
+            /*for(int lev=0;lev<=finest_level;lev++)
+              {
+              FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+              }*/
         }
 
         AverageDown ();
@@ -106,10 +146,10 @@ void echemAMR::Evolve()
             amrex::Print() << "Advanced " << CountCells(lev) << " cells" << std::endl;
         }
 
-        cur_time += dt[0];
+        cur_time += dt_common;
 
         amrex::Print() << "Coarse STEP " << step + 1 << " ends."
-        << " TIME = " << cur_time << " DT = " << dt[0] << std::endl;
+        << " TIME = " << cur_time << " DT = " << dt_common << std::endl;
 
         // sync up time
         for (int lev = 0; lev <= finest_level; ++lev)
@@ -130,7 +170,7 @@ void echemAMR::Evolve()
             WriteCheckpointFile(chkfilenum);
         }
 
-        if (cur_time >= stop_time - 1.e-6 * dt[0]) break;
+        if (cur_time >= stop_time - 1.e-6 * dt_common) break;
 
 
         //local cleanup

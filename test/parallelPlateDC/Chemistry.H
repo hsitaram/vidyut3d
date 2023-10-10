@@ -11,9 +11,8 @@
 #include <UnivConstants.H>
 #include <ProbParm.H>
 
-#define S1_ID 0
-#define S2_ID 1
-#define NUM_SPECIES 2
+#define I_ID 0
+#define NUM_SPECIES (I_ID+1)
 
 using namespace amrex;
 
@@ -23,13 +22,13 @@ namespace plasmachem
     void init();
     void close();
     int find_id(std::string specname);
-
+    
     AMREX_GPU_DEVICE AMREX_INLINE
     amrex::Real get_bg_molwt(int i, int j, int k,
                      Array4<Real> const& phi,
                      ProbParm const& prob_parm)
     {
-        amrex::Real molwt=40.0*M_AMU;    
+        amrex::Real molwt=4.0*M_AMU;    
         return(molwt);
     }
     

@@ -6,15 +6,15 @@
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
 #include <AMReX_MLTensorOp.H>
-#include <Kernels_3d.H>
+#include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <Transport.H>
 #include <Reactions.H>
-#include <ProbParm.H>
+#include <compute_flux_3d.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
+void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
                             Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
                             Real time, Real dt)
 {
@@ -25,47 +25,36 @@ void echemAMR::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& S
 
     int ncomp = Sborder.nComp();
     int captured_specid = specid;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
-#ifdef _OPENMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
+    for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
-        for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            const Box& gbx = amrex::grow(bx, 1);
-            FArrayBox reactsource_fab(bx, 1);
+        const Box& bx = mfi.tilebox();
+        const Box& gbx = amrex::grow(bx, 1);
 
-            Elixir reactsource_fab_eli = reactsource_fab.elixir();
+        Array4<Real> sborder_arr = Sborder.array(mfi);
+        Array4<Real> dsdt_arr = dsdt.array(mfi);
 
-            Array4<Real> sborder_arr = Sborder.array(mfi);
-            Array4<Real> dsdt_arr = dsdt.array(mfi);
-            Array4<Real> reactsource_arr = reactsource_fab.array();
+        GpuArray<Array4<Real>, AMREX_SPACEDIM> flux_arr{
+            AMREX_D_DECL(flux[0].array(mfi), 
+                         flux[1].array(mfi), flux[2].array(mfi))};
 
-            GpuArray<Array4<Real>, AMREX_SPACEDIM> flux_arr{
-                AMREX_D_DECL(flux[0].array(mfi), 
-                             flux[1].array(mfi), flux[2].array(mfi))};
+        // update residual
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-            reactsource_fab.setVal<RunOn::Device>(0.0);
-
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_reactions::compute_react_source(i, j, k, captured_specid, sborder_arr, 
-                           reactsource_arr, prob_lo, prob_hi, dx, time, *localprobparm);
-            });
-
-            // update residual
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-
-                dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
-                                  + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
-                                  + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] 
-                                  + reactsource_arr(i,j,k);
-            });
-        }
+            amrex::Real reactsource=plasmachem_reactions::compute_react_source(i, j, k, captured_specid, sborder_arr, 
+                                                       prob_lo, prob_hi, dx, time, *localprobparm,captured_gastemp,
+                                                       captured_gaspres);
+                
+            dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
+            + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
+            + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] + reactsource;
+        });
     }
 }
 
-void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
+void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
                                             Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time)
@@ -103,7 +92,7 @@ void echemAMR::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborde
     }
 }
 
-void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Real time,int specid)
 {
@@ -114,6 +103,8 @@ void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiF
 
     int ncomp = Sborder.nComp();
     int captured_specid = specid;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     // Get the boundary ids
     const int* domlo_arr = geom[lev].Domain().loVect();
@@ -156,17 +147,20 @@ void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiF
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, velx_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm);
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, vely_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm);
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, velz_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm);
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -187,17 +181,19 @@ void echemAMR::compute_specie_transport_flux(int lev, const int num_grow, MultiF
     }
 }
 
-void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id, 
-        Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
-        Vector<int>& bc_lo, Vector<int>& bc_hi)
+void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id, 
+                                      Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
+                                      Vector<int>& bc_lo, Vector<int>& bc_hi)
 {
-    BL_PROFILE("echemAMR::implicit_solve_species(" + std::to_string( spec_id ) + ")");
+    BL_PROFILE("Vidyut::implicit_solve_species(" + std::to_string( spec_id ) + ")");
 
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
     int verbose = 1;
     int captured_spec_id=spec_id;
+    int electron_flag=(spec_id==EDN_ID)?1:0;
+    int electron_energy_flag=(spec_id==EEN_ID)?1:0;
 
     //==================================================
     // amrex solves
@@ -219,6 +215,8 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
     // set A and B, A=1/dt, B=1
     Real ascalar = 1.0/dt;
     Real bscalar = 1.0;
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_lo 
@@ -252,7 +250,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             bc_linsolve_lo[idim] = LinOpBCType::Robin;
             mixedbc=1;
         }
-        
+
         //higher side bcs
         if (bc_hi[idim] == PERBC)
         {
@@ -277,25 +275,16 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         }
     }
 
-    Vector<MultiFab> specdata;
-    Vector<MultiFab> acoeff;
-    Vector<MultiFab> bcoeff;
-    Vector<MultiFab> solution;
-    Vector<MultiFab> rhs;
-    
-    Vector<MultiFab> robin_a;
-    Vector<MultiFab> robin_b;
-    Vector<MultiFab> robin_f;
+    Vector<MultiFab> specdata(finest_level+1);
+    Vector<MultiFab> acoeff(finest_level+1);
+    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln(finest_level+1);
+    Vector<MultiFab> bcoeff(finest_level+1);
+    Vector<MultiFab> solution(finest_level+1);
+    Vector<MultiFab> rhs(finest_level+1);
 
-    specdata.resize(finest_level + 1);
-    acoeff.resize(finest_level + 1);
-    bcoeff.resize(finest_level + 1);
-    solution.resize(finest_level + 1);
-    rhs.resize(finest_level + 1);
-    
-    robin_a.resize(finest_level+1);
-    robin_b.resize(finest_level+1);
-    robin_f.resize(finest_level+1);
+    Vector<MultiFab> robin_a(finest_level+1);
+    Vector<MultiFab> robin_b(finest_level+1);
+    Vector<MultiFab> robin_f(finest_level+1);
 
     const int num_grow = 1;
 
@@ -306,17 +295,27 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         bcoeff[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
         solution[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
         rhs[ilev].define(grids[ilev], dmap[ilev], 1, 0);
-        
-        robin_a[ilev].define(grids[ilev], dmap[ilev], 1, 1);
-        robin_b[ilev].define(grids[ilev], dmap[ilev], 1, 1);
-        robin_f[ilev].define(grids[ilev], dmap[ilev], 1, 1);
+
+        robin_a[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
+        robin_b[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
+        robin_f[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
+
+        if(electron_flag)
+        {
+            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
+            {
+                const BoxArray& faceba = amrex::convert(grids[ilev], 
+                               IntVect::TheDimensionVector(idim));
+                gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
+            }
+        }
     }
-    
+
     LPInfo info;
     info.setMaxCoarseningLevel(max_coarsening_level);
     linsolve_ptr.reset(new MLABecLaplacian(Geom(0,finest_level), 
-                           boxArray(0,finest_level), 
-                           DistributionMap(0,finest_level), info));
+                                           boxArray(0,finest_level), 
+                                           DistributionMap(0,finest_level), info));
     MLMG mlmg(*linsolve_ptr);
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
@@ -328,11 +327,12 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         // Copy args (FabArray<FAB>& dst, FabArray<FAB> const& src, 
         // int srccomp, int dstcomp, int numcomp, const IntVect& nghost)
         specdata[ilev].setVal(0.0);
-        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 0, 1, num_grow);
+        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 
+                    0, 1, num_grow);
 
         acoeff[ilev].setVal(1.0);
         bcoeff[ilev].setVal(1.0);
-        
+
         //default to homogenous Neumann
         robin_a[ilev].setVal(0.0);
         robin_b[ilev].setVal(1.0);
@@ -362,19 +362,12 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             Array4<Real> acoeff_arr = acoeff[ilev].array(mfi);
             Array4<Real> bcoeff_arr = bcoeff[ilev].array(mfi);
 
-            FArrayBox dcoeff_fab(gbx, 1);
-            Elixir dcoeff_fab_eli = dcoeff_fab.elixir();
-            Array4<Real> dcoeff_arr = dcoeff_fab.array();
-            
-            dcoeff_fab.setVal<RunOn::Device>(0.0);
-
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 //FIXME: use component wise call
-                plasmachem_transport::compute_dcoeff(i, j, k, captured_spec_id, phi_arr, 
-                                                      dcoeff_arr, prob_lo, 
-                                        prob_hi, dx, time, *localprobparm);
+                bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(i, j, k, captured_spec_id, phi_arr, 
+                                            prob_lo,prob_hi, dx, time, *localprobparm,
+                                            captured_gastemp,captured_gaspres);
 
-                bcoeff_arr(i,j,k)=dcoeff_arr(i,j,k);
             });
         }
 
@@ -384,12 +377,14 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
         Array<MultiFab, AMREX_SPACEDIM> face_bcoeff;
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
         {
-            const BoxArray& ba = amrex::convert(bcoeff[ilev].boxArray(), IntVect::TheDimensionVector(idim));
+            const BoxArray& ba = amrex::convert(bcoeff[ilev].boxArray(), 
+                                                IntVect::TheDimensionVector(idim));
             face_bcoeff[idim].define(ba, bcoeff[ilev].DistributionMap(), 1, 0);
         }
         // true argument for harmonic averaging
-        amrex::average_cellcenter_to_face(GetArrOfPtrs(face_bcoeff), bcoeff[ilev], geom[ilev], true);
-        
+        amrex::average_cellcenter_to_face(GetArrOfPtrs(face_bcoeff), 
+                                          bcoeff[ilev], geom[ilev], true);
+
 
         // set boundary conditions
         for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
@@ -403,7 +398,7 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             Array4<Real> bc_arr = specdata[ilev].array(mfi);
             Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Real time = current_time; // for GPU capture
-            
+
             Array4<Real> robin_a_arr = robin_a[ilev].array(mfi);
             Array4<Real> robin_b_arr = robin_b[ilev].array(mfi);
             Array4<Real> robin_f_arr = robin_f[ilev].array(mfi);
@@ -421,7 +416,8 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
                             plasmachem_transport::species_bc(i, j, k, idim, -1, 
                                                              captured_spec_id, phi_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
-                                                             prob_lo, prob_hi, dx, time, *localprobparm);
+                                                             prob_lo, prob_hi, dx, time, *localprobparm,
+                                                             captured_gastemp,captured_gaspres);
                         });
                     }
                     if (bx.bigEnd(idim) == domain.bigEnd(idim))
@@ -430,22 +426,24 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
                             plasmachem_transport::species_bc(i, j, k, idim, +1, 
                                                              captured_spec_id, phi_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,
-                                                             prob_lo, prob_hi, dx, time, *localprobparm);
+                                                             prob_lo, prob_hi, dx, time, *localprobparm,
+                                                             captured_gastemp,captured_gaspres);
                         });
                     }
                 }
             }
         }
-        
+
         linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
-        
+
         // set b with diffusivities
         linsolve_ptr->setBCoeffs(ilev, amrex::GetArrOfConstPtrs(face_bcoeff));
 
         // bc's are stored in the ghost cells
         if(mixedbc)
         {
-           linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), &(robin_b[ilev]), &(robin_f[ilev]));
+            linsolve_ptr->setLevelBC(ilev, &(specdata[ilev]), &(robin_a[ilev]), 
+                                     &(robin_b[ilev]), &(robin_f[ilev]));
         }
         else
         {
@@ -454,14 +452,13 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
     }
 
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
-   
+
     //bound species density
-    if(bound_specden)
+    if(bound_specden && !electron_energy_flag)
     { 
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {
             amrex::Real minspecden=min_species_density; 
-            // fill cell centered diffusion coefficients and rhs
             for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
             {
                 const Box& bx = mfi.tilebox();
@@ -476,21 +473,66 @@ void echemAMR::implicit_solve_species(Real current_time, Real dt, int spec_id,
             }
         }
     }
+    if(electron_flag)
+    {
+        mlmg.getGradSolution(GetVecOfArrOfPtrs(gradsoln));
+    }
 
     // copy solution back to phi_new
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
-        amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, captured_spec_id, 1, 0);
+        amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, spec_id, 1, 0);
     }
-    Print()<<"Solved species:"<<allvarnames[captured_spec_id]<<"\n";
-    
+    Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
+
+    if(electron_flag)
+    {
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
+                &gradsoln[ilev][1], &gradsoln[ilev][2]};
+            average_face_to_cellcenter(phi_new[ilev], EDGX_ID, allgrad);
+        }
+    }
+
+    if(electron_energy_flag)
+    {
+        /*for(int ilev=0; ilev <= finest_level; ilev++)
+        {
+           phi_new[ilev].setVal(1.0,ETEMP_ID,1);
+           amrex::MultiFab::Multiply(phi_new[ilev],solution[ilev],EEN_ID, ETEMP_ID, 1, 0);
+           amrex::MultiFab::Divide(phi_new[ilev],phi_new[ilev],EDN_ID, ETEMP_ID, 1, 0);
+           phi_new[ilev].mult(twothird/K_B, ETEMP_ID, 1);
+        }*/
+
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            amrex::Real minetemp=min_electron_temp; 
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                Array4<Real> soln_arr = solution[ilev].array(mfi);
+                Array4<Real> phi_arr = phi_new[ilev].array(mfi);
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*soln_arr(i,j,k)/phi_arr(i,j,k,EDN_ID);
+                    if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
+                    {
+                        phi_arr(i,j,k,ETEMP_ID)=minetemp;
+                    }
+                });
+            }
+        }
+    }
+
     //clean-up
     specdata.clear();
     acoeff.clear();
     bcoeff.clear();
+    gradsoln.clear();
     solution.clear();
     rhs.clear();
-    
+
     robin_a.clear();
     robin_b.clear();
     robin_f.clear();

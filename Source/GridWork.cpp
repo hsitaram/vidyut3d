@@ -5,14 +5,16 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
-#include <Kernels_3d.H>
+#include <Prob.H>
+#include <Tagging.H>
+#include <BCFill.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
 
 // Make a new level using provided BoxArray and DistributionMapping and
 // fill with interpolated coarse level data.
 // overrides the pure virtual function in AmrCore
-void echemAMR::MakeNewLevelFromCoarse(int lev, Real time, const BoxArray& ba, const DistributionMapping& dm)
+void Vidyut::MakeNewLevelFromCoarse(int lev, Real time, const BoxArray& ba, const DistributionMapping& dm)
 {
     const int ncomp = phi_new[lev - 1].nComp();
     const int nghost = phi_new[lev - 1].nGrow();
@@ -29,7 +31,7 @@ void echemAMR::MakeNewLevelFromCoarse(int lev, Real time, const BoxArray& ba, co
 // Remake an existing level using provided BoxArray and DistributionMapping and
 // fill with existing fine and coarse data.
 // overrides the pure virtual function in AmrCore
-void echemAMR::RemakeLevel(int lev, Real time, const BoxArray& ba, const DistributionMapping& dm)
+void Vidyut::RemakeLevel(int lev, Real time, const BoxArray& ba, const DistributionMapping& dm)
 {
     const int ncomp = phi_new[lev].nComp();
     const int nghost = phi_new[lev].nGrow();
@@ -48,7 +50,7 @@ void echemAMR::RemakeLevel(int lev, Real time, const BoxArray& ba, const Distrib
 
 // Delete level data
 // overrides the pure virtual function in AmrCore
-void echemAMR::ClearLevel(int lev)
+void Vidyut::ClearLevel(int lev)
 {
     phi_new[lev].clear();
     phi_old[lev].clear();
@@ -57,7 +59,7 @@ void echemAMR::ClearLevel(int lev)
 // Make a new level from scratch using provided BoxArray and DistributionMapping.
 // Only used during initialization.
 // overrides the pure virtual function in AmrCore
-void echemAMR::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, const DistributionMapping& dm)
+void Vidyut::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, const DistributionMapping& dm)
 {
     const int nghost = 0;
     int ncomp = NVAR;
@@ -89,7 +91,7 @@ void echemAMR::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, c
 }
 
 // set covered coarse cells to be the average of overlying fine cells
-void echemAMR::AverageDown()
+void Vidyut::AverageDown()
 {
     for (int lev = finest_level - 1; lev >= 0; --lev)
     {
@@ -99,7 +101,7 @@ void echemAMR::AverageDown()
 }
 
 // more flexible version of AverageDown() that lets you average down across multiple levels
-void echemAMR::AverageDownTo(int crse_lev)
+void Vidyut::AverageDownTo(int crse_lev)
 {
     amrex::average_down(phi_new[crse_lev + 1], phi_new[crse_lev], geom[crse_lev + 1], 
                         geom[crse_lev], 0, phi_new[crse_lev].nComp(), refRatio(crse_lev));
@@ -107,7 +109,7 @@ void echemAMR::AverageDownTo(int crse_lev)
 
 // compute a new multifab by coping in phi from valid region and filling ghost cells
 // works for single level and 2-level cases (fill fine grid ghost by interpolating from coarse)
-void echemAMR::FillPatch(int lev, Real time, MultiFab& mf, int icomp, int ncomp)
+void Vidyut::FillPatch(int lev, Real time, MultiFab& mf, int icomp, int ncomp)
 {
     if (lev == 0)
     {
@@ -139,7 +141,7 @@ void echemAMR::FillPatch(int lev, Real time, MultiFab& mf, int icomp, int ncomp)
 
 // fill an entire multifab by interpolating from the coarser level
 // this comes into play when a new level of refinement appears
-void echemAMR::FillCoarsePatch(int lev, Real time, MultiFab& mf, int icomp, int ncomp)
+void Vidyut::FillCoarsePatch(int lev, Real time, MultiFab& mf, int icomp, int ncomp)
 {
     BL_ASSERT(lev > 0);
 

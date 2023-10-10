@@ -5,19 +5,18 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
-#include <Kernels_3d.H>
 #include <Vidyut.H>
-#include <Constants.H>
+#include <VarDefines.H>
 
 // utility to skip to next line in Header
-void echemAMR::GotoNextLine(std::istream& is)
+void Vidyut::GotoNextLine(std::istream& is)
 {
     constexpr std::streamsize bl_ignore_max{100000};
     is.ignore(bl_ignore_max, '\n');
 }
 
 // put together an array of multifabs for writing
-Vector<const MultiFab*> echemAMR::PlotFileMF() const
+Vector<const MultiFab*> Vidyut::PlotFileMF() const
 {
     Vector<const MultiFab*> r;
     for (int i = 0; i <= finest_level; ++i)
@@ -27,7 +26,7 @@ Vector<const MultiFab*> echemAMR::PlotFileMF() const
     return r;
 }
 // write plotfile to disk
-void echemAMR::WritePlotFile(int plotfilenum) const
+void Vidyut::WritePlotFile(int plotfilenum) const
 {
     const std::string& plotfilename = amrex::Concatenate(plot_file, plotfilenum, 5);
     const auto& mf = PlotFileMF();
@@ -38,7 +37,7 @@ void echemAMR::WritePlotFile(int plotfilenum) const
                                    allvarnames, Geom(), t_new[0], istep, refRatio());
 }
 
-void echemAMR::WriteCheckpointFile(int chkfilenum) const
+void Vidyut::WriteCheckpointFile(int chkfilenum) const
 {
 
     // chk00010            write a checkpoint file with this root directory
@@ -81,7 +80,7 @@ void echemAMR::WriteCheckpointFile(int chkfilenum) const
         HeaderFile.precision(17);
 
         // write out title line
-        HeaderFile << "Checkpoint file for echemAMR\n";
+        HeaderFile << "Checkpoint file for Vidyut\n";
 
         // write out finest_level
         HeaderFile << finest_level << "\n";
@@ -123,7 +122,7 @@ void echemAMR::WriteCheckpointFile(int chkfilenum) const
     }
 }
 
-void echemAMR::ReadCheckpointFile()
+void Vidyut::ReadCheckpointFile()
 {
 
     amrex::Print() << "Restart from checkpoint " << restart_chkfile << "\n";

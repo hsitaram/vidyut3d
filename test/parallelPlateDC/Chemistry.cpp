@@ -7,8 +7,7 @@ namespace plasmachem
 
     void init()
     {
-        specnames[S1_ID]="S1";
-        specnames[S2_ID]="S2";
+        specnames[I_ID]="Ion";
     }    
     void close()
     {
@@ -31,11 +30,8 @@ namespace plasmachem
         amrex::Real charge=0.0;
         switch(specid)
         {
-            case S1_ID:
-                charge=0.0;
-                break;               
-            case S2_ID:
-                charge=0.0;
+            case I_ID:
+                charge=1.0;
                 break;               
             case EDN_ID:
                 charge=-1.0;
@@ -50,6 +46,17 @@ namespace plasmachem
     amrex::Real get_molwt(int specid)
     {
         amrex::Real molwt=M_AMU;
+        switch(specid)
+        {
+            case I_ID:
+                molwt=4.0*M_AMU;
+                break;               
+            case EDN_ID:
+                molwt=ME;
+                break;               
+            default:
+                molwt=M_AMU;
+        }
         return(molwt);
     }
 }
