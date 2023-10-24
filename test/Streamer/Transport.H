@@ -212,6 +212,7 @@ namespace plasmachem_transport
 
         if(specid==EDN_ID)
         {
+            //to impose 0 flux condition
             if( (right[dir]==domlo[dir]) || (right[dir]==(domhi[dir]+1)) )
             {
                 vel(i,j,k)=0.0;

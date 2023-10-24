@@ -31,14 +31,14 @@ vidyut.S2_refinegrad = 1e20
 vidyut.pot_bc_lo = 0 0 4
 vidyut.pot_bc_hi = 0 0 4
 
-vidyut.eden_bc_lo = 0 0 4
-vidyut.eden_bc_hi = 0 0 4
+vidyut.eden_bc_lo = 0 0 2
+vidyut.eden_bc_hi = 0 0 2
 
-vidyut.eenrg_bc_lo = 0 0 4
-vidyut.eenrg_bc_hi = 0 0 4
+vidyut.eenrg_bc_lo = 0 0 2
+vidyut.eenrg_bc_hi = 0 0 2
 
-vidyut.ion_bc_lo = 0 0 4
-vidyut.ion_bc_hi = 0 0 4
+vidyut.ion_bc_lo = 0 0 2
+vidyut.ion_bc_hi = 0 0 2
 
 vidyut.neutral_bc_lo = 0 0 4
 vidyut.neutral_bc_hi = 0 0 4

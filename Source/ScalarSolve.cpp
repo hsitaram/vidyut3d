@@ -213,7 +213,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     const Real tol_abs = linsolve_abstol;
 
     // set A and B, A=1/dt, B=1
-    Real ascalar = 1.0/dt;
+    Real ascalar = 1.0;
     Real bscalar = 1.0;
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
@@ -330,7 +330,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 
                     0, 1, num_grow);
 
-        acoeff[ilev].setVal(1.0);
+        acoeff[ilev].setVal(1.0/dt);
         bcoeff[ilev].setVal(1.0);
 
         //default to homogenous Neumann
@@ -511,14 +511,14 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
             {
                 const Box& bx = mfi.tilebox();
-                Array4<Real> soln_arr = solution[ilev].array(mfi);
                 Array4<Real> phi_arr = phi_new[ilev].array(mfi);
                 amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*soln_arr(i,j,k)/phi_arr(i,j,k,EDN_ID);
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/phi_arr(i,j,k,EDN_ID);
                     if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
                     {
                         phi_arr(i,j,k,ETEMP_ID)=minetemp;
+                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*phi_arr(i,j,k,EDN_ID)*minetemp;
                     }
                 });
             }

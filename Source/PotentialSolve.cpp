@@ -22,8 +22,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
     int max_iter=linsolve_maxiter;
-    Real ascalar = 0.0;
-    Real bscalar = -1.0;
+    Real ascalar = 1.0;
+    Real bscalar = 1.0;
     ProbParm const* localprobparm = d_prob_parm;
 
     //==================================================
@@ -157,6 +157,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
         solution[ilev].setVal(0.0);
         rhs[ilev].setVal(0.0);
+        acoeff[ilev].setVal(0.0);
 
         //default to homogenous Neumann
         robin_a[ilev].setVal(0.0);
@@ -200,7 +201,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
             const BoxArray& ba = amrex::convert(acoeff[ilev].boxArray(), 
                                                 IntVect::TheDimensionVector(idim));
             face_bcoeff[idim].define(ba, acoeff[ilev].DistributionMap(), 1, 0);
-            face_bcoeff[idim].setVal(1.0);
+            face_bcoeff[idim].setVal(-1.0); //since bscalar was set to 1
         }
         // set boundary conditions
         for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
@@ -250,7 +251,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
             }
         }
         
-        acoeff[ilev].setVal(1.0); //will be scaled by ascalar
         linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
         
         // set b with diffusivities

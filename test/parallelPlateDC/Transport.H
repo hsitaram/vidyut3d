@@ -31,6 +31,7 @@ namespace plasmachem_transport
         if(specid==I_ID)
         {
             mob=0.2;
+            //mob=0.0;
         }
         if(specid==EEN_ID)
         {
@@ -61,6 +62,7 @@ namespace plasmachem_transport
         if(specid==I_ID)
         {
             dcoeff=0.01;
+            //dcoeff=0.0;
         }
         if(specid==EEN_ID)
         {
@@ -199,11 +201,6 @@ namespace plasmachem_transport
 
         if(spec_id==EDN_ID)
         {
-            amrex::Real mob = mobility(cell_int[0],cell_int[1],cell_int[2],spec_id,phi,prob_lo,
-                                       prob_hi,dx,time,prob_parm,Tg,Pg);
-            amrex::Real Efield=phi(cell_int,EFX_ID+dir);
-            amrex::Real driftvel=mob*Efield;
-
             amrex::Real ne=phi(cell_int,EDN_ID);
             amrex::Real D=diffusion_coeff(cell_int[0],cell_int[1],cell_int[2], 
                                           spec_id, phi, 
@@ -211,64 +208,19 @@ namespace plasmachem_transport
                                           Tg,Pg);
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
-
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
+            amrex::Real flx = ne*cbar/4.0*Real(sgn);
 
-            robin_a(ghost_cell) = driftvel;
-            robin_b(ghost_cell) = -D;
-            robin_f(ghost_cell) = ne*cbar/4.0;
+            bc_arr(ghost_cell)=(-flx/D);
         }
 
         if(spec_id==I_ID)
         {
-            amrex::Real mob = mobility(cell_int[0],cell_int[1],cell_int[2],spec_id,phi,prob_lo,
-                                       prob_hi,dx,time,prob_parm,Tg,Pg);
-            amrex::Real Efield=phi(cell_int,EFX_ID+dir);
-
-            amrex::Real driftvel=mob*Efield;
-
-            //default setting
-            robin_a(ghost_cell) = 0.0;
-            robin_b(ghost_cell) = 1.0;
-            robin_f(ghost_cell) = 0.0;
-
-            //directed at the surface
-            if(driftvel*outward_normal[dir] >= 0.0)
-            {
-                /*amrex::Prit()<<"ion neumann,sgn:"<<sgn<<"\t"<<driftvel<<"\t"<<
-                  mob<<"\t"<<Efield<<"\n";*/
-                //drift dominated flux and quenching
-                //mu n E - D grad n = mu n E
-                //implied D grad n = 0
-                robin_a(ghost_cell) = 0.0;
-                robin_b(ghost_cell) = 1.0;
-                robin_f(ghost_cell) = 0.0;
-            }
-            else
-            {
-                //amrex::Print()<<"ion robin,sgn:"<<sgn<<"\n";
-                amrex::Real D=diffusion_coeff(cell_int[0],cell_int[1],cell_int[2], 
-                                              spec_id, phi, 
-                                              prob_lo,prob_hi, dx, time, prob_parm,
-                                              Tg,Pg);
-                //no flux
-                //mu n E - D grad n = 0
-                robin_a(ghost_cell) = driftvel;
-                robin_b(ghost_cell) = -D;
-                robin_f(ghost_cell) = 0.0;
-                /*robin_a(ghost_cell) = 0.0;
-                  robin_b(ghost_cell) = 1.0;
-                  robin_f(ghost_cell) = 0.0;*/
-            }
+            bc_arr(ghost_cell)=0.0;
         }
 
         if(spec_id==EEN_ID)
         {
-            amrex::Real mob = mobility(cell_int[0],cell_int[1],cell_int[2],spec_id,phi,prob_lo,
-                                       prob_hi,dx,time,prob_parm,Tg,Pg);
-            amrex::Real Efield=phi(cell_int,EFX_ID+dir);
-            amrex::Real driftvel=mob*Efield;
-
             amrex::Real ne=phi(cell_int,EDN_ID);
             amrex::Real D=diffusion_coeff(cell_int[0],cell_int[1],cell_int[2], 
                                           spec_id, phi, 
@@ -278,10 +230,9 @@ namespace plasmachem_transport
             amrex::Real Te=phi(cell_int,ETEMP_ID);
 
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
-
-            robin_a(ghost_cell) = driftvel;
-            robin_b(ghost_cell) = -D;
-            robin_f(ghost_cell) = 2.0*K_B*Te*ne*cbar/4.0;
+            
+            amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*Real(sgn);
+            bc_arr(ghost_cell)=(-flx/D);
         }
 
     }
@@ -301,31 +252,61 @@ namespace plasmachem_transport
                      ProbParm const& prob_parm,
                      amrex::Real Tg,amrex::Real Pg)
     {
-        IntVect left(i, j, k);
-        IntVect right(i, j, k);
-        left[dir] -= 1;
+        IntVect leftcell(i, j, k);
+        IntVect rightcell(i, j, k);
+        IntVect face(i, j, k);
+        leftcell[dir] -= 1;
+        
+        //in this case, discharge is along x
+        int dischargedir=0;
 
-        vel(i,j,k)=0.0;
-        amrex::Real mu_left = mobility(left[0],left[1],left[2],specid,phi,prob_lo,
+        vel(face)=0.0;
+        amrex::Real mu_leftcell = mobility(leftcell[0],leftcell[1],leftcell[2],specid,phi,prob_lo,
                                        prob_hi,dx,time,prob_parm,Tg,Pg);
 
-        amrex::Real mu_right = mobility(right[0],right[1],right[2],specid,phi,prob_lo,
+        amrex::Real mu_rightcell = mobility(rightcell[0],rightcell[1],rightcell[2],specid,phi,prob_lo,
                                         prob_hi,dx,time,prob_parm,Tg,Pg);
 
-        amrex::Real mu_face = 0.5*(mu_left+mu_right);
+        amrex::Real mu_face = 0.5*(mu_leftcell+mu_rightcell);
 
-        Real efield_face = -(phi(right,POT_ID) - phi(left,POT_ID))/dx[dir];
+        //Real efield_face = -(phi(rightcell,POT_ID) - phi(leftcell,POT_ID))/dx[dir];
+        Real efield_face = 0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
+        Real driftvel = mu_face*efield_face;
 
-        if( (right[dir]==domlo[dir]) || (right[dir]==(domhi[dir]+1)) )
+        if(dir==dischargedir)
         {
-            vel(i,j,k)=0.0;
+            if( (face[dir]==domlo[dir]) || (face[dir]==(domhi[dir]+1)) )
+            {
+                Real outward_normal_sgn=(face[dir]==domlo[dir])?-1.0:1.0;
+
+                if( (specid==EDN_ID) || (specid==EEN_ID) )
+                {
+                    //false Neumann for robin bc
+                    vel(face)=0.0;
+                }
+                else if(specid==I_ID)
+                {
+                    //if driftvel is pointing towards the wall
+                    //then flux=v n - D dndx = v n => dndx=0 true Neumann bc
+                    //else  flux = v n - D dndx = 0 false Neumann for robin bc
+                    //
+                    //Real iondriftvel = mu_face*0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
+                    Real iondriftvel=driftvel;
+                    vel(face)=(iondriftvel*outward_normal_sgn > 0)?iondriftvel:0.0;
+                    
+                    //vel(face)=0.0;
+                    //amrex::Print()<<"ion vel,sgn,face:"<<vel(face)<<"\t"<<outward_normal_sgn<<"\t"<<face<<"\n";
+                }
+            }
+            else
+            {
+                vel(face) = driftvel;
+            }
         }
         else
         {
-            vel(i,j,k) = mu_face*efield_face;
+            vel(face) = driftvel;
         }
     }
-
-
 }
 #endif
