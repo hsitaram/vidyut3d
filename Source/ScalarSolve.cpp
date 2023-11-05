@@ -183,7 +183,8 @@ void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab
 
 void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id, 
                                       Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
-                                      Vector<int>& bc_lo, Vector<int>& bc_hi)
+                                      Vector<int>& bc_lo, Vector<int>& bc_hi,
+                                      Vector<Array<MultiFab,AMREX_SPACEDIM>>& grad_fc)
 {
     BL_PROFILE("Vidyut::implicit_solve_species(" + std::to_string( spec_id ) + ")");
 
@@ -277,7 +278,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
     Vector<MultiFab> specdata(finest_level+1);
     Vector<MultiFab> acoeff(finest_level+1);
-    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln(finest_level+1);
     Vector<MultiFab> bcoeff(finest_level+1);
     Vector<MultiFab> solution(finest_level+1);
     Vector<MultiFab> rhs(finest_level+1);
@@ -299,16 +299,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         robin_a[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
         robin_b[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
         robin_f[ilev].define(grids[ilev], dmap[ilev], 1, num_grow);
-
-        if(electron_flag)
-        {
-            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
-            {
-                const BoxArray& faceba = amrex::convert(grids[ilev], 
-                               IntVect::TheDimensionVector(idim));
-                gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
-            }
-        }
     }
 
     LPInfo info;
@@ -475,7 +465,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     }
     if(electron_flag)
     {
-        mlmg.getGradSolution(GetVecOfArrOfPtrs(gradsoln));
+        mlmg.getGradSolution(GetVecOfArrOfPtrs(grad_fc));
     }
 
     // copy solution back to phi_new
@@ -489,8 +479,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     {
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {
-            const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
-                &gradsoln[ilev][1], &gradsoln[ilev][2]};
+            const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&grad_fc[ilev][0], 
+                &grad_fc[ilev][1], &grad_fc[ilev][2]};
             average_face_to_cellcenter(phi_new[ilev], EDGX_ID, allgrad);
         }
     }
@@ -529,7 +519,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     specdata.clear();
     acoeff.clear();
     bcoeff.clear();
-    gradsoln.clear();
     solution.clear();
     rhs.clear();
 

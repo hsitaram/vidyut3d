@@ -15,7 +15,8 @@
 #include <AMReX_MLABecLaplacian.H>
 
 void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
-                               amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi)
+                               amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi,
+                               Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield_fc)
 {
     BL_PROFILE("Vidyut::solve_potential()");
 
@@ -106,7 +107,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
     Vector<MultiFab> potential(finest_level+1);
     Vector<MultiFab> acoeff(finest_level+1);
-    Vector<Array<MultiFab, AMREX_SPACEDIM>> gradsoln(finest_level+1);
     Vector<MultiFab> solution(finest_level+1);
     Vector<MultiFab> rhs(finest_level+1);
 
@@ -122,13 +122,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         acoeff[ilev].define(grids[ilev], dmap[ilev], 1, 0);
         solution[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         rhs[ilev].define(grids[ilev], dmap[ilev], 1, 0);
-
-        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
-        {
-            const BoxArray& faceba = amrex::convert(grids[ilev], 
-                                                    IntVect::TheDimensionVector(idim));
-            gradsoln[ilev][idim].define(faceba, dmap[ilev], 1, 0);
-        }
 
         robin_a[ilev].define(grids[ilev], dmap[ilev], 1, 1);
         robin_b[ilev].define(grids[ilev], dmap[ilev], 1, 1);
@@ -273,23 +266,26 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
-    mlmg.getGradSolution(GetVecOfArrOfPtrs(gradsoln));
-
+    mlmg.getGradSolution(GetVecOfArrOfPtrs(efield_fc));
+    
     amrex::Print()<<"Solved Potential\n";
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
-        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&gradsoln[ilev][0], 
-            &gradsoln[ilev][1], &gradsoln[ilev][2]};
+        
+        efield_fc[ilev][0].mult(-1.0,0,1);
+        efield_fc[ilev][1].mult(-1.0,0,1);
+        efield_fc[ilev][2].mult(-1.0,0,1);
+        
+        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&efield_fc[ilev][0], 
+            &efield_fc[ilev][1], &efield_fc[ilev][2]};
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
-        phi_new[ilev].mult(-1.0, EFX_ID, 3);
     }
 
     //clean-up
     potential.clear();
     acoeff.clear();
-    gradsoln.clear();
     solution.clear();
     rhs.clear();
 
