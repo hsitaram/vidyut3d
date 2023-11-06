@@ -43,9 +43,10 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-            amrex::Real reactsource=plasmachem_reactions::compute_react_source(i, j, k, captured_specid, sborder_arr, 
-                                                       prob_lo, prob_hi, dx, time, *localprobparm,captured_gastemp,
-                                                       captured_gaspres);
+            amrex::Real reactsource=plasmachem_reactions::compute_react_source
+            (i, j, k, captured_specid, sborder_arr, 
+            prob_lo, prob_hi, dx, time, *localprobparm,captured_gastemp,
+            captured_gaspres);
                 
             dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
             + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
@@ -70,7 +71,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
 
     for(int lev=0; lev <= finest_level; lev++)
     {
-        compute_specie_transport_flux(lev, Sborder[lev].nGrow(), Sborder[lev], 
+        compute_scalar_transport_flux(lev, Sborder[lev].nGrow(), Sborder[lev], 
                                       flux[lev], efield[lev],cur_time, specid);
     }
 
@@ -93,7 +94,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     }
 }
 
-void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Array<MultiFab,AMREX_SPACEDIM>& efield, 
                                              Real time,int specid)

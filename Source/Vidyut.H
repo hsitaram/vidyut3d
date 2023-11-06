@@ -73,7 +73,7 @@ public:
     virtual void ErrorEst(int lev, amrex::TagBoxArray& tags, 
                           amrex::Real time, int ngrow) override;
 
-   void compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+   void compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Array<MultiFab,AMREX_SPACEDIM>& efield, 
                                              Real time,int specid);
