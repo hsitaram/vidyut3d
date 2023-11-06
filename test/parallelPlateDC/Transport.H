@@ -242,6 +242,7 @@ namespace plasmachem_transport
     void compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
+                     Array4<Real> const& efield,
                      Array4<Real> const& vel,
                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                      GpuArray<Real, AMREX_SPACEDIM> prob_hi,

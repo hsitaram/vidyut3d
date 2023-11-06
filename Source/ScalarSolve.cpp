@@ -56,6 +56,7 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
 
 void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
+                                            Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time)
 {
@@ -70,7 +71,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     for(int lev=0; lev <= finest_level; lev++)
     {
         compute_specie_transport_flux(lev, Sborder[lev].nGrow(), Sborder[lev], 
-                                      flux[lev], cur_time, specid);
+                                      flux[lev], efield[lev],cur_time, specid);
     }
 
     // =======================================================
@@ -94,6 +95,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
 
 void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
+                                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
                                              Real time,int specid)
 {
     const auto dx = geom[lev].CellSizeArray();
@@ -140,25 +142,29 @@ void Vidyut::compute_specie_transport_flux(int lev, const int num_grow, MultiFab
             GpuArray<Array4<Real>, AMREX_SPACEDIM> 
             flux_arr{AMREX_D_DECL(flux[0].array(mfi), 
                                   flux[1].array(mfi), flux[2].array(mfi))};
+            
+            GpuArray<Array4<Real>, AMREX_SPACEDIM> 
+            efield_arr{AMREX_D_DECL(efield[0].array(mfi), 
+                                  efield[1].array(mfi), efield[2].array(mfi))};
 
             velx_fab.setVal<RunOn::Device>(0.0);
             vely_fab.setVal<RunOn::Device>(0.0);
             velz_fab.setVal<RunOn::Device>(0.0);
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, velx_arr, 
+                plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, efield_arr[0], velx_arr, 
                                                   prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
                                                   captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, vely_arr, 
+                plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, efield_arr[1], vely_arr, 
                                                   prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
                                                   captured_gastemp,captured_gaspres);
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, velz_arr, 
+                plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, efield_arr[2], velz_arr, 
                                                   prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
                                                   captured_gastemp,captured_gaspres);
             });

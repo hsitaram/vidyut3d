@@ -16,6 +16,8 @@
 
 void Vidyut::compute_elecenergy_source(int lev, const int num_grow, 
                             MultiFab& Sborder, 
+                            Array<MultiFab,AMREX_SPACEDIM>& efield, 
+                            Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt)
 {

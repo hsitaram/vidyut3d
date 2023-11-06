@@ -74,7 +74,9 @@ public:
                           amrex::Real time, int ngrow) override;
 
    void compute_specie_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
-                                             Array<MultiFab,AMREX_SPACEDIM>& flux, Real time,int specid);
+                                             Array<MultiFab,AMREX_SPACEDIM>& flux, 
+                                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
+                                             Real time,int specid);
 
     void compute_dsdt(int lev, const int num_grow, int specid, 
                       MultiFab& Sborder, 
@@ -87,6 +89,7 @@ public:
 
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
+                                            Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time);
 
@@ -98,6 +101,8 @@ public:
 
     void compute_elecenergy_source(int lev, const int num_grow, 
                             MultiFab& Sborder, 
+                            Array<MultiFab,AMREX_SPACEDIM>& efield, 
+                            Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt);
 
