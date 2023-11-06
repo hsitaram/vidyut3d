@@ -360,7 +360,13 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 //FIXME: use component wise call
-                bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(i, j, k, captured_spec_id, phi_arr, 
+                //
+                //FIXME:may be use updated efields here
+                bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(captured_spec_id, 
+                                                                        phi_arr(i,j,k,ETEMP_ID), 
+                                                                        phi_arr(i,j,k,EFX_ID), 
+                                                                        phi_arr(i,j,k,EFY_ID), 
+                                                                        phi_arr(i,j,k,EFZ_ID), 
                                             prob_lo,prob_hi, dx, time, *localprobparm,
                                             captured_gastemp,captured_gaspres);
 

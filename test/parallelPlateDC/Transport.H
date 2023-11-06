@@ -10,9 +10,9 @@ using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int i, int j, int k,
-                         int specid,
-                         Array4<Real> const& phi,
+    amrex::Real mobility(int specid,
+                         Real Te, Real efield_x,
+                         Real efield_y,Real efield_z,
                          GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                          GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                          GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -42,9 +42,9 @@ namespace plasmachem_transport
     }
     
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int i, int j, int k,
-                                int specid,
-                                Array4<Real> const& phi,
+    amrex::Real diffusion_coeff(int specid,
+                                Real Te, Real efield_x,
+                                Real efield_y,Real efield_z,
                                 GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                                 GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                                 GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -84,7 +84,11 @@ namespace plasmachem_transport
                                Real Tg, Real Pg)
 
     {
-        amrex::Real mu = mobility(i,j,k,specid,phi,prob_lo,
+        amrex::Real mu = mobility(specid,phi(i,j,k,ETEMP_ID),
+                                   phi(i,j,k,EFX_ID),
+                                   phi(i,j,k,EFY_ID),
+                                   phi(i,j,k,EFZ_ID),
+                                   prob_lo,
                                    prob_hi,dx,time,prob_parm,Tg,Pg);
 
         amrex::Real mass = plasmachem::get_molwt(specid); 
@@ -202,9 +206,13 @@ namespace plasmachem_transport
         if(spec_id==EDN_ID)
         {
             amrex::Real ne=phi(cell_int,EDN_ID);
-            amrex::Real D=diffusion_coeff(cell_int[0],cell_int[1],cell_int[2], 
-                                          spec_id, phi, 
-                                          prob_lo,prob_hi, dx, time, prob_parm,
+            
+            amrex::Real D=diffusion_coeff(spec_id, phi(cell_int,ETEMP_ID),
+                                          phi(cell_int,EFX_ID),
+                                          phi(cell_int,EFY_ID),
+                                          phi(cell_int,EFZ_ID),
+                                          prob_lo,prob_hi, dx, 
+                                          time, prob_parm,
                                           Tg,Pg);
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
@@ -222,9 +230,13 @@ namespace plasmachem_transport
         if(spec_id==EEN_ID)
         {
             amrex::Real ne=phi(cell_int,EDN_ID);
-            amrex::Real D=diffusion_coeff(cell_int[0],cell_int[1],cell_int[2], 
-                                          spec_id, phi, 
-                                          prob_lo,prob_hi, dx, time, prob_parm,
+            
+            amrex::Real D=diffusion_coeff(spec_id, phi(cell_int,ETEMP_ID),
+                                          phi(cell_int,EFX_ID),
+                                          phi(cell_int,EFY_ID),
+                                          phi(cell_int,EFZ_ID),
+                                          prob_lo,prob_hi, dx, 
+                                          time, prob_parm,
                                           Tg,Pg);
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
@@ -262,10 +274,17 @@ namespace plasmachem_transport
         int dischargedir=0;
 
         vel(face)=0.0;
-        amrex::Real mu_leftcell = mobility(leftcell[0],leftcell[1],leftcell[2],specid,phi,prob_lo,
-                                       prob_hi,dx,time,prob_parm,Tg,Pg);
+        amrex::Real mu_leftcell = mobility(specid,phi(leftcell,ETEMP_ID),
+                                        phi(leftcell,EFX_ID),
+                                        phi(leftcell,EFY_ID),
+                                        phi(leftcell,EFZ_ID),
+                                        prob_lo,prob_hi,dx,time,prob_parm,Tg,Pg);
 
-        amrex::Real mu_rightcell = mobility(rightcell[0],rightcell[1],rightcell[2],specid,phi,prob_lo,
+        amrex::Real mu_rightcell = mobility(specid,phi(rightcell,ETEMP_ID),
+                                        phi(rightcell,EFX_ID),
+                                        phi(rightcell,EFY_ID),
+                                        phi(rightcell,EFZ_ID),
+                                        prob_lo,
                                         prob_hi,dx,time,prob_parm,Tg,Pg);
 
         amrex::Real mu_face = 0.5*(mu_leftcell+mu_rightcell);
