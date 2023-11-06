@@ -58,6 +58,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
+            //FIXME: This can be done more efficiently sweeping over
+            //faces
             for(int idim=0;idim<AMREX_SPACEDIM;idim++)
             {
                 //left,right,top,bottom,front,back
@@ -107,7 +109,18 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                 }
             }
 
+            //why only 0.5? 
+            //because left and right contribute to JxEx, 
+            //top and bottom contribute to JyEy,
+            //front and back contribute to JzEz,
+            //so we are averaging each component, so it is 1/2 and not 1/6
+            //read Deconinck, T, S. Mahadevan, and L. L. Raja. 
+            //"Discretization of the Joule heating term for plasma discharge 
+            //fluid models in unstructured meshes." 
+            //Journal of computational physics 228.12 (2009): 4435-4443.
+
             elec_jheat*=0.5;
+            
             amrex::Real nu = plasmachem_transport::collision_freq(i, j, k, EDN_ID,
                                                                   sborder_arr,
                                                                   prob_lo, prob_hi, dx, time,

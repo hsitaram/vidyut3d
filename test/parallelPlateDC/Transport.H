@@ -290,7 +290,8 @@ namespace plasmachem_transport
         amrex::Real mu_face = 0.5*(mu_leftcell+mu_rightcell);
 
         //Real efield_face = -(phi(rightcell,POT_ID) - phi(leftcell,POT_ID))/dx[dir];
-        Real efield_face = 0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
+        //Real efield_face = 0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
+        Real efield_face = efield(face);
         Real driftvel = mu_face*efield_face;
 
         if(dir==dischargedir)
