@@ -1,4 +1,4 @@
-max_step  = 10000
+max_step  = 30000
 stop_time = 2e-3
 
 # PROBLEM SIZE & GEOMETRY
@@ -61,12 +61,12 @@ amr.chk_int  = -1       # number of timesteps between checkpoint files
 vidyut.bound_specden=1
 vidyut.min_species_density=1e13
 vidyut.linsolve_maxiter=200
-vidyut.elecenergy_solve=0
+vidyut.elecenergy_solve=1
 
-prob.V1=200.0
+prob.V1=100.0
 prob.V2=0.0
 prob.nscale=1.0
 prob.potscale=1.0
 
-vidyut.gas_pressure=133.0
+vidyut.gas_pressure=50.0
 vidyut.gas_temperature=300.0
