@@ -514,13 +514,14 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             {
                 const Box& bx = mfi.tilebox();
                 Array4<Real> phi_arr = phi_new[ilev].array(mfi);
+                Array4<Real> sborder_arr = Sborder[ilev].array(mfi);
                 amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/phi_arr(i,j,k,EDN_ID);
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID);
                     if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
                     {
                         phi_arr(i,j,k,ETEMP_ID)=minetemp;
-                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*phi_arr(i,j,k,EDN_ID)*minetemp;
+                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*sborder_arr(i,j,k,EDN_ID)*minetemp;
                     }
                 });
             }

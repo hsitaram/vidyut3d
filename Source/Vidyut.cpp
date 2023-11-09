@@ -39,6 +39,9 @@ Vidyut::Vidyut()
     plasma_param_names[7]="Efieldx";
     plasma_param_names[8]="Efieldy";
     plasma_param_names[9]="Efieldz";
+    plasma_param_names[10]="Electron_Jheat";
+    plasma_param_names[11]="Electron_inelasticHeat";
+    plasma_param_names[12]="Electron_elasticHeat";
     
     allvarnames.resize(NVAR);
     for (int i = 0; i < NUM_SPECIES; i++)

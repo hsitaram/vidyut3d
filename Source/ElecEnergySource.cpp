@@ -29,6 +29,9 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
     int ncomp = Sborder.nComp();
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
+    
+    const int* domlo_arr = geom[lev].Domain().loVect();
+    const int* domhi_arr = geom[lev].Domain().hiVect();
 
     for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
@@ -37,6 +40,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
 
         Array4<Real> sborder_arr = Sborder.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
+        Array4<Real> phi_arr = phi_new[lev].array(mfi);
         
         GpuArray<Array4<Real>, AMREX_SPACEDIM> 
         ef_arr{AMREX_D_DECL(efield[0].array(mfi), 
@@ -55,7 +59,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
             amrex::Real charge=plasmachem::get_charge(EDN_ID)*ECHARGE;
-            amrex::Real current_density;
+            amrex::Real current_density[AMREX_SPACEDIM]={0.0};
+            amrex::Real efield_fc[AMREX_SPACEDIM]={0.0};
             amrex::Real elec_jheat=0.0;
 
             //FIXME: This can be done more efficiently sweeping over
@@ -67,10 +72,23 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                 {
                     IntVect face(i,j,k);
                     face[idim]+=f;
+
+                    if(face[idim]==domlo_arr[idim])
+                    {
+                       //do the interior face
+                       face[idim]+=1;
+                    }
+                    
+                    if(face[idim]==(domhi_arr[idim]+1))
+                    {
+                       //do the interior face
+                        face[idim]-=1;
+                    }
+                    
                     IntVect lcell(face[0],face[1],face[2]);
                     IntVect rcell(face[0],face[1],face[2]);
-
                     lcell[idim]-=1;
+                    
                     etemp=0.5*(sborder_arr(lcell,ETEMP_ID) 
                                + sborder_arr(rcell,ETEMP_ID));
 
@@ -103,9 +121,13 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                                                                    captured_gaspres);
 
 
-                    current_density=charge*(mu*ne*efield_face-dcoeff*gradne_face);
+                    //current_density[idim]+=charge*(mu*ne*efield_face-dcoeff*gradne_face);
+                    //efield_fc[idim]+=efield_face;
 
-                    elec_jheat += current_density*efield_face;
+                    current_density[idim] = charge*(mu*ne*efield_face-dcoeff*gradne_face);
+                    efield_fc[idim] = efield_face;
+
+                    elec_jheat += current_density[idim]*efield_face;
                 }
             }
 
@@ -120,6 +142,9 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //Journal of computational physics 228.12 (2009): 4435-4443.
 
             elec_jheat*=0.5;
+            /*elec_jheat=0.25*(current_density[0]*efield_fc[0]+
+                             current_density[1]*efield_fc[1]+
+                             current_density[2]*efield_fc[2]);*/
             
             amrex::Real nu = plasmachem_transport::collision_freq(i, j, k, EDN_ID,
                                                                   sborder_arr,
@@ -144,6 +169,10 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
 
             dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term + elec_inelastic_coll_term);
             //dsdt_arr(i, j, k) += elec_jheat;
+            //
+            phi_arr(i,j,k,EJH_ID)=elec_jheat;
+            phi_arr(i,j,k,EIH_ID)=elec_inelastic_coll_term;
+            phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
 
         });
     }

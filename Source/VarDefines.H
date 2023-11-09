@@ -12,7 +12,10 @@
 #define EFX_ID (NUM_SPECIES+7)
 #define EFY_ID (NUM_SPECIES+8)
 #define EFZ_ID (NUM_SPECIES+9)
-#define NUM_PLASMAVARS (EFZ_ID-NUM_SPECIES+1)
+#define EJH_ID (NUM_SPECIES+10) //electron joule heating
+#define EIH_ID (NUM_SPECIES+11) //electron inelastic heating
+#define EEH_ID (NUM_SPECIES+12) //electron elastic heating
+#define NUM_PLASMAVARS (EEH_ID-NUM_SPECIES+1)
 #define NVAR (NUM_SPECIES+NUM_PLASMAVARS)
 
 #define PERBC 0

@@ -67,6 +67,9 @@ for i, fn in enumerate(fn_list):
     etemp=np.array(ad["Electron_Temp"])
     eenrg=np.array(ad["Electron_energy"])
     ionden=np.array(ad["Ion"])
+    ejheat=np.array(ad["Electron_Jheat"])
+    inelheat=np.array(ad["Electron_inelasticHeat"])
+    elheat=np.array(ad["Electron_elasticHeat"])
     xarr=np.linspace(prob_lo[axialdir]+0.5*dx_frb[axialdir],\
             prob_hi[axialdir]-0.5*dx_frb[axialdir],res[axialdir])
 
@@ -75,6 +78,9 @@ for i, fn in enumerate(fn_list):
     etempl=get_oned_data(etemp,axialdir)
     eenrgl=get_oned_data(eenrg,axialdir)
     iondenl=get_oned_data(ionden,axialdir)
+    ejl=get_oned_data(ejheat,axialdir)
+    elhl=get_oned_data(elheat,axialdir)
+    inelhl=get_oned_data(inelheat,axialdir)
 
     np.savetxt("linedata_"+axialdir_char+"%5.5d.dat"%(i),\
-            np.transpose(np.vstack((xarr,potl,edenl,iondenl,etempl,eenrgl))),delimiter="  ")
+            np.transpose(np.vstack((xarr,potl,edenl,iondenl,etempl,eenrgl,ejl,elhl,inelhl))),delimiter="  ")
