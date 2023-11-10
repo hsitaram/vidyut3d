@@ -5,16 +5,13 @@
 #define EDN_ID NUM_SPECIES
 #define EEN_ID (NUM_SPECIES+1)
 #define ETEMP_ID (NUM_SPECIES+2)
-#define EDGX_ID (NUM_SPECIES+3)
-#define EDGY_ID (NUM_SPECIES+4)
-#define EDGZ_ID (NUM_SPECIES+5)
-#define POT_ID (NUM_SPECIES+6)
-#define EFX_ID (NUM_SPECIES+7)
-#define EFY_ID (NUM_SPECIES+8)
-#define EFZ_ID (NUM_SPECIES+9)
-#define EJH_ID (NUM_SPECIES+10) //electron joule heating
-#define EIH_ID (NUM_SPECIES+11) //electron inelastic heating
-#define EEH_ID (NUM_SPECIES+12) //electron elastic heating
+#define POT_ID (NUM_SPECIES+3)
+#define EFX_ID (NUM_SPECIES+4)
+#define EFY_ID (NUM_SPECIES+5)
+#define EFZ_ID (NUM_SPECIES+6)
+#define EJH_ID (NUM_SPECIES+7) //electron joule heating
+#define EIH_ID (NUM_SPECIES+8) //electron inelastic heating
+#define EEH_ID (NUM_SPECIES+9) //electron elastic heating
 #define NUM_PLASMAVARS (EEH_ID-NUM_SPECIES+1)
 #define NVAR (NUM_SPECIES+NUM_PLASMAVARS)
 

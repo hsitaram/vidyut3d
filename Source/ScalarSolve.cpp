@@ -355,7 +355,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
             Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
+            Array4<Real> sb_arr = Sborder[ilev].array(mfi);
             Array4<Real> acoeff_arr = acoeff[ilev].array(mfi);
             Array4<Real> bcoeff_arr = bcoeff[ilev].array(mfi);
 
@@ -363,10 +363,10 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                 
                 //FIXME:may be use updated efields here
                 bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(captured_spec_id, 
-                                                                        phi_arr(i,j,k,ETEMP_ID), 
-                                                                        phi_arr(i,j,k,EFX_ID), 
-                                                                        phi_arr(i,j,k,EFY_ID), 
-                                                                        phi_arr(i,j,k,EFZ_ID), 
+                                                                        sb_arr(i,j,k,ETEMP_ID), 
+                                                                        sb_arr(i,j,k,EFX_ID), 
+                                                                        sb_arr(i,j,k,EFY_ID), 
+                                                                        sb_arr(i,j,k,EFZ_ID), 
                                             prob_lo,prob_hi, dx, time, *localprobparm,
                                             captured_gastemp,captured_gaspres);
 
@@ -398,7 +398,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             const Box& domain = geom[ilev].Domain();
 
             Array4<Real> bc_arr = specdata[ilev].array(mfi);
-            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
+            Array4<Real> sb_arr = Sborder[ilev].array(mfi);
             Real time = current_time; // for GPU capture
 
             Array4<Real> robin_a_arr = robin_a[ilev].array(mfi);
@@ -416,7 +416,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     {
                         amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                             plasmachem_transport::species_bc(i, j, k, idim, -1, 
-                                                             captured_spec_id, phi_arr, bc_arr, robin_a_arr,
+                                                             captured_spec_id, sb_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
                                                              prob_lo, prob_hi, dx, time, *localprobparm,
                                                              captured_gastemp,captured_gaspres);
@@ -426,7 +426,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     {
                         amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                             plasmachem_transport::species_bc(i, j, k, idim, +1, 
-                                                             captured_spec_id, phi_arr, bc_arr, robin_a_arr, 
+                                                             captured_spec_id, sb_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,
                                                              prob_lo, prob_hi, dx, time, *localprobparm,
                                                              captured_gastemp,captured_gaspres);
@@ -487,16 +487,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     }
     Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
 
-    if(electron_flag)
-    {
-        for (int ilev = 0; ilev <= finest_level; ilev++)
-        {
-            const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&grad_fc[ilev][0], 
-                &grad_fc[ilev][1], &grad_fc[ilev][2]};
-            average_face_to_cellcenter(phi_new[ilev], EDGX_ID, allgrad);
-        }
-    }
-
     if(electron_energy_flag)
     {
         /*for(int ilev=0; ilev <= finest_level; ilev++)
@@ -514,14 +504,14 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             {
                 const Box& bx = mfi.tilebox();
                 Array4<Real> phi_arr = phi_new[ilev].array(mfi);
-                Array4<Real> sborder_arr = Sborder[ilev].array(mfi);
+                Array4<Real> sb_arr = Sborder[ilev].array(mfi);
                 amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID);
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/sb_arr(i,j,k,EDN_ID);
                     if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
                     {
                         phi_arr(i,j,k,ETEMP_ID)=minetemp;
-                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*sborder_arr(i,j,k,EDN_ID)*minetemp;
+                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*sb_arr(i,j,k,EDN_ID)*minetemp;
                     }
                 });
             }

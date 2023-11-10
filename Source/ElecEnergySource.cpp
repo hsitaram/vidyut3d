@@ -59,8 +59,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
             amrex::Real charge=plasmachem::get_charge(EDN_ID)*ECHARGE;
-            amrex::Real current_density[AMREX_SPACEDIM]={0.0};
-            amrex::Real efield_fc[AMREX_SPACEDIM]={0.0};
+            amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
             //FIXME: This can be done more efficiently sweeping over
@@ -92,7 +91,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                     etemp=0.5*(sborder_arr(lcell,ETEMP_ID) 
                                + sborder_arr(rcell,ETEMP_ID));
 
-                    //FIXME:use face centered updated efields here
+                    //FIXME:use face centered updated efields here?
                     efield_x=0.5*(sborder_arr(lcell,EFX_ID) 
                                   + sborder_arr(rcell,EFX_ID));
 
@@ -124,10 +123,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                     //current_density[idim]+=charge*(mu*ne*efield_face-dcoeff*gradne_face);
                     //efield_fc[idim]+=efield_face;
 
-                    current_density[idim] = charge*(mu*ne*efield_face-dcoeff*gradne_face);
-                    efield_fc[idim] = efield_face;
-
-                    elec_jheat += current_density[idim]*efield_face;
+                    current_density = charge*(mu*ne*efield_face-dcoeff*gradne_face);
+                    elec_jheat += current_density*efield_face;
                 }
             }
 
@@ -173,7 +170,6 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             phi_arr(i,j,k,EJH_ID)=elec_jheat;
             phi_arr(i,j,k,EIH_ID)=elec_inelastic_coll_term;
             phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
-
         });
     }
 }

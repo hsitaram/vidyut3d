@@ -32,16 +32,13 @@ Vidyut::Vidyut()
     plasma_param_names[0]="Electron_density";
     plasma_param_names[1]="Electron_energy";
     plasma_param_names[2]="Electron_Temp";
-    plasma_param_names[3]="Eden_gradx";
-    plasma_param_names[4]="Eden_grady";
-    plasma_param_names[5]="Eden_gradz";
-    plasma_param_names[6]="Potential";
-    plasma_param_names[7]="Efieldx";
-    plasma_param_names[8]="Efieldy";
-    plasma_param_names[9]="Efieldz";
-    plasma_param_names[10]="Electron_Jheat";
-    plasma_param_names[11]="Electron_inelasticHeat";
-    plasma_param_names[12]="Electron_elasticHeat";
+    plasma_param_names[3]="Potential";
+    plasma_param_names[4]="Efieldx";
+    plasma_param_names[5]="Efieldy";
+    plasma_param_names[6]="Efieldz";
+    plasma_param_names[7]="Electron_Jheat";
+    plasma_param_names[8]="Electron_inelasticHeat";
+    plasma_param_names[9]="Electron_elasticHeat";
     
     allvarnames.resize(NVAR);
     for (int i = 0; i < NUM_SPECIES; i++)
