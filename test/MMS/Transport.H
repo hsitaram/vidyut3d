@@ -11,9 +11,9 @@ using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int i, int j, int k,
-                         int specid,
-                         Array4<Real> const& phi,
+    amrex::Real mobility(int specid,
+                         Real Te, Real efield_x,
+                         Real efield_y,Real efield_z,
                          GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                          GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                          GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -26,9 +26,9 @@ namespace plasmachem_transport
     }
     
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int i, int j, int k,
-                                int specid,
-                                Array4<Real> const& phi,
+    amrex::Real diffusion_coeff(int specid,
+                                Real Te, Real efield_x,
+                                Real efield_y,Real efield_z,
                                 GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                                 GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                                 GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -82,22 +82,16 @@ namespace plasmachem_transport
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
-        //low side
-        if(sgn==-1)
-        {
-           //cell is i,j,k
-           //ghost_cell is one behind
-           ghost_cell[dir]-=1;
-        }
-        
-        //high side
-        if(sgn==1)
-        {
-           //ghost_cell is i,j,k
-           //cell is one behind
-           cell_int[dir]-=1;
-        }
+        int gcell_adjust,cell_adjust;
 
+        //ghost_cell is one behind
+        gcell_adjust= (sgn==-1)?-1:0;
+        //cell is one behind
+        cell_adjust = (sgn ==1)?-1:0;
+
+        ghost_cell[dir]+=gcell_adjust;
+        cell_int[dir]+=cell_adjust;
+        
         if(sgn == -1) 
         { // lo sides
             robin_a(ghost_cell) = 1.0;
@@ -164,6 +158,7 @@ namespace plasmachem_transport
     void compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
+                     Array4<Real> const& efield,
                      Array4<Real> const& vel,
                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                      GpuArray<Real, AMREX_SPACEDIM> prob_hi,
@@ -182,9 +177,10 @@ namespace plasmachem_transport
         zlen=prob_hi[2]-prob_lo[2];
 
 
-        IntVect left(i, j, k);
-        IntVect right(i, j, k);
-        left[dir] -= 1;
+        IntVect face(i, j, k);
+        IntVect leftcell(i, j, k);
+        IntVect rightcell(i, j, k);
+        leftcell[dir] -= 1;
 
         maxlen=std::max(xlen,std::max(ylen,zlen));
 
@@ -203,14 +199,23 @@ namespace plasmachem_transport
               vel(i,j,k,S1_ID)=0.0;
               }*/
             //else
-            amrex::Real mu_left = mobility(left[0],left[1],left[2],specid,phi,prob_lo,
+            amrex::Real mu_left = mobility(specid,phi(leftcell,ETEMP_ID),
+                                           phi(leftcell,EFX_ID),
+                                           phi(leftcell,EFY_ID),
+                                           phi(leftcell,EFZ_ID),
+                                           prob_lo,
                                            prob_hi,dx,time,prob_parm,Tg,Pg);
 
-            amrex::Real mu_right = mobility(right[0],right[1],right[2],specid,phi,prob_lo,
+            amrex::Real mu_right = mobility(specid,phi(rightcell,ETEMP_ID),
+                                            phi(rightcell,EFX_ID),
+                                            phi(rightcell,EFY_ID),
+                                            phi(rightcell,EFZ_ID),
+                                            prob_lo,
                                             prob_hi,dx,time,prob_parm,Tg,Pg);
 
             amrex::Real mu_face = 0.5*(mu_left+mu_right);
-            amrex::Real Efld_face = 0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
+            //amrex::Real Efld_face = 0.5*(phi(leftcell,EFX_ID+dir)+phi(rightcell,EFX_ID+dir));
+            amrex::Real Efld_face = efield(face);
             vel(i,j,k) = mu_face*Efld_face;
         }
     }

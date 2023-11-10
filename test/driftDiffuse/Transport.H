@@ -11,9 +11,9 @@ using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int i, int j, int k,
-                         int specid,
-                         Array4<Real> const& phi,
+    amrex::Real mobility(int specid,
+                         Real Te, Real efield_x,
+                         Real efield_y,Real efield_z,
                          GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                          GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                          GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -26,9 +26,9 @@ namespace plasmachem_transport
     }
     
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int i, int j, int k,
-                                int specid,
-                                Array4<Real> const& phi,
+    amrex::Real diffusion_coeff(int specid,
+                                Real Te, Real efield_x,
+                                Real efield_y,Real efield_z,
                                 GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                                 GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                                 GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -183,6 +183,7 @@ namespace plasmachem_transport
     void compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
+                     Array4<Real> const& efield,
                      Array4<Real> const& vel,
                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                      GpuArray<Real, AMREX_SPACEDIM> prob_hi,
@@ -201,9 +202,10 @@ namespace plasmachem_transport
         zlen=prob_hi[2]-prob_lo[2];
 
 
-        IntVect left(i, j, k);
-        IntVect right(i, j, k);
-        left[dir] -= 1;
+        IntVect face(i, j, k);
+        IntVect leftcell(i, j, k);
+        IntVect rightcell(i, j, k);
+        leftcell[dir] -= 1;
 
         maxlen=std::max(xlen,std::max(ylen,zlen));
 
@@ -215,8 +217,7 @@ namespace plasmachem_transport
 
         if(bigdir==dir && specid==S1_ID)
         {
-            vel(i,j,k)
-            =0.5*(phi(left,EFX_ID+dir)+phi(right,EFX_ID+dir));
+            vel(i,j,k)=efield(face);
         }
     }
 }

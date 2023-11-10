@@ -149,6 +149,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         amrex::Copy(potential[ilev], Sborder[ilev], POT_ID, 0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
+        amrex::MultiFab::Copy(solution[ilev], potential[ilev], 0, 0, 1, 0);
         rhs[ilev].setVal(0.0);
         acoeff[ilev].setVal(0.0);
 
