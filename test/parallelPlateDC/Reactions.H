@@ -62,7 +62,7 @@ namespace plasmachem_reactions
         amrex::Real ri=0.0;
         amrex::Real Eiri=0.0;
         
-        amrex::Real Ei           = -15.578*ECHARGE; //converting eV to J
+        amrex::Real Ei           = -24.0*ECHARGE; //converting eV to J
         amrex::Real k_arrh       = 2.5e-12;
         amrex::Real T_arrh       = 278508.0;
         amrex::Real N=Pg/K_B/Tg;

@@ -46,6 +46,11 @@ void Vidyut::Evolve()
         int num_grow=2;
 
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
+
+        //face centered efield and electron density gradient
+        Vector< Array<MultiFab,AMREX_SPACEDIM> > efield_fc(finest_level+1);
+        Vector< Array<MultiFab,AMREX_SPACEDIM> > gradne_fc(finest_level+1);
+        Vector< Array<MultiFab,AMREX_SPACEDIM> > grad_fc(finest_level+1);
         Vector<MultiFab> expl_src(finest_level+1);
         Vector<MultiFab> Sborder(finest_level+1);
 
@@ -71,15 +76,25 @@ void Vidyut::Evolve()
                 {
                     BoxArray ba = grids[lev];
                     ba.surroundingNodes(idim);
+
                     flux[lev][idim].define(ba, dmap[lev], 1, 0);
                     flux[lev][idim].setVal(0.0);
+                    
+                    efield_fc[lev][idim].define(ba, dmap[lev], 1, 0);
+                    efield_fc[lev][idim].setVal(0.0);
+                    
+                    gradne_fc[lev][idim].define(ba, dmap[lev], 1, 0);
+                    gradne_fc[lev][idim].setVal(0.0);
+                    
+                    grad_fc[lev][idim].define(ba, dmap[lev], 1, 0);
+                    grad_fc[lev][idim].setVal(0.0);
                 }
                 expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
                 expl_src[lev].setVal(0.0);
             }
         }
 
-        solve_potential(cur_time, Sborder, pot_bc_lo,pot_bc_hi);
+        solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi, efield_fc);
         
         // note that phi_new is updated instead of sborder
         // so older potential and efield are used as opposed to new ones
@@ -89,8 +104,8 @@ void Vidyut::Evolve()
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
           }*/
 
-        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, expl_src, cur_time);
-        implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi);
+        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, efield_fc, expl_src, cur_time);
+        implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
 
         /*for(int lev=0;lev<=finest_level;lev++)
           {
@@ -99,14 +114,15 @@ void Vidyut::Evolve()
 
         if(elecenergy_solve)
         {
-            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, expl_src, cur_time);
+            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, efield_fc, expl_src, cur_time);
             for (int lev = 0; lev <= finest_level; lev++)
             {
-                compute_elecenergy_source(lev, num_grow, Sborder[lev],
+                compute_elecenergy_source(lev, num_grow, Sborder[lev], 
+                                          efield_fc[lev], gradne_fc[lev],
                                           expl_src[lev], cur_time, dt_common);
             }
             implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
-                                  expl_src,eenrg_bc_lo,eenrg_bc_hi);
+                                  expl_src,eenrg_bc_lo,eenrg_bc_hi, grad_fc);
 
             /*for(int lev=0;lev<=finest_level;lev++)
               {
@@ -116,17 +132,17 @@ void Vidyut::Evolve()
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
-            update_explsrc_at_all_levels(ind, Sborder, flux, expl_src, cur_time);
+            update_explsrc_at_all_levels(ind, Sborder, flux, efield_fc, expl_src, cur_time);
 
             //ions
             if(plasmachem::get_charge(ind)!=0.0)
             {
-                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi);
+                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi,grad_fc);
             }
             //neutrals
             else
             {
-                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi);
+                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi,grad_fc);
             }
 
             /*for(int lev=0;lev<=finest_level;lev++)
@@ -175,6 +191,9 @@ void Vidyut::Evolve()
 
         //local cleanup
         flux.clear();
+        efield_fc.clear();
+        gradne_fc.clear();
+        grad_fc.clear();
         expl_src.clear();
         Sborder.clear();
     }
