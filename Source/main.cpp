@@ -3,6 +3,7 @@
 #include <AMReX_ParallelDescriptor.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
+#include <PlasmaChem.H>
 
 using namespace amrex;
 

@@ -9,8 +9,9 @@
 
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <Transport.H>
-#include <Reactions.H>
+#include <PlasmaChem.H>
+// #include <Transport.H>
+// #include <Reactions.H>
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -149,7 +150,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         amrex::Copy(potential[ilev], Sborder[ilev], POT_ID, 0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
-        amrex::MultiFab::Copy(solution[ilev], potential[ilev], 0, 0, 1, 0);
+        // FIXME: for some reason copying in current soln breaks the solver...
+        // amrex::MultiFab::Copy(solution[ilev], potential[ilev], 0, 0, 1, 0);
         rhs[ilev].setVal(0.0);
         acoeff[ilev].setVal(0.0);
 
@@ -167,25 +169,27 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
 
         // fill cell centered diffusion coefficients and rhs
-        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            const Box& gbx = amrex::grow(bx, 1);
-            const auto dx = geom[ilev].CellSizeArray();
-            auto prob_lo = geom[ilev].ProbLoArray();
-            auto prob_hi = geom[ilev].ProbHiArray();
-            const Box& domain = geom[ilev].Domain();
+        if(do_spacechrg){
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                const Box& gbx = amrex::grow(bx, 1);
+                const auto dx = geom[ilev].CellSizeArray();
+                auto prob_lo = geom[ilev].ProbLoArray();
+                auto prob_hi = geom[ilev].ProbHiArray();
+                const Box& domain = geom[ilev].Domain();
 
-            Real time = current_time; // for GPU capture
+                Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
-            Array4<Real> rhs_arr = rhs[ilev].array(mfi);
+                Array4<Real> phi_arr = Sborder[ilev].array(mfi);
+                Array4<Real> rhs_arr = rhs[ilev].array(mfi);
 
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_reactions::compute_potential_source(i, j, k, phi_arr, 
-                                                               rhs_arr, prob_lo, prob_hi, 
-                                                               dx, time, *localprobparm);
-            });
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                    plasmachem_reactions::compute_potential_source(i, j, k, phi_arr, 
+                                                                   rhs_arr, prob_lo, prob_hi, 
+                                                                   dx, time, *localprobparm);
+                });
+            }
         }
 
         // average cell coefficients to faces, this includes boundary faces
@@ -274,7 +278,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
-        
         efield_fc[ilev][0].mult(-1.0,0,1);
         efield_fc[ilev][1].mult(-1.0,0,1);
         efield_fc[ilev][2].mult(-1.0,0,1);
@@ -282,6 +285,22 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&efield_fc[ilev][0], 
             &efield_fc[ilev][1], &efield_fc[ilev][2]};
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
+
+        // Calculate the reduced electric field
+        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            const Box& gbx = amrex::grow(bx, 1);
+
+            Array4<Real> s_arr = phi_new[ilev].array(mfi);
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                Real Ex = s_arr(i,j,k,EFX_ID);
+                Real Ey = s_arr(i,j,k,EFY_ID);
+                Real Ez = s_arr(i,j,k,EFZ_ID);
+                s_arr(i,j,k,REF_ID) = (pow(Ex*Ex + Ey*Ey + Ez*Ez, 0.5) / 2.446e25) / 1.0e-21;
+            });
+        }
     }
 
     //clean-up

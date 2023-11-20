@@ -9,8 +9,9 @@
 #include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <Transport.H>
-#include <Reactions.H>
+#include <PlasmaChem.H>
+// #include <Transport.H>
+// #include <Reactions.H>
 #include <compute_flux_3d.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -58,7 +59,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //Joule heating
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
-            amrex::Real charge=plasmachem::get_charge(EDN_ID)*ECHARGE;
+            amrex::Real charge=plasmachem::get_charge(E_IDX)*ECHARGE;
             amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
@@ -101,19 +102,19 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                     efield_z=0.5*(sborder_arr(lcell,EFZ_ID) 
                                   + sborder_arr(rcell,EFZ_ID));
 
-                    ne = 0.5*(sborder_arr(lcell,EDN_ID) 
-                              + sborder_arr(rcell,EDN_ID));
+                    ne = 0.5*(sborder_arr(lcell,E_IDX) 
+                              + sborder_arr(rcell,E_IDX));
 
                     efield_face=ef_arr[idim](face);
                     gradne_face=gradne_arr[idim](face);
 
-                    mu = plasmachem_transport::mobility(EDN_ID,etemp,
+                    mu = plasmachem_transport::mobility(E_IDX,etemp,
                                                         efield_x,efield_y,efield_z, 
                                                         prob_lo, prob_hi, dx, time, 
                                                         *localprobparm,captured_gastemp,
                                                         captured_gaspres);
 
-                    dcoeff = plasmachem_transport::diffusion_coeff(EDN_ID,etemp,
+                    dcoeff = plasmachem_transport::diffusion_coeff(E_IDX,etemp,
                                                                    efield_x,efield_y,efield_z, 
                                                                    prob_lo, prob_hi, dx, time, 
                                                                    *localprobparm,captured_gastemp,
@@ -143,14 +144,14 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                              current_density[1]*efield_fc[1]+
                              current_density[2]*efield_fc[2]);*/
             
-            amrex::Real nu = plasmachem_transport::collision_freq(i, j, k, EDN_ID,
+            amrex::Real nu = plasmachem_transport::collision_freq(i, j, k, E_IDX,
                                                                   sborder_arr,
                                                                   prob_lo, prob_hi, dx, time,
                                                                   *localprobparm,captured_gastemp,captured_gaspres);
 
             amrex::Real molwt_bg=plasmachem::get_bg_molwt(i, j, k, sborder_arr, *localprobparm);
 
-            //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID)/K_B;
+            //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,E_IDX)/K_B;
             amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
 
             amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
