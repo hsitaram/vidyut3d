@@ -14,6 +14,7 @@
 #define S1_ID 0
 #define S2_ID 1
 #define NUM_SPECIES 2
+#define NUM_ALL_SPECIES (NUM_SPECIES+1)
 
 using namespace amrex;
 

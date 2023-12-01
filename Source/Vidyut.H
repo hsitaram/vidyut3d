@@ -80,7 +80,9 @@ public:
 
     void compute_dsdt(int lev, const int num_grow, int specid, 
                       MultiFab& Sborder, 
-        Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
+        Array<MultiFab,AMREX_SPACEDIM>& flux, 
+        MultiFab& rxn_src,
+        MultiFab& dsdt,
         Real time, Real dt);
 
     void solve_potential(Real current_time, Vector<MultiFab>& Sborder, 
@@ -89,10 +91,14 @@ public:
 
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
+                                            Vector<MultiFab>& rxn_src, 
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time);
-
+    
+    void update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
+                                            Vector<MultiFab>& rxn_src, 
+                                            amrex::Real cur_time);
     
     void implicit_solve_scalar(Real current_time,Real dt,int spec_id,
             Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl,
@@ -101,6 +107,7 @@ public:
 
     void compute_elecenergy_source(int lev, const int num_grow, 
                             MultiFab& Sborder, 
+                            MultiFab& rxnsrc, 
                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
@@ -248,6 +255,8 @@ private:
 
     // utility to skip to next line in Header
     static void GotoNextLine(std::istream& is);
+
+    Vector<int> bg_specid_list{-1};
 
 };
 

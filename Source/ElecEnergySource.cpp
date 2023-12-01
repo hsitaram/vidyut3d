@@ -16,6 +16,7 @@
 
 void Vidyut::compute_elecenergy_source(int lev, const int num_grow, 
                             MultiFab& Sborder, 
+                            MultiFab& rxnsrc, 
                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
@@ -41,6 +42,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
         Array4<Real> sborder_arr = Sborder.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
         Array4<Real> phi_arr = phi_new[lev].array(mfi);
+        Array4<Real> rxn_arr = rxnsrc.array(mfi);
         
         GpuArray<Array4<Real>, AMREX_SPACEDIM> 
         ef_arr{AMREX_D_DECL(efield[0].array(mfi), 
@@ -157,18 +159,20 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
 
             //electron energy loss is -ve
-            amrex::Real elec_inelastic_coll_term =  plasmachem_reactions::compute_electron_inelastic_heating
+            //last component in rxn_arr is the electron energy source
+            //amrex::Real elec_inelastic_coll_term = 
+            /*plasmachem_reactions::compute_electron_inelastic_heating
             (i, j, k, 
              sborder_arr, 
              prob_lo, prob_hi, dx, time, 
              *localprobparm,captured_gastemp,
-             captured_gaspres);
+             captured_gaspres);*/
 
-            dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term + elec_inelastic_coll_term);
+            dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term);
             //dsdt_arr(i, j, k) += elec_jheat;
             //
             phi_arr(i,j,k,EJH_ID)=elec_jheat;
-            phi_arr(i,j,k,EIH_ID)=elec_inelastic_coll_term;
+            phi_arr(i,j,k,EIH_ID)=rxn_arr(i,j,k,EEN_ID); //EEN_ID is same as NUM_SPECIES+1
             phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
         });
     }

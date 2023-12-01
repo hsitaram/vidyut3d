@@ -283,6 +283,7 @@ void Vidyut::ReadParameters()
 
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);
+        pp.queryarr("bg_species_ids",bg_specid_list);
     }
 }
 

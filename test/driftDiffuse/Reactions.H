@@ -11,9 +11,9 @@ using namespace amrex;
 namespace plasmachem_reactions
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-        amrex::Real compute_react_source(int i, int j, int k,
-                int specid,
+        void compute_react_source(int i, int j, int k,
                 Array4<Real> const& phi,
+                Array4<Real> const& rxnsrc,
                 GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                 GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                 GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -21,16 +21,13 @@ namespace plasmachem_reactions
                 ProbParm const& prob_parm,
                 amrex::Real Tg,amrex::Real Pg)
         {
-            amrex::Real src=0.0;
-            if(specid==S1_ID)
+            //including elec energy
+            for(int sp=0;sp<(NUM_ALL_SPECIES+1);sp++)
             {
-                src = prob_parm.r1;
+                rxnsrc(i,j,k,sp)=0.0;
             }
-            else 
-            {
-                src = prob_parm.r2;
-            }
-            return(src);
+            rxnsrc(i,j,k,S1_ID)=prob_parm.r1;
+            rxnsrc(i,j,k,S2_ID)=prob_parm.r2;
         }
 
     AMREX_GPU_DEVICE AMREX_INLINE
@@ -44,20 +41,6 @@ namespace plasmachem_reactions
                 ProbParm const& prob_parm)
         {
             source(i,j,k)=0.0;
-        }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
-        amrex::Real compute_electron_inelastic_heating(int i, int j, int k,
-                Array4<Real> const& phi,
-                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                GpuArray<Real, AMREX_SPACEDIM> dx,
-                const Real time,
-                ProbParm const& prob_parm,
-                amrex::Real Tg,
-                amrex::Real pres)
-        {
-            return(0.0);
         }
 }
 #endif

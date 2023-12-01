@@ -15,7 +15,9 @@
 #include <AMReX_MLABecLaplacian.H>
 
 void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
-                            Array<MultiFab,AMREX_SPACEDIM>& flux, MultiFab& dsdt,
+                            Array<MultiFab,AMREX_SPACEDIM>& flux, 
+                            MultiFab& rxn_src,
+                            MultiFab& dsdt,
                             Real time, Real dt)
 {
     const auto dx = geom[lev].CellSizeArray();
@@ -34,6 +36,7 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
         const Box& gbx = amrex::grow(bx, 1);
 
         Array4<Real> sborder_arr = Sborder.array(mfi);
+        Array4<Real> rxn_arr = rxn_src.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
 
         GpuArray<Array4<Real>, AMREX_SPACEDIM> flux_arr{
@@ -43,20 +46,17 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-            amrex::Real reactsource=plasmachem_reactions::compute_react_source
-            (i, j, k, captured_specid, sborder_arr, 
-            prob_lo, prob_hi, dx, time, *localprobparm,captured_gastemp,
-            captured_gaspres);
-                
             dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
             + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
-            + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] + reactsource;
+            + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] 
+            + rxn_arr(i,j,k,captured_specid);
         });
     }
 }
 
 void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
+                                            Vector<MultiFab>& rxn_src, 
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
                                             amrex::Real cur_time)
@@ -89,15 +89,57 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     {
         //FIXME: need to avoid this fillpatch
         compute_dsdt(lev, Sborder[lev].nGrow(), specid, Sborder[lev], 
-                     flux[lev], expl_src[lev], 
+                     flux[lev], rxn_src[lev], expl_src[lev], 
                      cur_time, dt[lev]);
     }
 }
 
+void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
+                                            Vector<MultiFab>& rxn_src, 
+                                            amrex::Real cur_time)
+{
+    amrex::Real time = cur_time;
+    ProbParm const* localprobparm = d_prob_parm;
+    
+    // Zero out reactive source MFs
+    for(int lev=0; lev <= finest_level; lev++)
+    {
+        rxn_src[lev].setVal(0.0);
+    }
+
+    for(int lev=0;lev<=finest_level;lev++)
+    {
+        amrex::Real captured_gastemp=gas_temperature;
+        amrex::Real captured_gaspres=gas_pressure;
+        const auto dx = geom[lev].CellSizeArray();
+        auto prob_lo = geom[lev].ProbLoArray();
+        auto prob_hi = geom[lev].ProbHiArray();
+
+        for (MFIter mfi(rxn_src[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            const Box& gbx = amrex::grow(bx, 1);
+
+            Array4<Real> sborder_arr = Sborder[lev].array(mfi);
+            Array4<Real> rxn_arr = rxn_src[lev].array(mfi);
+
+            // update residual
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+
+                plasmachem_reactions::compute_react_source
+                (i, j, k, sborder_arr, rxn_arr,
+                 prob_lo, prob_hi, dx, time, *localprobparm,
+                 captured_gastemp,
+                 captured_gaspres);
+            });
+        }
+    }
+}
+
 void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
-                                             Array<MultiFab,AMREX_SPACEDIM>& flux, 
-                                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
-                                             Real time,int specid)
+                                           Array<MultiFab,AMREX_SPACEDIM>& flux, 
+                                           Array<MultiFab,AMREX_SPACEDIM>& efield, 
+                                           Real time,int specid)
 {
     const auto dx = geom[lev].CellSizeArray();
     auto prob_lo = geom[lev].ProbLoArray();
@@ -143,10 +185,10 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
             GpuArray<Array4<Real>, AMREX_SPACEDIM> 
             flux_arr{AMREX_D_DECL(flux[0].array(mfi), 
                                   flux[1].array(mfi), flux[2].array(mfi))};
-            
+
             GpuArray<Array4<Real>, AMREX_SPACEDIM> 
             efield_arr{AMREX_D_DECL(efield[0].array(mfi), 
-                                  efield[1].array(mfi), efield[2].array(mfi))};
+                                    efield[1].array(mfi), efield[2].array(mfi))};
 
             velx_fab.setVal<RunOn::Device>(0.0);
             vely_fab.setVal<RunOn::Device>(0.0);
@@ -189,9 +231,9 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
 }
 
 void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id, 
-                                      Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
-                                      Vector<int>& bc_lo, Vector<int>& bc_hi,
-                                      Vector<Array<MultiFab,AMREX_SPACEDIM>>& grad_fc)
+                                   Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
+                                   Vector<int>& bc_lo, Vector<int>& bc_hi,
+                                   Vector<Array<MultiFab,AMREX_SPACEDIM>>& grad_fc)
 {
     BL_PROFILE("Vidyut::implicit_solve_species(" + std::to_string( spec_id ) + ")");
 
@@ -360,15 +402,15 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             Array4<Real> bcoeff_arr = bcoeff[ilev].array(mfi);
 
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                
+
                 //FIXME:may be use updated efields here
                 bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(captured_spec_id, 
                                                                         sb_arr(i,j,k,ETEMP_ID), 
                                                                         sb_arr(i,j,k,EFX_ID), 
                                                                         sb_arr(i,j,k,EFY_ID), 
                                                                         sb_arr(i,j,k,EFZ_ID), 
-                                            prob_lo,prob_hi, dx, time, *localprobparm,
-                                            captured_gastemp,captured_gaspres);
+                                                                        prob_lo,prob_hi, dx, time, *localprobparm,
+                                                                        captured_gastemp,captured_gaspres);
 
             });
         }
@@ -490,12 +532,12 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     if(electron_energy_flag)
     {
         /*for(int ilev=0; ilev <= finest_level; ilev++)
-        {
-           phi_new[ilev].setVal(1.0,ETEMP_ID,1);
-           amrex::MultiFab::Multiply(phi_new[ilev],solution[ilev],EEN_ID, ETEMP_ID, 1, 0);
-           amrex::MultiFab::Divide(phi_new[ilev],phi_new[ilev],EDN_ID, ETEMP_ID, 1, 0);
-           phi_new[ilev].mult(twothird/K_B, ETEMP_ID, 1);
-        }*/
+          {
+          phi_new[ilev].setVal(1.0,ETEMP_ID,1);
+          amrex::MultiFab::Multiply(phi_new[ilev],solution[ilev],EEN_ID, ETEMP_ID, 1, 0);
+          amrex::MultiFab::Divide(phi_new[ilev],phi_new[ilev],EDN_ID, ETEMP_ID, 1, 0);
+          phi_new[ilev].mult(twothird/K_B, ETEMP_ID, 1);
+          }*/
 
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {

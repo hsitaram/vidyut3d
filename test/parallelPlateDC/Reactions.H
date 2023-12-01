@@ -10,9 +10,9 @@ using namespace amrex;
 namespace plasmachem_reactions
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real compute_react_source(int i, int j, int k,
-                              int specid,
+    void  compute_react_source(int i, int j, int k,
                               Array4<Real> const& phi,
+                              Array4<Real> const& rxnsrc,
                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
                               GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -20,18 +20,23 @@ namespace plasmachem_reactions
                               ProbParm const& prob_parm,
                               amrex::Real Tg, amrex::Real Pg)
     {
-        amrex::Real src=0.0;
-        if(specid==EDN_ID || specid==I_ID)
-        {
+            //including elec energy
+            for(int sp=0;sp<(NUM_ALL_SPECIES+1);sp++)
+            {
+                rxnsrc(i,j,k,sp)=0.0;
+            }
             amrex::Real k_arrh        = 2.5e-12;
             amrex::Real T_arrh       = 278508.0;
             amrex::Real N=Pg/K_B/Tg;
             amrex::Real electemp=phi(i,j,k,ETEMP_ID);
+
             //amrex::Print()<<"N,electemp,eden="<<N<<"\t"<<
             //electemp<<"\t"<<phi(i,j,k,EDN_ID)<<"\n";
-            src=k_arrh*std::exp(-T_arrh/electemp)*N*phi(i,j,k,EDN_ID);
-        }
-        return(src);
+            
+            amrex::Real src=k_arrh*std::exp(-T_arrh/electemp)*N*phi(i,j,k,EDN_ID);
+            rxnsrc(i,j,k,EDN_ID)=src;
+            rxnsrc(i,j,k,I_ID)=src;
+            rxnsrc(i,j,k,EEN_ID)=-24.0*ECHARGE*src;
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
@@ -46,30 +51,6 @@ namespace plasmachem_reactions
     {
         source(i,j,k)=(phi(i,j,k,EDN_ID)-phi(i,j,k,I_ID))
         *(ECHARGE/EPS0)*prob_parm.ns/prob_parm.phis;
-    }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real compute_electron_inelastic_heating(int i, int j, int k,
-                                                   Array4<Real> const& phi,
-                                                   GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                                                   GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                                                   GpuArray<Real, AMREX_SPACEDIM> dx,
-                                                   const Real time,
-                                                   ProbParm const& prob_parm,
-                                                   amrex::Real Tg,
-                                                   amrex::Real Pg)
-    {
-        amrex::Real ri=0.0;
-        amrex::Real Eiri=0.0;
-        
-        amrex::Real Ei           = -24.0*ECHARGE; //converting eV to J
-        amrex::Real k_arrh       = 2.5e-12;
-        amrex::Real T_arrh       = 278508.0;
-        amrex::Real N=Pg/K_B/Tg;
-        amrex::Real electemp=phi(i,j,k,ETEMP_ID);
-        ri=k_arrh*std::exp(-T_arrh/electemp)*N*phi(i,j,k,EDN_ID);
-        Eiri=Ei*ri;
-        return(Eiri);
     }
 }
 #endif
