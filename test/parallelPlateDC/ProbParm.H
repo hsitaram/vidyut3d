@@ -17,5 +17,6 @@ struct ProbParm
 
     amrex::Real ns=1.0;
     amrex::Real phis=1.0;
+    amrex::Real bg_gasden=1.0;
 };
 #endif

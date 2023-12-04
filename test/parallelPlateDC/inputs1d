@@ -70,3 +70,4 @@ prob.potscale=1.0
 
 vidyut.gas_pressure=50.0
 vidyut.gas_temperature=300.0
+vidyut.bg_gas_id=0
