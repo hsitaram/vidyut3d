@@ -9,9 +9,7 @@
 #include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <Transport.H>
-#include <Reactions.H>
-#include <compute_flux_3d.H>
+#include <BoundaryConditions.H>
 #include <AMReX_MLABecLaplacian.H>
 
 // advance solution to final time

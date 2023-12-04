@@ -9,9 +9,11 @@
 #include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <Transport.H>
-#include <Reactions.H>
-#include <compute_flux_3d.H>
+#include <BoundaryConditions.H>
+#include <UserSources.H>
+#include <reaction_source.H>
+#include <UserSources.H>
+#include <compute_explicit_flux.H>
 #include <AMReX_MLABecLaplacian.H>
 
 void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
@@ -126,7 +128,12 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
             // update residual
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                plasmachem_reactions::compute_react_source
+                compute_react_source
+                (i, j, k, sborder_arr, rxn_arr,
+                 captured_gastemp,
+                 captured_gaspres);
+                
+                user_sources::add_user_react_sources
                 (i, j, k, sborder_arr, rxn_arr,
                  prob_lo, prob_hi, dx, time, *localprobparm,
                  captured_gastemp,
@@ -404,13 +411,14 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
                 //FIXME:may be use updated efields here
-                bcoeff_arr(i,j,k)=plasmachem_transport::diffusion_coeff(captured_spec_id, 
-                                                                        sb_arr(i,j,k,ETEMP_ID), 
-                                                                        sb_arr(i,j,k,EFX_ID), 
-                                                                        sb_arr(i,j,k,EFY_ID), 
-                                                                        sb_arr(i,j,k,EFZ_ID), 
-                                                                        prob_lo,prob_hi, dx, time, *localprobparm,
-                                                                        captured_gastemp,captured_gaspres);
+                    amrex::Real efield_mag=std::sqrt(std::pow(sb_arr(i,j,k,EFX_ID),2.0)+
+                                                     std::pow(sb_arr(i,j,k,EFY_ID),2.0)+
+                                                     std::pow(sb_arr(i,j,k,EFZ_ID),2.0));
+                
+                    bcoeff_arr(i,j,k)=plasmachem::diffusion_coeff(captured_spec_id, 
+                                                              sb_arr(i,j,k,ETEMP_ID),
+                                                              efield_mag, 
+                                                              captured_gastemp,captured_gaspres);
 
             });
         }

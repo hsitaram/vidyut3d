@@ -1,5 +1,5 @@
-#ifndef _TRANSPORT_H_
-#define _TRANSPORT_H_
+#ifndef _BOUNDARYCONDITIONS_H_
+#define _BOUNDARYCONDITIONS_H_
 
 #include <AMReX_Geometry.H>
 #include <AMReX_FArrayBox.H>
@@ -9,97 +9,7 @@
 using namespace amrex;
 namespace plasmachem_transport
 {
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int specid,
-                         Real Te, Real efield_x,
-                         Real efield_y,Real efield_z,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                         GpuArray<Real, AMREX_SPACEDIM> dx,
-                         const Real time,
-                         ProbParm const& prob_parm,
-                         Real Tg, Real Pg)
-
-    {
-        //mobility is scaled by charge
-        amrex::Real mob=0.0;
-        amrex::Real elecmob=-20.0;
-        if(specid==EDN_ID)
-        {
-            mob=elecmob;
-        }
-        if(specid==I_ID)
-        {
-            mob=0.2;
-            //mob=0.0;
-        }
-        if(specid==EEN_ID)
-        {
-            mob=fivebythree*elecmob;
-        }
-
-        return(mob);
-    }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int specid,
-                                Real Te, Real efield_x,
-                                Real efield_y,Real efield_z,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                                GpuArray<Real, AMREX_SPACEDIM> dx,
-                                const Real time,
-                                ProbParm const& prob_parm,
-                                Real Tg, Real Pg)
-
-    {
-        amrex::Real dcoeff=0.0;
-        amrex::Real elecdcoeff=100.0;
-        if(specid==EDN_ID)
-        {
-            dcoeff=elecdcoeff;
-        }
-        if(specid==I_ID)
-        {
-            dcoeff=0.01;
-            //dcoeff=0.0;
-        }
-        if(specid==EEN_ID)
-        {
-            dcoeff=fivebythree*elecdcoeff;
-        }
-
-        return(dcoeff);
-    }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real collision_freq(int i, int j, int k,
-                               int specid,
-                               Array4<Real> const& phi,
-                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                               GpuArray<Real, AMREX_SPACEDIM> dx,
-                               const Real time,
-                               ProbParm const& prob_parm,
-                               Real Tg, Real Pg)
-
-    {
-        amrex::Real mu = mobility(specid,phi(i,j,k,ETEMP_ID),
-                                   phi(i,j,k,EFX_ID),
-                                   phi(i,j,k,EFY_ID),
-                                   phi(i,j,k,EFZ_ID),
-                                   prob_lo,
-                                   prob_hi,dx,time,prob_parm,Tg,Pg);
-
-        amrex::Real mass = plasmachem::get_molwt(specid); 
-        amrex::Real Z = plasmachem::get_charge(specid); 
-
-        amrex::Real collfreq = Z*ECHARGE/mass/mu;
-
-        return(collfreq);
-    }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
     void potential_bc(int i, int j, int k,
                       int dir, int sgn,
                       Array4<Real> const& phi,
@@ -158,7 +68,7 @@ namespace plasmachem_transport
         } 
     }
 
-    AMREX_GPU_DEVICE AMREX_INLINE
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn, 
                     int spec_id, Array4<Real> const &phi, 
                     Array4<Real> const& bc_arr,
@@ -206,13 +116,12 @@ namespace plasmachem_transport
         if(spec_id==EDN_ID)
         {
             amrex::Real ne=phi(cell_int,EDN_ID);
+            amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
+                                            std::pow(phi(cell_int,EFY_ID),2.0)+
+                                            std::pow(phi(cell_int,EFZ_ID),2.0));
             
-            amrex::Real D=diffusion_coeff(spec_id, phi(cell_int,ETEMP_ID),
-                                          phi(cell_int,EFX_ID),
-                                          phi(cell_int,EFY_ID),
-                                          phi(cell_int,EFZ_ID),
-                                          prob_lo,prob_hi, dx, 
-                                          time, prob_parm,
+            amrex::Real D=plasmachem::diffusion_coeff(spec_id, phi(cell_int,ETEMP_ID),
+                                          efieldmag,
                                           Tg,Pg);
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
@@ -230,17 +139,16 @@ namespace plasmachem_transport
         if(spec_id==EEN_ID)
         {
             amrex::Real ne=phi(cell_int,EDN_ID);
+            amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
+                                            std::pow(phi(cell_int,EFY_ID),2.0)+
+                                            std::pow(phi(cell_int,EFZ_ID),2.0));
             
-            amrex::Real D=diffusion_coeff(spec_id, phi(cell_int,ETEMP_ID),
-                                          phi(cell_int,EFX_ID),
-                                          phi(cell_int,EFY_ID),
-                                          phi(cell_int,EFZ_ID),
-                                          prob_lo,prob_hi, dx, 
-                                          time, prob_parm,
-                                          Tg,Pg);
-
             amrex::Real Te=phi(cell_int,ETEMP_ID);
-
+            
+            amrex::Real D=plasmachem::diffusion_coeff(spec_id, Te,
+                                          efieldmag,
+                                          Tg,Pg);
+            
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
             
             amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*Real(sgn);
@@ -249,8 +157,7 @@ namespace plasmachem_transport
 
     }
 
-
-    AMREX_GPU_DEVICE AMREX_INLINE
+    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
     void compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
@@ -274,18 +181,21 @@ namespace plasmachem_transport
         int dischargedir=0;
 
         vel(face)=0.0;
-        amrex::Real mu_leftcell = mobility(specid,phi(leftcell,ETEMP_ID),
-                                        phi(leftcell,EFX_ID),
-                                        phi(leftcell,EFY_ID),
-                                        phi(leftcell,EFZ_ID),
-                                        prob_lo,prob_hi,dx,time,prob_parm,Tg,Pg);
+        amrex::Real efieldmag_L=std::sqrt(std::pow(phi(leftcell,EFX_ID),2.0)+
+                                        std::pow(phi(leftcell,EFY_ID),2.0)+
+                                        std::pow(phi(leftcell,EFZ_ID),2.0));
+        
+        amrex::Real efieldmag_R=std::sqrt(std::pow(phi(rightcell,EFX_ID),2.0)+
+                                        std::pow(phi(rightcell,EFY_ID),2.0)+
+                                        std::pow(phi(rightcell,EFZ_ID),2.0));
 
-        amrex::Real mu_rightcell = mobility(specid,phi(rightcell,ETEMP_ID),
-                                        phi(rightcell,EFX_ID),
-                                        phi(rightcell,EFY_ID),
-                                        phi(rightcell,EFZ_ID),
-                                        prob_lo,
-                                        prob_hi,dx,time,prob_parm,Tg,Pg);
+        amrex::Real mu_leftcell = plasmachem::mobility(specid,phi(leftcell,ETEMP_ID),
+                                           efieldmag_L,
+                                           Tg,Pg);
+
+        amrex::Real mu_rightcell = plasmachem::mobility(specid,phi(rightcell,ETEMP_ID),
+                                            efieldmag_R,
+                                            Tg,Pg);
 
         amrex::Real mu_face = 0.5*(mu_leftcell+mu_rightcell);
 
@@ -314,7 +224,7 @@ namespace plasmachem_transport
                     //Real iondriftvel = mu_face*0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
                     Real iondriftvel=driftvel;
                     vel(face)=(iondriftvel*outward_normal_sgn > 0)?iondriftvel:0.0;
-                    
+
                     //vel(face)=0.0;
                     //amrex::Print()<<"ion vel,sgn,face:"<<vel(face)<<"\t"<<outward_normal_sgn<<"\t"<<face<<"\n";
                 }

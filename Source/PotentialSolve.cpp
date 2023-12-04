@@ -8,9 +8,9 @@
 #include <AMReX_MLTensorOp.H>
 
 #include <Vidyut.H>
+#include <UserSources.H>
 #include <Chemistry.H>
-#include <Transport.H>
-#include <Reactions.H>
+#include <BoundaryConditions.H>
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -180,11 +180,27 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
             Array4<Real> phi_arr = Sborder[ilev].array(mfi);
             Array4<Real> rhs_arr = rhs[ilev].array(mfi);
-
+            
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_reactions::compute_potential_source(i, j, k, phi_arr, 
-                                                               rhs_arr, prob_lo, prob_hi, 
-                                                               dx, time, *localprobparm);
+
+                //include electrons
+                rhs_arr(i,j,k)=0.0;
+                for(int sp=0;sp<NUM_ALL_SPECIES;sp++)
+                {
+                    if(amrex::Math::abs(plasmachem::get_charge(sp)) > 0)
+                    {
+                       rhs_arr(i,j,k)+=plasmachem::get_charge(sp)*phi_arr(i,j,k,sp);
+                    }
+                }
+                //why minus sign?
+                //remember del.E = rho/eps0
+                //but E= -grad phi
+                //del^2 phi = -rho/eps0
+                rhs_arr(i,j,k)*=(-ECHARGE/EPS0);
+
+                user_sources::add_user_potential_sources(i, j, k, phi_arr, 
+                                                     rhs_arr, prob_lo, prob_hi, 
+                                                     dx, time, *localprobparm);
             });
         }
 
