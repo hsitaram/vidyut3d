@@ -10,8 +10,6 @@
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <PlasmaChem.H>
-// #include <Transport.H>
-// #include <Reactions.H>
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -227,23 +225,27 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                 if (bx.smallEnd(idim) == domain.smallEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+                        int domend = -1;
+                        amrex::Real app_voltage = get_applied_potential(time, domend);
                         plasmachem_transport::potential_bc(i, j, k, idim, -1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
                                                            prob_lo, prob_hi, dx, time, 
                                                            *localprobparm,captured_gastemp,
-                                                           captured_gaspres);
+                                                           captured_gaspres, app_voltage);
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+                        int domend = 1;
+                        amrex::Real app_voltage = get_applied_potential(time, domend);
                         plasmachem_transport::potential_bc(i, j, k, idim, +1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
                                                            prob_lo, prob_hi, dx, time,
                                                            *localprobparm,captured_gastemp,
-                                                           captured_gaspres);
+                                                           captured_gaspres, app_voltage);
                     });
                 }
             }
@@ -298,7 +300,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                 Real Ex = s_arr(i,j,k,EFX_ID);
                 Real Ey = s_arr(i,j,k,EFY_ID);
                 Real Ez = s_arr(i,j,k,EFZ_ID);
-                s_arr(i,j,k,REF_ID) = (pow(Ex*Ex + Ey*Ey + Ez*Ez, 0.5) / 2.446e25) / 1.0e-21;
+                s_arr(i,j,k,REF_ID) = (pow(Ex*Ex + Ey*Ey + Ez*Ez, 0.5) / gas_num_dens) / 1.0e-21;
             });
         }
     }
@@ -312,4 +314,24 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     robin_a.clear();
     robin_b.clear();
     robin_f.clear();
+}
+
+amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
+{
+    ProbParm const* localprobparm = d_prob_parm;
+    Real voltage;
+    Real voltage_amp = (domain_end == -1) ? voltage_amp_1:voltage_amp_2;
+    if(voltage_profile == 1) {  // Sinusoidal pulse shape
+        voltage = sin(2.0*PI*voltage_freq*current_time)*voltage_amp;
+    } else if (voltage_profile == 2) {    // Single triangular pulse
+        if(current_time <= voltage_center) {
+            voltage = (voltage_center - current_time < voltage_dur/2.0) ? (1.0 - (voltage_center - current_time)/(voltage_dur/2.0))*voltage_amp:0.0;
+        } else {
+            voltage = (current_time - voltage_center < voltage_dur/2.0) ? (1.0 - (current_time - voltage_center)/(voltage_dur/2.0))*voltage_amp:0.0;
+        }
+    } else {
+        voltage = (domain_end==-1) ? localprobparm->V1:localprobparm->V2;
+    }
+    
+    return voltage;
 }

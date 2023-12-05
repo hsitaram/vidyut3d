@@ -19,6 +19,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                             MultiFab& Sborder, 
                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
+                            MultiFab& rxnsrc, 
                             MultiFab& dsdt,
                             Real time, Real dt)
 {
@@ -42,6 +43,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
         Array4<Real> sborder_arr = Sborder.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
         Array4<Real> phi_arr = phi_new[lev].array(mfi);
+        Array4<Real> rxn_arr = rxnsrc.array(mfi);
         
         GpuArray<Array4<Real>, AMREX_SPACEDIM> 
         ef_arr{AMREX_D_DECL(efield[0].array(mfi), 
@@ -59,7 +61,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //Joule heating
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
-            amrex::Real charge=plasmachem::get_charge(E_IDX)*ECHARGE;
+            // amrex::Real charge=plasmachem::get_charge(E_IDX)*ECHARGE;
+            amrex::Real charge=ECHARGE;
             amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
@@ -108,13 +111,13 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                     efield_face=ef_arr[idim](face);
                     gradne_face=gradne_arr[idim](face);
 
-                    mu = plasmachem_transport::mobility(E_IDX,etemp,
+                    mu = (const_ele_trans) ? ele_mob/gas_num_dens:plasmachem_transport::mobility(E_IDX,etemp,
                                                         efield_x,efield_y,efield_z, 
                                                         prob_lo, prob_hi, dx, time, 
                                                         *localprobparm,captured_gastemp,
                                                         captured_gaspres);
 
-                    dcoeff = plasmachem_transport::diffusion_coeff(E_IDX,etemp,
+                    dcoeff = (const_ele_trans) ? ele_diff/gas_num_dens:plasmachem_transport::diffusion_coeff(E_IDX,etemp,
                                                                    efield_x,efield_y,efield_z, 
                                                                    prob_lo, prob_hi, dx, time, 
                                                                    *localprobparm,captured_gastemp,
@@ -144,33 +147,34 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                              current_density[1]*efield_fc[1]+
                              current_density[2]*efield_fc[2]);*/
             
-            amrex::Real nu = plasmachem_transport::collision_freq(i, j, k, E_IDX,
-                                                                  sborder_arr,
-                                                                  prob_lo, prob_hi, dx, time,
-                                                                  *localprobparm,captured_gastemp,captured_gaspres);
+            // amrex::Real nu = plasmachem_transport::collision_freq(i, j, k, E_IDX,
+            //                                                       sborder_arr,
+            //                                                       prob_lo, prob_hi, dx, time,
+            //                                                       *localprobparm,captured_gastemp,captured_gaspres);
 
-            amrex::Real molwt_bg=plasmachem::get_bg_molwt(i, j, k, sborder_arr, *localprobparm);
+            // amrex::Real molwt_bg=plasmachem::get_bg_molwt(i, j, k, sborder_arr, *localprobparm);
 
-            //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,E_IDX)/K_B;
-            amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
+            // //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,E_IDX)/K_B;
+            // amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
 
-            amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
-            * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
+            // amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
+            // * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
 
-            //electron energy loss is -ve
-            amrex::Real elec_inelastic_coll_term =  plasmachem_reactions::compute_electron_inelastic_heating
-            (i, j, k, 
-             sborder_arr, 
-             prob_lo, prob_hi, dx, time, 
-             *localprobparm,captured_gastemp,
-             captured_gaspres);
+            // //electron energy loss is -ve
+            // amrex::Real elec_inelastic_coll_term =  plasmachem_reactions::compute_electron_inelastic_heating
+            // (i, j, k, 
+            //  sborder_arr, 
+            //  prob_lo, prob_hi, dx, time, 
+            //  *localprobparm,captured_gastemp,
+            //  captured_gaspres);
 
-            dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term + elec_inelastic_coll_term);
+            dsdt_arr(i, j, k) += (elec_jheat + rxn_arr(i,j,k,NUM_SPECIES));
             //dsdt_arr(i, j, k) += elec_jheat;
             //
+            // TODO: Adjust reactive source calculations to split into elastic/inelastic
             phi_arr(i,j,k,EJH_ID)=elec_jheat;
-            phi_arr(i,j,k,EIH_ID)=elec_inelastic_coll_term;
-            phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
+            // phi_arr(i,j,k,EIH_ID)=elec_inelastic_coll_term;
+            // phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
         });
     }
 }

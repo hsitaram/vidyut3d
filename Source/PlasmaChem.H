@@ -71,7 +71,8 @@ namespace plasmachem_transport
                       GpuArray<Real, AMREX_SPACEDIM> dx,
                       const Real time,
                       ProbParm const& prob_parm,
-                      amrex::Real Tg,amrex::Real Pg);
+                      amrex::Real Tg,amrex::Real Pg,
+                      amrex::Real voltage);
 
     // AMREX_GPU_DEVICE AMREX_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn,

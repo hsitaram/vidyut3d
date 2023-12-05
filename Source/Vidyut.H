@@ -108,8 +108,11 @@ public:
                             MultiFab& Sborder, 
                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
+                            MultiFab& rxnsrc,
                             MultiFab& dsdt,
                             Real time, Real dt);
+    
+    amrex::Real get_applied_potential(Real current_time, int domain_end);
 
     // compute dt from CFL considerations
     Real EstTimeStep(int lev);
@@ -175,10 +178,12 @@ public:
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
     amrex::Real min_species_density=1e-20;
-    amrex::Real min_electron_temp=0.1*eV;
+    // amrex::Real min_electron_temp=0.1*eV;
+    amrex::Real min_electron_temp=300.0;
 
     amrex::Real gas_pressure=101325.0;
     amrex::Real gas_temperature=300.0;
+    amrex::Real gas_num_dens=2.446e25;
 
     amrex::Vector<std::string> plasma_param_names;
     amrex::Vector<std::string> allvarnames;
@@ -197,6 +202,19 @@ public:
     int do_reactions=1;
     int do_transport=1;
     int do_spacechrg=1;
+
+    // Transport vars
+    int const_ele_trans=0;
+    amrex::Real ele_mob=1.0e24;  // Normalized (1/m/V/s)
+    amrex::Real ele_diff=1.0e24; // Normalized (1/m/s)
+
+    // Voltage options
+    int voltage_profile=0;
+    amrex::Real voltage_amp_1=0.0;
+    amrex::Real voltage_amp_2=0.0;
+    amrex::Real voltage_freq=1.0; 
+    amrex::Real voltage_dur=0.0; 
+    amrex::Real voltage_center=0.0; 
 
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
@@ -217,6 +235,9 @@ public:
 
     // Electron species index
     int E_IDX = 0;
+
+    // Moitor file options
+    int monitor_file_int = -1;
 
 private:
     ////////////////
@@ -260,6 +281,9 @@ private:
 
     // utility to skip to next line in Header
     static void GotoNextLine(std::istream& is);
+
+    // Creates monitor file showing the maximum domain value of all variables 
+    void WriteMonitorFile(amrex::Real time);
 
 };
 

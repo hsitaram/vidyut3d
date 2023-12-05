@@ -150,7 +150,7 @@ void Vidyut::Evolve()
             for (int lev = 0; lev <= finest_level; lev++)
             {
                 compute_elecenergy_source(lev, num_grow, Sborder[lev], 
-                                          efield_fc[lev], gradne_fc[lev],
+                                          efield_fc[lev], gradne_fc[lev], rxn_src[lev],
                                           expl_src[lev], cur_time, dt_common);
             }
             implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
@@ -195,6 +195,11 @@ void Vidyut::Evolve()
         {
             chkfilenum++;
             WriteCheckpointFile(chkfilenum);
+        }
+
+        if (monitor_file_int > 0 && (step + 1) % monitor_file_int == 0)
+        {
+            WriteMonitorFile(cur_time);
         }
 
         if (cur_time >= stop_time - 1.e-6 * dt_common) break;

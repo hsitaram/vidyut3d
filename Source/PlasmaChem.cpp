@@ -102,7 +102,8 @@ namespace plasmachem_transport
                       GpuArray<Real, AMREX_SPACEDIM> dx,
                       const Real time,
                       ProbParm const& prob_parm,
-                      amrex::Real Tg,amrex::Real Pg)
+                      amrex::Real Tg,amrex::Real Pg,
+                      amrex::Real voltage)
     {
       // TODO: Make this routine more flexible/general
         IntVect cell_int(i,j,k);
@@ -130,15 +131,15 @@ namespace plasmachem_transport
         { // lo sides
             robin_a(ghost_cell) = 1.0;
             robin_b(ghost_cell) = 0.0;
-            robin_f(ghost_cell) = prob_parm.V1;
-            bc_arr(ghost_cell) = prob_parm.V1;
+            robin_f(ghost_cell) = voltage;
+            bc_arr(ghost_cell) = voltage;
         }
         else if(sgn == 1)
         {
             robin_a(ghost_cell) = 1.0;
             robin_b(ghost_cell) = 0.0;
-            robin_f(ghost_cell) = prob_parm.V2;
-            bc_arr(ghost_cell) = prob_parm.V2;
+            robin_f(ghost_cell) = voltage;
+            bc_arr(ghost_cell) = voltage;
         }
         else
         {
