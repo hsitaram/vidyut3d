@@ -29,21 +29,16 @@ namespace plasmachem_transport
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
-        //low side
-        if(sgn==-1)
-        {
-           //cell is i,j,k
-           //ghost_cell is one behind
-           ghost_cell[dir]-=1;
-        }
+        int gcell_adjust,cell_adjust;
+
+        //ghost_cell is one behind
+        gcell_adjust= (sgn==-1)?-1:0;
+        //cell is one behind
+        cell_adjust = (sgn==1)?-1:0;
+
+        ghost_cell[dir]+=gcell_adjust;
+        cell_int[dir]+=cell_adjust;
         
-        //high side
-        if(sgn==1)
-        {
-           //ghost_cell is i,j,k
-           //cell is one behind
-           cell_int[dir]-=1;
-        }
 
         if(sgn == -1 && dir==1) 
         { // lo sides
@@ -88,22 +83,16 @@ namespace plasmachem_transport
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
-        //low side
-        if(sgn==-1)
-        {
-           //cell is i,j,k
-           //ghost_cell is one behind
-           ghost_cell[dir]-=1;
-        }
-        
-        //high side
-        if(sgn==1)
-        {
-           //ghost_cell is i,j,k
-           //cell is one behind
-           cell_int[dir]-=1;
-        }
+        int gcell_adjust,cell_adjust;
 
+        //ghost_cell is one behind
+        gcell_adjust= (sgn==-1)?-1:0;
+        //cell is one behind
+        cell_adjust = (sgn==1)?-1:0;
+
+        ghost_cell[dir]+=gcell_adjust;
+        cell_int[dir]+=cell_adjust;
+        
         //for all species
         if(sgn == -1) 
         { // lo sides
