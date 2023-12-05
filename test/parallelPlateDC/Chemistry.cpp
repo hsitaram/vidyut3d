@@ -11,6 +11,7 @@ namespace plasmachem
 
     void init()
     {
+        specnames[N_ID]="Neutral";
         specnames[I_ID]="Ion";
         
         for(int i=0;i<NUM_REACTIONS;i++)

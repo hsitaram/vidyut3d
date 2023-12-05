@@ -1,5 +1,5 @@
-#ifndef _REACTIONS_H_
-#define _REACTIONS_H_
+#ifndef _USERSOURCES_H_
+#define _USERSOURCES_H_
 
 #include <AMReX_Geometry.H>
 #include <AMReX_FArrayBox.H>
@@ -7,10 +7,10 @@
 #include <Chemistry.H>
 
 using namespace amrex;
-namespace plasmachem_reactions
+namespace user_sources
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    void  compute_react_source(int i, int j, int k,
+    void  add_user_react_sources(int i, int j, int k,
                               Array4<Real> const& phi,
                               Array4<Real> const& rxnsrc,
                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -18,33 +18,13 @@ namespace plasmachem_reactions
                               GpuArray<Real, AMREX_SPACEDIM> dx,
                               const Real time,
                               ProbParm const& prob_parm,
-                              amrex::Real Tg,amrex::Real Pg)
+                              amrex::Real Tg, amrex::Real Pg)
     {
-        //including elec energy
-        for(int sp=0;sp<(NUM_ALL_SPECIES+1);sp++)
-        {
-            rxnsrc(i,j,k,sp)=0.0;
-        }
-    
-        int bigdir=0;
-        amrex::Real src=0.0;
-        amrex::Real xlen=prob_hi[0]-prob_lo[0];
-        amrex::Real ylen=prob_hi[1]-prob_lo[1];
-        amrex::Real zlen=prob_hi[2]-prob_lo[2];
-
-        amrex::Real maxlen=std::max(xlen,std::max(ylen,zlen));
-
-        if(maxlen==xlen) bigdir=0;
-        if(maxlen==ylen) bigdir=1;
-        if(maxlen==zlen) bigdir=2;
-
-        IntVect iv(i, j, k);
-        amrex::Real x=prob_lo[bigdir]+(iv[bigdir]+0.5)*dx[bigdir];
-        rxnsrc(i,j,k,S1_ID) = 5.0*std::pow(x,4.0)/3.0-x/6.0-2.0;
+        //add any user specific sources
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_potential_source(int i, int j, int k,
+    void add_user_potential_sources(int i, int j, int k,
                                   Array4<Real> const& phi,
                                   Array4<Real> const& source,
                                   GpuArray<Real, AMREX_SPACEDIM> prob_lo,
@@ -53,8 +33,7 @@ namespace plasmachem_reactions
                                   const Real time,
                                   ProbParm const& prob_parm)
     {
-
-        source(i,j,k)=phi(i,j,k,S1_ID);
+        //add any user specific sources
     }
 }
 #endif

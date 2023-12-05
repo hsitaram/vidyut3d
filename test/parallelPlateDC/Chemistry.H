@@ -15,7 +15,7 @@
 #define I_ID 1
 #define NUM_SPECIES (I_ID+1)
 #define NUM_ALL_SPECIES (NUM_SPECIES+1)
-#define NUM_REACTIONS 9
+#define NUM_REACTIONS 1
 
 using namespace amrex;
 
@@ -33,7 +33,7 @@ namespace plasmachem
     extern AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_gasenergy[NUM_REACTIONS];
     
     AMREX_GPU_HOST_DEVICE 
-    amrex::Real get_bg_molwt(Real specden[NUM_ALL_SPECIES]);
+    amrex::Real get_bg_molwt(amrex::Real specden[NUM_ALL_SPECIES]);
     
     AMREX_GPU_HOST_DEVICE 
     amrex::Real get_charge(int specid);

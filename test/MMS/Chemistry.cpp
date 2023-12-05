@@ -4,10 +4,36 @@
 namespace plasmachem
 {
     amrex::Vector<std::string> specnames(NUM_SPECIES);
+    AMREX_GPU_DEVICE_MANAGED amrex::Real rct_rxnarray[NUM_REACTIONS][NUM_ALL_SPECIES]={0.0};
+    AMREX_GPU_DEVICE_MANAGED amrex::Real pdt_rxnarray[NUM_REACTIONS][NUM_ALL_SPECIES]={0.0};
+    AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_elecenergy[NUM_REACTIONS]={0.0};
+    AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_gasenergy[NUM_REACTIONS]={0.0};
 
     void init()
     {
         specnames[S1_ID]="S1";
+        
+        for(int i=0;i<NUM_REACTIONS;i++)
+        {
+            for(int j=0;j<NUM_ALL_SPECIES;j++)
+            {
+                rct_rxnarray[i][j]=0.0;
+                pdt_rxnarray[i][j]=0.0;
+            }
+        }
+
+        int rnum=0;
+    
+        //just a dummy reaction    
+        //E + S1 --> S1 + E
+        rct_rxnarray[rnum][EDN_ID] = 1.0;
+        rct_rxnarray[rnum][S1_ID]  = 1.0;
+
+        pdt_rxnarray[rnum][S1_ID]  = 1.0;
+        pdt_rxnarray[rnum][EDN_ID] = 1.0;
+        
+        reaction_elecenergy[rnum]  = 0.0;
+        reaction_gasenergy[rnum]   = 0.0;
     }    
     
     void close()
@@ -49,5 +75,60 @@ namespace plasmachem
     {
         amrex::Real molwt=M_AMU;
         return(molwt);
+    }
+    
+    AMREX_GPU_HOST_DEVICE 
+    amrex::Real get_bg_molwt(amrex::Real specden[NUM_ALL_SPECIES])
+    {
+        amrex::Real molwt=M_AMU;    
+        return(molwt);
+    }
+    
+    AMREX_GPU_HOST_DEVICE  
+    void get_reaction_rateconstants(amrex::Real Te,
+                                    amrex::Real Tg, amrex::Real Pg,
+                                     amrex::Real efield_mag, 
+                                     amrex::Real spec[NUM_ALL_SPECIES],
+                                    amrex::Real rateconst[NUM_REACTIONS])
+   {
+        int rnum=0;
+        rateconst[rnum]=0.0; 
+   }
+    
+    AMREX_GPU_DEVICE 
+    amrex::Real mobility(int specid,
+                         amrex::Real Te, 
+                         amrex::Real efield,
+                         Real Tg, Real Pg)
+
+    {
+        //mobility is scaled by charge
+        amrex::Real mob=-1.0;
+        return(mob);
+    }
+    
+    AMREX_GPU_DEVICE 
+    amrex::Real diffusion_coeff(int specid,
+                                amrex::Real Te,
+                                amrex::Real efield,
+                                amrex::Real Tg, amrex::Real Pg)
+
+    {
+        amrex::Real dcoeff=0.0;
+        if(specid==S1_ID)
+        {
+           dcoeff = 1.0;
+        }
+        return(dcoeff);
+    }
+
+    AMREX_GPU_DEVICE 
+    amrex::Real electron_collision_freq(
+                               amrex::Real Te,
+                               amrex::Real efield,
+                               Real Tg, Real Pg)
+
+    {
+        return(1.0);
     }
 }

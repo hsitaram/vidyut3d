@@ -58,6 +58,7 @@ amr.chk_int  = -1       # number of timesteps between checkpoint files
 vidyut.bound_specden=1
 vidyut.min_species_density=1e13
 vidyut.linsolve_maxiter=200
+vidyut.bg_species_ids=0
 
 prob.loc_x=0.0
 prob.loc_y=0.85e-2
