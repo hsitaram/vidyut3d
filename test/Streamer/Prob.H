@@ -67,7 +67,8 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 {
                     dist2 += std::pow(z-prob_parm->loc_z,2.0);
                 }
-                
+               
+                phi(i,j,k,N_ID)    = P_NTP/K_B/T_NTP;  
                 phi(i,j,k,I_ID)    = (prob_parm->bg + 
                                       prob_parm->ampl*exp(-dist2/prob_parm->rad/prob_parm->rad))/prob_parm->ns;
                 phi(i,j,k,EDN_ID)  = prob_parm->bg/prob_parm->ns;

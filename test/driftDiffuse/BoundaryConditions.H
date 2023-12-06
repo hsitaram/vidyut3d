@@ -11,59 +11,6 @@ using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int specid,
-                         Real Te, Real efield_x,
-                         Real efield_y,Real efield_z,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                         GpuArray<Real, AMREX_SPACEDIM> dx,
-                         const Real time,
-                         ProbParm const& prob_parm,
-                         Real Tg, Real Pg)
-
-    {
-        return(1.0);
-    }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int specid,
-                                Real Te, Real efield_x,
-                                Real efield_y,Real efield_z,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                                GpuArray<Real, AMREX_SPACEDIM> dx,
-                                const Real time,
-                                ProbParm const& prob_parm,
-                                Real Tg, Real Pg)
-
-    {
-        amrex::Real dcoeff=0.0;
-        if(specid==S1_ID)
-        {
-           dcoeff = 0.1;
-        }
-        else
-        {
-          dcoeff = 1.0;
-        }
-        return(dcoeff);
-    }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real collision_freq(int i, int j, int k,
-                               int specid,
-                               Array4<Real> const& phi,
-                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                               GpuArray<Real, AMREX_SPACEDIM> dx,
-                               const Real time,
-                               ProbParm const& prob_parm,
-                               Real Tg, Real Pg)
-
-    {
-        return(1.0);
-    }
-    AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
                            int dir, int sgn,
                            Array4<Real> const& phi,
@@ -86,22 +33,16 @@ namespace plasmachem_transport
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
-        //low side
-        if(sgn==-1)
-        {
-           //cell is i,j,k
-           //ghost_cell is one behind
-           ghost_cell[dir]-=1;
-        }
-        
-        //high side
-        if(sgn==1)
-        {
-           //ghost_cell is i,j,k
-           //cell is one behind
-           cell_int[dir]-=1;
-        }
+        int gcell_adjust,cell_adjust;
 
+        //ghost_cell is one behind
+        gcell_adjust= (sgn==-1)?-1:0;
+        //cell is one behind
+        cell_adjust = (sgn ==1)?-1:0;
+
+        ghost_cell[dir]+=gcell_adjust;
+        cell_int[dir]+=cell_adjust;
+        
         if(sgn == -1) 
         { // lo sides
             robin_a(ghost_cell) = 1.0;
@@ -139,21 +80,15 @@ namespace plasmachem_transport
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
-        //low side
-        if(sgn==-1)
-        {
-           //cell is i,j,k
-           //ghost_cell is one behind
-           ghost_cell[dir]-=1;
-        }
-        
-        //high side
-        if(sgn==1)
-        {
-           //ghost_cell is i,j,k
-           //cell is one behind
-           cell_int[dir]-=1;
-        }
+        int gcell_adjust,cell_adjust;
+
+        //ghost_cell is one behind
+        gcell_adjust= (sgn==-1)?-1:0;
+        //cell is one behind
+        cell_adjust = (sgn ==1)?-1:0;
+
+        ghost_cell[dir]+=gcell_adjust;
+        cell_int[dir]+=cell_adjust;
         
         if(sgn == -1) 
         { 

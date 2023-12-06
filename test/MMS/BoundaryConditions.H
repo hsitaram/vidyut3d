@@ -11,55 +11,6 @@ using namespace amrex;
 namespace plasmachem_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int specid,
-                         Real Te, Real efield_x,
-                         Real efield_y,Real efield_z,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                         GpuArray<Real, AMREX_SPACEDIM> dx,
-                         const Real time,
-                         ProbParm const& prob_parm,
-                         Real Tg, Real Pg)
-
-    {
-        return(-1.0);
-    }
-    
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int specid,
-                                Real Te, Real efield_x,
-                                Real efield_y,Real efield_z,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                                GpuArray<Real, AMREX_SPACEDIM> dx,
-                                const Real time,
-                                ProbParm const& prob_parm,
-                                Real Tg, Real Pg)
-
-    {
-        amrex::Real dcoeff=0.0;
-        if(specid==S1_ID)
-        {
-           dcoeff = 1.0;
-        }
-        return(dcoeff);
-    }
-
-    AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real collision_freq(int i, int j, int k,
-                               int specid,
-                               Array4<Real> const& phi,
-                               GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                               GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                               GpuArray<Real, AMREX_SPACEDIM> dx,
-                               const Real time,
-                               ProbParm const& prob_parm,
-                               Real Tg, Real Pg)
-
-    {
-        return(1.0);
-    }
-    AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
                            int dir, int sgn,
                            Array4<Real> const& phi,
@@ -199,19 +150,21 @@ namespace plasmachem_transport
               vel(i,j,k,S1_ID)=0.0;
               }*/
             //else
-            amrex::Real mu_left = mobility(specid,phi(leftcell,ETEMP_ID),
-                                           phi(leftcell,EFX_ID),
-                                           phi(leftcell,EFY_ID),
-                                           phi(leftcell,EFZ_ID),
-                                           prob_lo,
-                                           prob_hi,dx,time,prob_parm,Tg,Pg);
+            Real efield_magL = std::sqrt(std::pow(phi(leftcell,EFX_ID),2.0) +
+                                         std::pow(phi(leftcell,EFY_ID),2.0) +
+                                         std::pow(phi(leftcell,EFZ_ID),2.0) );
+            
+            Real efield_magR = std::sqrt(std::pow(phi(rightcell,EFX_ID),2.0) +
+                                         std::pow(phi(rightcell,EFY_ID),2.0) +
+                                         std::pow(phi(rightcell,EFZ_ID),2.0) );
+            
+            amrex::Real mu_left = plasmachem::mobility(specid,phi(leftcell,ETEMP_ID),
+                                           efield_magL,
+                                           Tg,Pg);
 
-            amrex::Real mu_right = mobility(specid,phi(rightcell,ETEMP_ID),
-                                            phi(rightcell,EFX_ID),
-                                            phi(rightcell,EFY_ID),
-                                            phi(rightcell,EFZ_ID),
-                                            prob_lo,
-                                            prob_hi,dx,time,prob_parm,Tg,Pg);
+            amrex::Real mu_right = plasmachem::mobility(specid,phi(rightcell,ETEMP_ID),
+                                            efield_magR,
+                                            Tg,Pg);
 
             amrex::Real mu_face = 0.5*(mu_left+mu_right);
             //amrex::Real Efld_face = 0.5*(phi(leftcell,EFX_ID+dir)+phi(rightcell,EFX_ID+dir));

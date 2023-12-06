@@ -9,9 +9,7 @@
 #include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <Transport.H>
-#include <Reactions.H>
-#include <compute_flux_3d.H>
+#include <BoundaryConditions.H>
 #include <AMReX_MLABecLaplacian.H>
 
 // advance solution to final time
@@ -52,6 +50,7 @@ void Vidyut::Evolve()
         Vector< Array<MultiFab,AMREX_SPACEDIM> > gradne_fc(finest_level+1);
         Vector< Array<MultiFab,AMREX_SPACEDIM> > grad_fc(finest_level+1);
         Vector<MultiFab> expl_src(finest_level+1);
+        Vector<MultiFab> rxn_src(finest_level+1);
         Vector<MultiFab> Sborder(finest_level+1);
 
         //copy new to old and update time
@@ -91,10 +90,16 @@ void Vidyut::Evolve()
                 }
                 expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
                 expl_src[lev].setVal(0.0);
+                
+                //all species including electrons and electron energy
+                rxn_src[lev].define(grids[lev], dmap[lev], NUM_ALL_SPECIES+1, 0);
+                rxn_src[lev].setVal(0.0);
             }
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi, efield_fc);
+        
+        update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
         
         // note that phi_new is updated instead of sborder
         // so older potential and efield are used as opposed to new ones
@@ -104,7 +109,7 @@ void Vidyut::Evolve()
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
           }*/
 
-        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, efield_fc, expl_src, cur_time);
+        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, cur_time);
         implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
 
         /*for(int lev=0;lev<=finest_level;lev++)
@@ -114,10 +119,11 @@ void Vidyut::Evolve()
 
         if(elecenergy_solve)
         {
-            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, efield_fc, expl_src, cur_time);
+            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, cur_time);
             for (int lev = 0; lev <= finest_level; lev++)
             {
-                compute_elecenergy_source(lev, num_grow, Sborder[lev], 
+                compute_elecenergy_source(lev, num_grow, Sborder[lev],
+                                          rxn_src[lev], 
                                           efield_fc[lev], gradne_fc[lev],
                                           expl_src[lev], cur_time, dt_common);
             }
@@ -132,23 +138,36 @@ void Vidyut::Evolve()
 
         for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
         {
-            update_explsrc_at_all_levels(ind, Sborder, flux, efield_fc, expl_src, cur_time);
 
-            //ions
-            if(plasmachem::get_charge(ind)!=0.0)
+            int loc=-1;
+            bool solveflag=true;
+            auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
+            if(it != bg_specid_list.end())
             {
-                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi,grad_fc);
-            }
-            //neutrals
-            else
-            {
-                implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi,grad_fc);
+                solveflag=false;
             }
 
-            /*for(int lev=0;lev<=finest_level;lev++)
-              {
-              FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-              }*/
+            if(solveflag)
+            {
+                update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
+                                             efield_fc, expl_src, cur_time);
+
+                //ions
+                if(plasmachem::get_charge(ind)!=0.0)
+                {
+                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi,grad_fc);
+                }
+                //neutrals
+                else
+                {
+                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi,grad_fc);
+                }
+
+                /*for(int lev=0;lev<=finest_level;lev++)
+                  {
+                  FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+                  }*/
+            }
         }
 
         AverageDown ();

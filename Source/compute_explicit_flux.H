@@ -1,5 +1,5 @@
-#ifndef _compute_flux_3d_H_
-#define _compute_flux_3d_H_
+#ifndef _compute_explicit_flux_H_
+#define _compute_explicit_flux_H_
 
 #include <AMReX_BLFort.H>
 #include <AMReX_Box.H>
