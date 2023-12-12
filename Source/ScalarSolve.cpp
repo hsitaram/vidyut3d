@@ -11,8 +11,6 @@
 #include <Chemistry.H>
 #include <BoundaryConditions.H>
 #include <UserSources.H>
-#include <reaction_source.H>
-#include <UserSources.H>
 #include <compute_explicit_flux.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -128,11 +126,27 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
             // update residual
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                compute_react_source
-                (i, j, k, sborder_arr, rxn_arr,
-                 captured_gastemp,
-                 captured_gaspres);
+                amrex::Real specden[NUM_ALL_SPECIES];
+                amrex::Real spec_wdot[NUM_ALL_SPECIES+1];
                 
+                for(int sp=0; sp<NUM_ALL_SPECIES; sp++) 
+                {
+                    specden[sp] = sborder_arr(i,j,k,sp);
+                }
+        
+                amrex::Real efieldmag =std::sqrt(std::pow(sborder_arr(i,j,k,EFX_ID),2.0)+
+                               std::pow(sborder_arr(i,j,k,EFY_ID),2.0)+
+                               std::pow(sborder_arr(i,j,k,EFZ_ID),2.0));
+        
+                plasmachem::get_wdot(sborder_arr(i,j,k,ETEMP_ID), captured_gastemp, 
+                                     captured_gaspres, efieldmag, 
+                                   specden, spec_wdot);
+        
+                for(int sp = 0; sp<(NUM_ALL_SPECIES+1); sp++)
+                {
+                    rxn_arr(i,j,k,sp) = spec_wdot[sp];
+                }
+
                 user_sources::add_user_react_sources
                 (i, j, k, sborder_arr, rxn_arr,
                  prob_lo, prob_hi, dx, time, *localprobparm,
