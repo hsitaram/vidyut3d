@@ -67,8 +67,8 @@ namespace plasmachem
             spec_wdot[sp]=0.0;
         }
 
-        int rnum=0;
         amrex::Real rateconst;
+        
         //E + N --> I + 2E
         rateconst = 2.5e-12
         *std::exp(-278508.0/Te);

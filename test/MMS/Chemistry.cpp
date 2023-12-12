@@ -4,36 +4,19 @@
 namespace plasmachem
 {
     amrex::Vector<std::string> specnames(NUM_SPECIES);
-    AMREX_GPU_DEVICE_MANAGED amrex::Real rct_rxnarray[NUM_REACTIONS][NUM_ALL_SPECIES]={0.0};
-    AMREX_GPU_DEVICE_MANAGED amrex::Real pdt_rxnarray[NUM_REACTIONS][NUM_ALL_SPECIES]={0.0};
-    AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_elecenergy[NUM_REACTIONS]={0.0};
-    AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_gasenergy[NUM_REACTIONS]={0.0};
+    AMREX_GPU_DEVICE_MANAGED amrex::Real spec_molwt[NUM_ALL_SPECIES]={0.0};
+    AMREX_GPU_DEVICE_MANAGED amrex::Real spec_charge[NUM_ALL_SPECIES]={0.0};
 
     void init()
     {
         specnames[S1_ID]="S1";
         
-        for(int i=0;i<NUM_REACTIONS;i++)
-        {
-            for(int j=0;j<NUM_ALL_SPECIES;j++)
-            {
-                rct_rxnarray[i][j]=0.0;
-                pdt_rxnarray[i][j]=0.0;
-            }
-        }
+        spec_charge[S1_ID]   =  0.0;
+        spec_charge[EDN_ID]  = -1.0;
 
-        int rnum=0;
-    
-        //just a dummy reaction    
-        //E + S1 --> S1 + E
-        rct_rxnarray[rnum][EDN_ID] = 1.0;
-        rct_rxnarray[rnum][S1_ID]  = 1.0;
-
-        pdt_rxnarray[rnum][S1_ID]  = 1.0;
-        pdt_rxnarray[rnum][EDN_ID] = 1.0;
+        spec_molwt[S1_ID]   = M_AMU;
+        spec_molwt[EDN_ID]  = ME;
         
-        reaction_elecenergy[rnum]  = 0.0;
-        reaction_gasenergy[rnum]   = 0.0;
     }    
     
     void close()
@@ -55,26 +38,13 @@ namespace plasmachem
     AMREX_GPU_HOST_DEVICE 
     amrex::Real get_charge(int specid)
     {
-        amrex::Real charge=0.0;
-        switch(specid)
-        {
-            case S1_ID:
-                charge=0.0;
-                break;               
-            case EDN_ID:
-                charge=-1.0;
-                break;               
-            default:
-                charge=0.0;
-        }
-        return(charge);
+        return(spec_charge[specid]);
     }
     
     AMREX_GPU_HOST_DEVICE 
     amrex::Real get_molwt(int specid)
     {
-        amrex::Real molwt=M_AMU;
-        return(molwt);
+        return(spec_molwt[specid]);
     }
     
     AMREX_GPU_HOST_DEVICE 
@@ -85,15 +55,17 @@ namespace plasmachem
     }
     
     AMREX_GPU_HOST_DEVICE  
-    void get_reaction_rateconstants(amrex::Real Te,
-                                    amrex::Real Tg, amrex::Real Pg,
-                                     amrex::Real efield_mag, 
-                                     amrex::Real spec[NUM_ALL_SPECIES],
-                                    amrex::Real rateconst[NUM_REACTIONS])
-   {
-        int rnum=0;
-        rateconst[rnum]=0.0; 
-   }
+    void get_wdot(amrex::Real Te,
+                  amrex::Real Tg, amrex::Real Pg,
+                  amrex::Real efield_mag, 
+                  amrex::Real spec[NUM_ALL_SPECIES],
+                  amrex::Real spec_wdot[NUM_ALL_SPECIES+1])
+    {
+        for(int sp=0;sp<(NUM_ALL_SPECIES+1);sp++)
+        {
+            spec_wdot[sp]=0.0;
+        }
+    }
     
     AMREX_GPU_DEVICE 
     amrex::Real mobility(int specid,
