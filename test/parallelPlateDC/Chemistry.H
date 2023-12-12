@@ -26,11 +26,8 @@ namespace plasmachem
     void close();
     int find_id(std::string specname);
     
-    //FIXME:will this work on AMD gpus?
-    extern AMREX_GPU_DEVICE_MANAGED amrex::Real rct_rxnarray[NUM_REACTIONS][NUM_ALL_SPECIES]; 
-    extern AMREX_GPU_DEVICE_MANAGED amrex::Real pdt_rxnarray[NUM_REACTIONS][NUM_ALL_SPECIES]; 
-    extern AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_elecenergy[NUM_REACTIONS];
-    extern AMREX_GPU_DEVICE_MANAGED amrex::Real reaction_gasenergy[NUM_REACTIONS];
+    extern AMREX_GPU_DEVICE_MANAGED amrex::Real spec_molwt[NUM_ALL_SPECIES];
+    extern AMREX_GPU_DEVICE_MANAGED amrex::Real spec_charge[NUM_ALL_SPECIES];
     
     AMREX_GPU_HOST_DEVICE 
     amrex::Real get_bg_molwt(amrex::Real specden[NUM_ALL_SPECIES]);
@@ -42,28 +39,28 @@ namespace plasmachem
     amrex::Real get_molwt(int specid);
     
     AMREX_GPU_HOST_DEVICE 
-    void get_reaction_rateconstants(amrex::Real Te,
-                                    amrex::Real Tg, amrex::Real Pg,
-                                     amrex::Real efield, 
-                                     amrex::Real spec[NUM_ALL_SPECIES],
-                                    amrex::Real rateconst[NUM_REACTIONS]);
-    
+        void get_wdot(amrex::Real Te,
+                amrex::Real Tg, amrex::Real Pg,
+                amrex::Real efield, 
+                amrex::Real spec[NUM_ALL_SPECIES],
+                amrex::Real rateconst[NUM_REACTIONS]);
+
     AMREX_GPU_HOST_DEVICE
-    amrex::Real mobility(int specid,
-                         amrex::Real Te, 
-                         amrex::Real efield,
-                         Real Tg, Real Pg);
+        amrex::Real mobility(int specid,
+                amrex::Real Te, 
+                amrex::Real efield,
+                Real Tg, Real Pg);
 
     AMREX_GPU_DEVICE
-    amrex::Real diffusion_coeff(int specid,
-                                amrex::Real Te,
-                                amrex::Real efield,
-                                amrex::Real Tg, amrex::Real Pg);
+        amrex::Real diffusion_coeff(int specid,
+                amrex::Real Te,
+                amrex::Real efield,
+                amrex::Real Tg, amrex::Real Pg);
 
     AMREX_GPU_DEVICE
-    amrex::Real electron_collision_freq(
-                               amrex::Real Te,
-                               amrex::Real efield,
-                               Real Tg, Real Pg);
+        amrex::Real electron_collision_freq(
+                amrex::Real Te,
+                amrex::Real efield,
+                Real Tg, Real Pg);
 }
 #endif

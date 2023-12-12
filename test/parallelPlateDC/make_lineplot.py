@@ -28,11 +28,15 @@ try:
     fn_list = sorted(glob.glob(fn_pattern), key=lambda f: int(f.split("plt")[1]))
 except:
     if(fn_list==[]):
-        print("using file of plotfiles..")
-        infile=open(argv[1],'r')
-        for line in infile:
-            fn_list.append(line.split()[0])
-        infile.close()
+        using_file=False
+        try:
+            print("using file of plotfiles..")
+            infile=open(argv[1],'r')
+            for line in infile:
+                fn_list.append(line.split()[0])
+            infile.close()
+        except:
+            fn_list.append(argv[1])
 
 print(fn_list)
 if(len(argv) > 3):
