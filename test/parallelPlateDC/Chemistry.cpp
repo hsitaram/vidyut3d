@@ -37,7 +37,7 @@ namespace plasmachem
         return(loc);
     }
 
-    AMREX_GPU_DEVICE 
+    AMREX_GPU_HOST_DEVICE 
     amrex::Real get_bg_molwt(Real specden[NUM_ALL_SPECIES])
     {
         return(spec_molwt[N_ID]);
