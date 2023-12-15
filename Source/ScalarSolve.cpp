@@ -118,13 +118,16 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
                 // Create array with species concentrations (1/m3 -> mol/cm3)
                 amrex::Real spec_C[NUM_SPECIES];
                 amrex::Real spec_wdot[NUM_SPECIES];
+                amrex::Real Te = sborder_arr(i,j,k,ETEMP_ID);
+                amrex::Real ener_exch = 0.0;
                 for(int sp=0; sp<NUM_SPECIES; sp++) spec_C[sp] = sborder_arr(i,j,k,sp) * 1.0e-6 / N_A;
 
                 // Get molar production rates
-                CKWC(captured_gastemp, spec_C, spec_wdot);
+                CKWC(captured_gastemp, spec_C, spec_wdot, Te, &ener_exch);
 
-                // Convert back to 1/m3-s and add to scalar react source MF
-                for(int sp = 0; sp<NUM_SPECIES; sp++) rxn_arr(i,j,k,sp) = spec_wdot[sp] * N_A * 1.0e-6;
+                // Convert from mol/cm3-s to 1/m3-s and add to scalar react source MF
+                for(int sp = 0; sp<NUM_SPECIES; sp++) rxn_arr(i,j,k,sp) = spec_wdot[sp] * N_A * 1.0e6;
+                rxn_arr(i,j,k,NUM_SPECIES) = ener_exch;
             });
         }
     }
@@ -507,7 +510,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     {
                         soln_arr(i,j,k)=minspecden;
                     }
-                    // if(i==1 && j ==1 && k ==1) printf("Value for species %i is %.6e\n", spec_id, soln_arr(i,j,k));
                 });
             }
         }
