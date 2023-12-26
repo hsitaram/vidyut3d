@@ -147,26 +147,44 @@ namespace plasmachem
                          Real Tg, Real Pg)
 
     {
+        amrex::Real mob=0.0;
         //mobility is scaled by charge
         
         //reduced mobility obtained from Yuan and Raja,
         //IEEE. Trans. Plasma Sci.,31,4,2003
         //they say these are 393K, may be temperature
         //scaling is necessary
-        amrex::Real Pres_ratio = (P_NTP/Pg);
-        amrex::Real elecmob=-0.1132*Pres_ratio;
-        amrex::Real mob=0.0;
+        //amrex::Real Pres_ratio = (P_NTP/Pg);
+        //amrex::Real elecmob=-0.1132*Pres_ratio;
+
+        amrex::Real N=Pg/K_B/Tg;
+        amrex::Real EbyN=efield/N/TDUNIT;
+        amrex::Real meanE = 1.5*Te/eV;
+
+        //mobility from 
+        //Turner, Miles M., et al. "Simulation benchmarks for low-pressure
+        //plasmas: Capacitive discharges." 
+        //Physics of Plasmas 20.1 (2013): 013507.
+        amrex::Real Hepmob=2.69*std::pow((1.0+1.2e-3*std::pow(EbyN,2.0)+4.2e-8*std::pow(EbyN,4.0)),-0.125);
+        amrex::Real He2pmob=Hepmob;
+        
+        //computed by Taaresh Taneja (U Minnesota) using Turner's cross sections
+        amrex::Real elecmob = (-1.0)*std::exp(55.0 + 0.3942*std::log(meanE) + 2.134/meanE 
+                   -0.6433/std::pow(meanE,2.0) + (0.7112e-1)/std::pow(meanE,3.0)) / N;
+        
         if(specid==EDN_ID)
         {
             mob=elecmob;
         }
         if(specid==HEp_ID)
         {
-            mob=0.001482*Pres_ratio;
+            //mob=0.001482*Pres_ratio;
+            mob=Hepmob;
         }
         if(specid==HE2p_ID)
         {
-            mob=0.002403*Pres_ratio;
+            //mob=0.002403*Pres_ratio;
+            mob=He2pmob;
         }
         if(specid==EEN_ID)
         {
