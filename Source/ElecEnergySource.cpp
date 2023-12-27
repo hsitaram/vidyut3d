@@ -32,6 +32,9 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
     
     const int* domlo_arr = geom[lev].Domain().loVect();
     const int* domhi_arr = geom[lev].Domain().hiVect();
+        
+    GpuArray<int,AMREX_SPACEDIM> domlo={domlo_arr[0], domlo_arr[1], domlo_arr[2]};
+    GpuArray<int,AMREX_SPACEDIM> domhi={domhi_arr[0], domhi_arr[1], domhi_arr[2]};
 
     for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
@@ -73,13 +76,13 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                     IntVect face(i,j,k);
                     face[idim]+=f;
 
-                    if(face[idim]==domlo_arr[idim])
+                    if(face[idim]==domlo[idim])
                     {
                        //do the interior face
                        face[idim]+=1;
                     }
                     
-                    if(face[idim]==(domhi_arr[idim]+1))
+                    if(face[idim]==(domhi[idim]+1))
                     {
                        //do the interior face
                         face[idim]-=1;
