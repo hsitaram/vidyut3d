@@ -142,7 +142,8 @@ void Vidyut::InitData()
 
     if (plot_int > 0)
     {
-        WritePlotFile(0);
+        WritePlotFile(amrex::Math::floor
+                      (amrex::Real(istep[0])/amrex::Real(plot_int)));
     }
 }
 

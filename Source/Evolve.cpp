@@ -17,8 +17,11 @@ void Vidyut::Evolve()
 {
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;
-    int plotfilenum=0;
-    int chkfilenum=0;
+     
+    //there is a slight issue when restart file is not a multiple
+    //a plot file may get the same number with an "old" file generated
+    int plotfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(plot_int));
+    int chkfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(chk_int));
 
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)
     {
