@@ -22,10 +22,39 @@ void Vidyut::Evolve()
     //a plot file may get the same number with an "old" file generated
     int plotfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(plot_int));
     int chkfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(chk_int));
+    amrex::Real dt_edrift,dt_ediff,dt_diel_relax;
+    amrex::Real dt_edrift_lev,dt_ediff_lev,dt_diel_relax_lev;
 
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)
     {
         amrex::Print() << "\nCoarse STEP " << step + 1 << " starts ..." << std::endl;
+
+        dt_edrift = std::numeric_limits<Real>::max();
+        dt_diel_relax = std::numeric_limits<Real>::max();
+        dt_ediff = std::numeric_limits<Real>::max();
+
+        for(int lev=0;lev<=finest_level;lev++)
+        {
+            find_time_scales(lev,dt_edrift_lev,dt_ediff_lev,dt_diel_relax_lev);
+            amrex::Print()<<"electron drift, diffusion and dielectric relaxation time scales at level (sec):"<<lev<<"\t"<<
+            dt_edrift_lev<<"\t"<<dt_ediff_lev<<"\t"<<dt_diel_relax_lev<<"\n";
+
+            if(dt_edrift_lev < dt_edrift)
+            {
+                dt_edrift = dt_edrift_lev;
+            }
+            if(dt_ediff_lev < dt_ediff)
+            {
+                dt_ediff = dt_ediff_lev;
+            }
+            if(dt_diel_relax_lev < dt_diel_relax)
+            {
+                dt_diel_relax = dt_diel_relax_lev;
+            }
+        }
+            
+        amrex::Print()<<"global minimum electron drift, diffusion and dielectric relaxation time scales (sec):"<<
+        dt_edrift<<"\t"<<dt_ediff<<"\t"<<dt_diel_relax<<"\n";
 
         ComputeDt();
 
@@ -81,19 +110,19 @@ void Vidyut::Evolve()
 
                     flux[lev][idim].define(ba, dmap[lev], 1, 0);
                     flux[lev][idim].setVal(0.0);
-                    
+
                     efield_fc[lev][idim].define(ba, dmap[lev], 1, 0);
                     efield_fc[lev][idim].setVal(0.0);
-                    
+
                     gradne_fc[lev][idim].define(ba, dmap[lev], 1, 0);
                     gradne_fc[lev][idim].setVal(0.0);
-                    
+
                     grad_fc[lev][idim].define(ba, dmap[lev], 1, 0);
                     grad_fc[lev][idim].setVal(0.0);
                 }
                 expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
                 expl_src[lev].setVal(0.0);
-                
+
                 //all species including electrons and electron energy
                 rxn_src[lev].define(grids[lev], dmap[lev], NUM_ALL_SPECIES+1, 0);
                 rxn_src[lev].setVal(0.0);
@@ -101,9 +130,9 @@ void Vidyut::Evolve()
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi, efield_fc);
-        
+
         update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
-        
+
         // note that phi_new is updated instead of sborder
         // so older potential and efield are used as opposed to new ones
         // call fillpatch to improve implicitness
@@ -112,11 +141,11 @@ void Vidyut::Evolve()
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
           }*/
 
-        update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, cur_time);
-        implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
+            update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, cur_time);
+            implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
 
-        /*for(int lev=0;lev<=finest_level;lev++)
-          {
+            /*for(int lev=0;lev<=finest_level;lev++)
+              {
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
           }*/
 

@@ -114,7 +114,8 @@ public:
                             Real time, Real dt);
 
     // compute dt from CFL considerations
-    Real EstTimeStep(int lev);
+    void find_time_scales(int lev,amrex::Real& dt_edrift,amrex::Real &dt_ediff,
+            amrex::Real& dt_diel_relax);
 
     static ProbParm* h_prob_parm;
     static ProbParm* d_prob_parm;
