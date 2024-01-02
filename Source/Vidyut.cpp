@@ -9,6 +9,7 @@
 #include <Vidyut.H>
 #include <Tagging.H>
 #include <Chemistry.H>
+#include <PlasmaChem.H>
 #include <ProbParm.H>
 #include <stdio.h>
 #include <VarDefines.H>
@@ -29,16 +30,19 @@ Vidyut::Vidyut()
     amrex_probinit(*h_prob_parm, *d_prob_parm);
 
     plasma_param_names.resize(NUM_PLASMAVARS);
-    plasma_param_names[0]="Electron_density";
-    plasma_param_names[1]="Electron_energy";
-    plasma_param_names[2]="Electron_Temp";
-    plasma_param_names[3]="Potential";
-    plasma_param_names[4]="Efieldx";
-    plasma_param_names[5]="Efieldy";
-    plasma_param_names[6]="Efieldz";
-    plasma_param_names[7]="Electron_Jheat";
-    plasma_param_names[8]="Electron_inelasticHeat";
-    plasma_param_names[9]="Electron_elasticHeat";
+    plasma_param_names[0]="Electron_energy";
+    plasma_param_names[1]="Electron_Temp";
+    plasma_param_names[2]="Eden_gradx";
+    plasma_param_names[3]="Eden_grady";
+    plasma_param_names[4]="Eden_gradz";
+    plasma_param_names[5]="Potential";
+    plasma_param_names[6]="Efieldx";
+    plasma_param_names[7]="Efieldy";
+    plasma_param_names[8]="Efieldz";
+    plasma_param_names[9]="Electron_Jheat";
+    plasma_param_names[10]="Electron_inelasticHeat";
+    plasma_param_names[11]="Electron_elasticHeat";
+    plasma_param_names[12]="ReducedEF";
     
     allvarnames.resize(NVAR);
     for (int i = 0; i < NUM_SPECIES; i++)
@@ -103,6 +107,17 @@ Vidyut::Vidyut()
             bcspec[sp].setLo(idim, bctype);
             bcspec[sp].setHi(idim, bctype);
         }
+    }
+
+    // Find the electron index, throw error if not found
+    int E_idx = (plasmachem::find_id("E") != -1) ? plasmachem::find_id("E"):
+                (plasmachem::find_id("E-") != -1)? plasmachem::find_id("E-"):
+                (plasmachem::find_id("e") != -1) ? plasmachem::find_id("e"):
+                plasmachem::find_id("e-");
+    if(E_idx != -1){
+      E_IDX = E_idx;
+    } else{
+      amrex::Abort("Electron not found in chemistry mechanism!\n");
     }
 
     // stores fluxes at coarse-fine interface for synchronization
@@ -281,6 +296,9 @@ void Vidyut::ReadParameters()
         pp.query("min_species_density",min_species_density);
         pp.query("min_electron_temp",min_electron_temp);
         pp.query("elecenergy_solve",elecenergy_solve);
+        pp.query("do_reactions",do_reactions);
+        pp.query("do_transport",do_transport);
+        pp.query("do_spacechrg",do_spacechrg);
 
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);

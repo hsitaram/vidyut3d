@@ -31,7 +31,7 @@ void Vidyut::WritePlotFile(int plotfilenum) const
     const std::string& plotfilename = amrex::Concatenate(plot_file, plotfilenum, 5);
     const auto& mf = PlotFileMF();
 
-    amrex::Print() << "Writing plotfile " << plotfilename << "\n";
+    // amrex::Print() << "Writing plotfile " << plotfilename << "\n";
 
     amrex::WriteMultiLevelPlotfile(plotfilename, finest_level + 1, mf, 
                                    allvarnames, Geom(), t_new[0], istep, refRatio());

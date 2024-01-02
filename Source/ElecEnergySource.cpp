@@ -62,7 +62,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //Joule heating
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
-            amrex::Real charge=plasmachem::get_charge(EDN_ID)*ECHARGE;
+            amrex::Real charge=plasmachem::get_charge(E_IDX)*ECHARGE;
             amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
@@ -109,8 +109,8 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
                                                      std::pow(efield_y,2.0)+
                                                      std::pow(efield_z,2.0));
 
-                    ne = 0.5*(sborder_arr(lcell,EDN_ID) 
-                              + sborder_arr(rcell,EDN_ID));
+                    ne = 0.5*(sborder_arr(lcell,E_IDX) 
+                              + sborder_arr(rcell,E_IDX));
 
                     efield_face=ef_arr[idim](face);
                     gradne_face=gradne_arr[idim](face);
@@ -141,36 +141,37 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
 
             elec_jheat*=0.5;
             
-            amrex::Real efield_mag=std::sqrt(std::pow(sborder_arr(i,j,k,EFX_ID),2.0)+
-                                             std::pow(sborder_arr(i,j,k,EFY_ID),2.0)+
-                                             std::pow(sborder_arr(i,j,k,EFZ_ID),2.0));
+            // amrex::Real efield_mag=std::sqrt(std::pow(sborder_arr(i,j,k,EFX_ID),2.0)+
+            //                                  std::pow(sborder_arr(i,j,k,EFY_ID),2.0)+
+            //                                  std::pow(sborder_arr(i,j,k,EFZ_ID),2.0));
 
-            amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
-            amrex::Real nu = plasmachem::electron_collision_freq(electemp,
-                                                                  efield_mag,
-                                         captured_gastemp,captured_gaspres);
+            // amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
+            // amrex::Real nu = plasmachem::electron_collision_freq(electemp,
+            //                                                       efield_mag,
+            //                              captured_gastemp,captured_gaspres);
         
-            amrex::Real specden[NUM_ALL_SPECIES]={0.0};
-            for(int sp=0;sp<(NUM_ALL_SPECIES);sp++)
-            {
-                specden[sp]=sborder_arr(i,j,k,sp); //no offset needed
-            }
+            // amrex::Real specden[NUM_ALL_SPECIES]={0.0};
+            // for(int sp=0;sp<(NUM_ALL_SPECIES);sp++)
+            // {
+            //     specden[sp]=sborder_arr(i,j,k,sp); //no offset needed
+            // }
 
-            //in case we have a mixture of gases
-            amrex::Real molwt_bg=plasmachem::get_bg_molwt(specden);
+            // //in case we have a mixture of gases
+            // amrex::Real molwt_bg=plasmachem::get_bg_molwt(specden);
 
-            //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,EDN_ID)/K_B;
+            // //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,E_IDX)/K_B;
+            // amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
 
-            amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
-            * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
+            // amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
+            // * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
 
             //inelastic term already added through reaction source
-            dsdt_arr(i, j, k) += (elec_jheat - elec_elastic_coll_term);
-            //dsdt_arr(i, j, k) += elec_jheat;
+            dsdt_arr(i, j, k) += elec_jheat;
             //
             phi_arr(i,j,k,EJH_ID)=elec_jheat;
             phi_arr(i,j,k,EIH_ID)=rxn_arr(i,j,k,EEN_ID); //EEN_ID is same as NUM_SPECIES+1
-            phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
+            // TODO: split calculations in chemistry file to separate out electron energy branching pathways
+            // phi_arr(i,j,k,EEH_ID)=elec_elastic_coll_term;
         });
     }
 }

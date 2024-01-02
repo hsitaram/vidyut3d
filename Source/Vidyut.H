@@ -177,7 +177,7 @@ public:
     amrex::Real linsolve_abstol = 1e-10;
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
-    amrex::Real min_species_density=1e12;
+    amrex::Real min_species_density=1e-20;
     amrex::Real min_electron_temp=0.1*eV;
 
     amrex::Real gas_pressure=101325.0;
@@ -195,7 +195,11 @@ public:
     int linsolve_max_coarsening_level=10;
     int bound_specden=0;
 
+    // Include physics
     int elecenergy_solve=0;
+    int do_reactions=1;
+    int do_transport=1;
+    int do_spacechrg=1;
 
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
@@ -213,6 +217,9 @@ public:
     // checkpoint prefix and frequency
     std::string chk_file{"chk"};
     int chk_int = -1;
+
+    // Electron species index
+    int E_IDX = 0;
 
 private:
     ////////////////
