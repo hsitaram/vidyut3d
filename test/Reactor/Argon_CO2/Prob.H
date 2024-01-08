@@ -4,6 +4,7 @@
 #include <AMReX_Box.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_Geometry.H>
+#include <AMReX_ParmParse.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
 #include <UnivConstants.H>
@@ -16,16 +17,13 @@ void amrex_probinit (ProbParm & h_prob_parm, ProbParm & d_prob_parm)
 {
     // read problem specific parmparse parameters here
     amrex::ParmParse pp("prob");
+    pp.query("init_E", h_prob_parm.init_E );
+    pp.query("init_I", h_prob_parm.init_I );
+    pp.query("init_etemp", h_prob_parm.init_etemp );
     pp.query("V1", h_prob_parm.V1 );
     pp.query("V2", h_prob_parm.V2 );
-    pp.query("f", h_prob_parm.f );
-    
-    amrex::ParmParse pp_solver("vidyut");
-    amrex::Real Pg,Tg;
-    pp_solver.query("gas_pressure",Pg); 
-    pp_solver.query("gas_temperature",Tg); 
-    h_prob_parm.bg_gasden=Pg/K_B/Tg;
-
+    pp.query("nscale",h_prob_parm.ns);
+    pp.query("potscale",h_prob_parm.phis);
 
 #ifdef AMREX_USE_GPU
     amrex::Gpu::htod_memcpy(&d_prob_parm, &h_prob_parm, sizeof(ProbParm));
@@ -59,14 +57,12 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 Real y = prob_lo[1] + (0.5+j) * dx[1];
                 Real x = prob_lo[0] + (0.5+i) * dx[0];
 
-                phi(i,j,k,HE_ID)   = prob_parm->bg_gasden; 
-                phi(i,j,k,HEp_ID)  = 2.36e14; 
-                phi(i,j,k,HE2p_ID)  = 0.2e14; 
-                phi(i,j,k,HEm_ID)  = 1e12; 
-                phi(i,j,k,HE2m_ID)  = 1e12; 
-                phi(i,j,k,E_ID)  = 2.56e14;
-                phi(i,j,k,ETEMP_ID) = 3e4;
-                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,E_ID)*K_B*phi(i,j,k,ETEMP_ID);
+                phi(i,j,k,0)  = 1e9;         // electron num dens.
+                phi(i,j,k,3)  = 0.9*2.446e25;    // Ar num dens.
+                phi(i,j,k,4)  = 0.1*2.446e25;    // CO2 num dens.
+                // phi(i,j,k,4)  = 2.446e25;    // CO2 num dens.
+                phi(i,j,k,ETEMP_ID) = 300;
+                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,0)*K_B*phi(i,j,k,ETEMP_ID);
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;

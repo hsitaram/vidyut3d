@@ -228,6 +228,11 @@ void Vidyut::Evolve()
             WriteCheckpointFile(chkfilenum);
         }
 
+        if (monitor_file_int > 0 && (step + 1) % monitor_file_int == 0)
+        {
+            WriteMonitorFile(cur_time);
+        }
+
         if (cur_time >= stop_time - 1.e-6 * dt_common) break;
 
 

@@ -9,9 +9,13 @@ using namespace amrex::literals;
 
 struct ProbParm
 {
+    amrex::Real init_E=1e15;
+    amrex::Real init_I=1e15;
+    amrex::Real init_etemp=0.5*eV;
     amrex::Real V1=1.0;
     amrex::Real V2=0.0;
-    amrex::Real f=13.56e6;
-    amrex::Real bg_gasden=1.0;
+
+    amrex::Real ns=1.0;
+    amrex::Real phis=1.0;
 };
 #endif

@@ -12,15 +12,14 @@
 #include <BoundaryConditions.H>
 #include <UserSources.H>
 #include <compute_explicit_flux.H>
-#include <AMReX_MLABecLaplacian.H>
 #include <PlasmaChem.H>
+#include <AMReX_MLABecLaplacian.H>
 
 void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
                             Array<MultiFab,AMREX_SPACEDIM>& flux, 
                             MultiFab& rxn_src,
                             MultiFab& dsdt,
                             Real time, Real dt)
-
 {
     const auto dx = geom[lev].CellSizeArray();
     auto prob_lo = geom[lev].ProbLoArray();
@@ -47,7 +46,6 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
 
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-
             dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
             + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
             + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] 
@@ -132,13 +130,17 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
                 // Create array with species concentrations (1/m3 -> mol/cm3)
                 amrex::Real spec_C[NUM_SPECIES];
                 amrex::Real spec_wdot[NUM_SPECIES];
+                amrex::Real Te = sborder_arr(i,j,k,ETEMP_ID);
+                amrex::Real EN = sborder_arr(i,j,k,REF_ID);
+                amrex::Real ener_exch = 0.0;
                 for(int sp=0; sp<NUM_SPECIES; sp++) spec_C[sp] = sborder_arr(i,j,k,sp) * 1.0e-6 / N_A;
 
                 // Get molar production rates
-                CKWC(captured_gastemp, spec_C, spec_wdot);
+                CKWC(captured_gastemp, spec_C, spec_wdot, Te, EN, &ener_exch);
 
-                // Convert back to 1/m3-s and add to scalar react source MF
-                for(int sp = 0; sp<NUM_SPECIES; sp++) rxn_arr(i,j,k,sp) = spec_wdot[sp] * N_A * 1.0e-6;
+                // Convert from mol/cm3-s to 1/m3-s and add to scalar react source MF
+                for(int sp = 0; sp<NUM_SPECIES; sp++) rxn_arr(i,j,k,sp) = spec_wdot[sp] * N_A * 1.0e6;
+                rxn_arr(i,j,k,NUM_SPECIES) = ener_exch;
 
                 // Add on user-defined reactive sources
                 user_sources::add_user_react_sources
@@ -423,10 +425,11 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                                                      std::pow(sb_arr(i,j,k,EFY_ID),2.0)+
                                                      std::pow(sb_arr(i,j,k,EFZ_ID),2.0));
                 
-                    bcoeff_arr(i,j,k)=plasmachem::diffusion_coeff(captured_spec_id, 
-                                                              sb_arr(i,j,k,ETEMP_ID),
-                                                              efield_mag, 
-                                                              captured_gastemp,captured_gaspres);
+                    amrex::Real ndens = 0.0;
+                    bcoeff_arr(i,j,k)=specDiff(captured_spec_id, 
+                                               sb_arr(i,j,k,ETEMP_ID), ndens,
+                                               efield_mag, 
+                                               captured_gastemp);
 
             });
         }
@@ -549,7 +552,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     if(electron_energy_flag)
     {
         /*for(int ilev=0; ilev <= finest_level; ilev++)
-<<<<<<< HEAD
           {
           phi_new[ilev].setVal(1.0,ETEMP_ID,1);
           amrex::MultiFab::Multiply(phi_new[ilev],solution[ilev],EEN_ID, ETEMP_ID, 1, 0);

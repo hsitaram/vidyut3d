@@ -25,27 +25,27 @@ namespace plasmachem
 namespace plasmachem_transport
 {
 
-    // AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real mobility(int specid,
-                         Real Te, Real efield_x,
-                         Real efield_y,Real efield_z,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                         GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                         GpuArray<Real, AMREX_SPACEDIM> dx,
-                         const Real time,
-                         ProbParm const& prob_parm,
-                         Real Tg, Real Pg);
+    // // AMREX_GPU_DEVICE AMREX_INLINE
+    // amrex::Real mobility(int specid,
+    //                      Real Te, Real efield_x,
+    //                      Real efield_y,Real efield_z,
+    //                      GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+    //                      GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+    //                      GpuArray<Real, AMREX_SPACEDIM> dx,
+    //                      const Real time,
+    //                      ProbParm const& prob_parm,
+    //                      Real Tg, Real Pg);
 
-    // AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real diffusion_coeff(int specid,
-                                Real Te, Real efield_x,
-                                Real efield_y,Real efield_z,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                                GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                                GpuArray<Real, AMREX_SPACEDIM> dx,
-                                const Real time,
-                                ProbParm const& prob_parm,
-                                Real Tg, Real Pg);
+    // // AMREX_GPU_DEVICE AMREX_INLINE
+    // amrex::Real diffusion_coeff(int specid,
+    //                             Real Te, Real efield_x,
+    //                             Real efield_y,Real efield_z,
+    //                             GpuArray<Real, AMREX_SPACEDIM> prob_lo,
+    //                             GpuArray<Real, AMREX_SPACEDIM> prob_hi,
+    //                             GpuArray<Real, AMREX_SPACEDIM> dx,
+    //                             const Real time,
+    //                             ProbParm const& prob_parm,
+    //                             Real Tg, Real Pg);
 
     // AMREX_GPU_DEVICE AMREX_INLINE
     amrex::Real collision_freq(int i, int j, int k,
@@ -71,7 +71,8 @@ namespace plasmachem_transport
                       GpuArray<Real, AMREX_SPACEDIM> dx,
                       const Real time,
                       ProbParm const& prob_parm,
-                      amrex::Real Tg,amrex::Real Pg);
+                      amrex::Real Tg,amrex::Real Pg,
+                      amrex::Real voltage);
 
     // AMREX_GPU_DEVICE AMREX_INLINE
     void species_bc(int i,int j,int k, int dir, int sgn,

@@ -160,6 +160,10 @@ void Vidyut::InitData()
         WritePlotFile(amrex::Math::floor
                       (amrex::Real(istep[0])/amrex::Real(plot_int)));
     }
+    if(monitor_file_int > 0)
+    {
+        WriteMonitorFile(0.0);
+    }
 }
 
 // tag all cells for refinement
@@ -303,6 +307,29 @@ void Vidyut::ReadParameters()
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);
         pp.queryarr("bg_species_ids",bg_specid_list);
+        pp.query("gas_num_dens",gas_num_dens);
+
+        // Transport options
+        pp.query("const_ele_trans", const_ele_trans);
+        if(const_ele_trans){
+            pp.get("ele_mob", ele_mob);
+            pp.get("ele_diff", ele_diff);
+        }
+        
+        // Voltage options
+        pp.query("voltage_profile", voltage_profile);
+        if(voltage_profile == 1){
+            pp.query("voltage_amp_1", voltage_amp_1);   // Assumed grounded by default
+            pp.get("voltage_amp_2", voltage_amp_2);
+            pp.get("voltage_freq", voltage_freq);
+        } else if (voltage_profile == 2) {
+            pp.query("voltage_amp_1", voltage_amp_1);   // Assumed grounded by default
+            pp.get("voltage_amp_2", voltage_amp_2);
+            pp.get("voltage_dur", voltage_dur);
+            pp.get("voltage_center", voltage_center);
+        }
+
+        pp.query("monitor_file_int", monitor_file_int);
     }
 }
 

@@ -1,247 +1,406 @@
-#include<Chemistry.H>
-#include<VarDefines.H>
+#include "Chemistry.H"
+const int rmap[9] = {2, 3, 4, 7, 8, 0, 1, 5, 6};
 
-namespace plasmachem
-{
-    amrex::Vector<std::string> specnames(NUM_SPECIES);
-    AMREX_GPU_DEVICE_MANAGED amrex::Real spec_molwt[NUM_ALL_SPECIES]={0.0};
-    AMREX_GPU_DEVICE_MANAGED amrex::Real spec_charge[NUM_ALL_SPECIES]={0.0};
+// Returns 0-based map of reaction order
+void GET_RMAP(int *_rmap) {
+  for (int j = 0; j < 9; ++j) {
+    _rmap[j] = rmap[j];
+  }
+}
 
-    void init()
-    {
-        specnames[HE_ID]="He";
-        specnames[HEp_ID]="He+";
-        specnames[HE2p_ID]="He2+";
-        specnames[HEm_ID]="Hem";
-        specnames[HE2m_ID]="He2m";
-        
-        spec_charge[HE_ID]   =  0.0;
-        spec_charge[HEp_ID]  =  1.0;
-        spec_charge[HE2p_ID] =  1.0;
-        spec_charge[HEm_ID]  =  0.0;
-        spec_charge[HE2m_ID] =  0.0;
-        spec_charge[EDN_ID]  = -1.0;
-
-        spec_molwt[HE_ID]   = 4.0*M_AMU;
-        spec_molwt[HEp_ID]  = 4.0*M_AMU;
-        spec_molwt[HE2p_ID] = 8.0*M_AMU;
-        spec_molwt[HEm_ID]  = 4.0*M_AMU;
-        spec_molwt[HE2m_ID] = 8.0*M_AMU;
-        spec_molwt[EDN_ID]  = ME;
-    }    
-    
-    void close()
-    {
-        specnames.clear();
+// Returns a count of species in a reaction, and their indices
+// and stoichiometric coefficients. (Eq 50)
+void CKINU(const int i, int &nspec, int ki[], int nu[]) {
+  const int ns[9] = {4, 4, 3, 3, 3, 4, 4, 3, 3};
+  const int kiv[36] = {0, 1, 0, 3, 0, 3, 0, 1, 1, 0, 2, 0, 3, 0, 2, 0, 5, 0,
+                       4, 0, 0, 4, 1, 3, 3, 0, 1, 2, 1, 3, 5, 0, 1, 2, 4, 0};
+  const int nuv[36] = {-1, -1, 1, 1, -1, -1, 1, 1, -1, 1,  1, 0,
+                       -1, 1,  1, 0, -1, 1,  1, 0, -1, -1, 1, 1,
+                       -2, 1,  1, 1, -1, -1, 1, 0, -1, -1, 1, 0};
+  if (i < 1) {
+    // Return max num species per reaction
+    nspec = 4;
+  } else {
+    if (i > 9) {
+      nspec = -1;
+    } else {
+      nspec = ns[i - 1];
+      for (int j = 0; j < nspec; ++j) {
+        ki[j] = kiv[(i - 1) * 4 + j] + 1;
+        nu[j] = nuv[(i - 1) * 4 + j];
+      }
     }
-    
-    int find_id(std::string specname)
-    {
-        int loc=-1;
-        auto it=std::find(specnames.begin(),specnames.end(),specname);
-        if(it != specnames.end())
-        {
-            loc=it-specnames.begin();
-        }
-        return(loc);
+  }
+}
+
+// Returns the progress rates of each reactions
+// Given P, T, and mole fractions
+void CKKFKR(const amrex::Real P, const amrex::Real T, const amrex::Real x[],
+            amrex::Real q_f[], amrex::Real q_r[]) {
+  amrex::Real c[6]; // temporary storage
+  amrex::Real PORT =
+      1e6 * P / (8.31446261815324e+07 * T); // 1e6 * P/RT so c goes to SI units
+
+  // Compute conversion, see Eq 10
+  for (int id = 0; id < 6; ++id) {
+    c[id] = x[id] * PORT;
+  }
+
+  // convert to chemkin units
+  progressRateFR(q_f, q_r, c, T);
+
+  // convert to chemkin units
+  for (int id = 0; id < 9; ++id) {
+    q_f[id] *= 1.0e-6;
+    q_r[id] *= 1.0e-6;
+  }
+}
+
+// compute the progress rate for each reaction
+// USES progressRate : todo switch to GPU
+void progressRateFR(amrex::Real *q_f, amrex::Real *q_r, amrex::Real *sc,
+                    amrex::Real T) {
+  const amrex::Real tc[5] = {log(T), T, T * T, T * T * T,
+                             T * T * T * T}; // temperature cache
+  amrex::Real invT = 1.0 / tc[1];
+  // compute the Gibbs free energy
+  amrex::Real g_RT[6];
+  gibbs(g_RT, tc);
+
+  amrex::Real sc_qss[1];
+  comp_qfqr(q_f, q_r, sc, sc_qss, tc, invT);
+}
+
+// save atomic weights into array
+void atomicWeight(amrex::Real *awt) {
+  awt[0] = 0.000549; // E
+  awt[1] = 4.002602; // He
+}
+
+// get atomic weight for all elements
+void CKAWT(amrex::Real *awt) { atomicWeight(awt); }
+
+// Returns the elemental composition
+// of the speciesi (mdim is num of elements)
+void CKNCF(int *ncf) {
+  int kd = 2;
+  // Zero ncf
+  for (int id = 0; id < kd * 6; ++id) {
+    ncf[id] = 0;
+  }
+
+  // E
+  ncf[0 * kd + 0] = 1; // E
+
+  // HE
+  ncf[1 * kd + 1] = 1; // He
+
+  // HEp
+  ncf[2 * kd + 0] = -1; // E
+  ncf[2 * kd + 1] = 1;  // He
+
+  // HEm
+  ncf[3 * kd + 1] = 1; // He
+
+  // HE2p
+  ncf[4 * kd + 0] = -1; // E
+  ncf[4 * kd + 1] = 2;  // He
+
+  // HE2m
+  ncf[5 * kd + 1] = 2; // He
+}
+
+// Returns the vector of strings of element names
+void CKSYME_STR(amrex::Vector<std::string> &ename) {
+  ename.resize(2);
+  ename[0] = "E";
+  ename[1] = "He";
+}
+
+// Returns the vector of strings of species names
+void CKSYMS_STR(amrex::Vector<std::string> &kname) {
+  kname.resize(6);
+  kname[0] = "E";
+  kname[1] = "HE";
+  kname[2] = "HEp";
+  kname[3] = "HEm";
+  kname[4] = "HE2p";
+  kname[5] = "HE2m";
+}
+
+// compute the sparsity pattern of the chemistry Jacobian
+void SPARSITY_INFO(int *nJdata, const int *consP, int NCELLS) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian(Jac.data(), conc.data(), 1500.0, *consP);
+
+  int nJdata_tmp = 0;
+  for (int k = 0; k < 7; k++) {
+    for (int l = 0; l < 7; l++) {
+      if (Jac[7 * k + l] != 0.0) {
+        nJdata_tmp = nJdata_tmp + 1;
+      }
     }
-    
-    AMREX_GPU_HOST_DEVICE 
-    amrex::Real get_charge(int specid)
-    {
-        return(spec_charge[specid]);
+  }
+
+  *nJdata = NCELLS * nJdata_tmp;
+}
+
+// compute the sparsity pattern of the system Jacobian
+void SPARSITY_INFO_SYST(int *nJdata, const int *consP, int NCELLS) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian(Jac.data(), conc.data(), 1500.0, *consP);
+
+  int nJdata_tmp = 0;
+  for (int k = 0; k < 7; k++) {
+    for (int l = 0; l < 7; l++) {
+      if (k == l) {
+        nJdata_tmp = nJdata_tmp + 1;
+      } else {
+        if (Jac[7 * k + l] != 0.0) {
+          nJdata_tmp = nJdata_tmp + 1;
+        }
+      }
     }
-    
-    AMREX_GPU_HOST_DEVICE 
-    amrex::Real get_molwt(int specid)
-    {
-        return(spec_molwt[specid]);
+  }
+
+  *nJdata = NCELLS * nJdata_tmp;
+}
+
+// compute the sparsity pattern of the simplified (for preconditioning) system
+// Jacobian
+void SPARSITY_INFO_SYST_SIMPLIFIED(int *nJdata, const int *consP) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian_precond(Jac.data(), conc.data(), 1500.0, *consP);
+
+  int nJdata_tmp = 0;
+  for (int k = 0; k < 7; k++) {
+    for (int l = 0; l < 7; l++) {
+      if (k == l) {
+        nJdata_tmp = nJdata_tmp + 1;
+      } else {
+        if (Jac[7 * k + l] != 0.0) {
+          nJdata_tmp = nJdata_tmp + 1;
+        }
+      }
     }
-    
-    AMREX_GPU_HOST_DEVICE 
-    amrex::Real get_bg_molwt(Real specden[NUM_ALL_SPECIES])
-    {
-        return(spec_molwt[HE_ID]);
+  }
+
+  nJdata[0] = nJdata_tmp;
+}
+
+// compute the sparsity pattern of the chemistry Jacobian in CSC format -- base
+// 0
+void SPARSITY_PREPROC_CSC(int *rowVals, int *colPtrs, const int *consP,
+                          int NCELLS) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian(Jac.data(), conc.data(), 1500.0, *consP);
+
+  colPtrs[0] = 0;
+  int nJdata_tmp = 0;
+  for (int nc = 0; nc < NCELLS; nc++) {
+    int offset_row = nc * 7;
+    int offset_col = nc * 7;
+    for (int k = 0; k < 7; k++) {
+      for (int l = 0; l < 7; l++) {
+        if (Jac[7 * k + l] != 0.0) {
+          rowVals[nJdata_tmp] = l + offset_row;
+          nJdata_tmp = nJdata_tmp + 1;
+        }
+      }
+      colPtrs[offset_col + (k + 1)] = nJdata_tmp;
     }
-   
-    AMREX_GPU_HOST_DEVICE void get_wdot(amrex::Real Te,amrex::Real Tg, amrex::Real Pg,
-                                        amrex::Real efield, amrex::Real spec[NUM_ALL_SPECIES],
-                                        amrex::Real spec_wdot[NUM_ALL_SPECIES+1])
-    {
-        const amrex::Real cm_to_m=0.01;        
-        amrex::Real rate;
-        
-        for(int sp=0;sp<(NUM_ALL_SPECIES+1);sp++)
-        {
-            spec_wdot[sp]=0.0;
+  }
+}
+
+// compute the sparsity pattern of the chemistry Jacobian in CSR format -- base
+// 0
+void SPARSITY_PREPROC_CSR(int *colVals, int *rowPtrs, const int *consP,
+                          int NCELLS, int base) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian(Jac.data(), conc.data(), 1500.0, *consP);
+
+  if (base == 1) {
+    rowPtrs[0] = 1;
+    int nJdata_tmp = 1;
+    for (int nc = 0; nc < NCELLS; nc++) {
+      int offset = nc * 7;
+      for (int l = 0; l < 7; l++) {
+        for (int k = 0; k < 7; k++) {
+          if (Jac[7 * k + l] != 0.0) {
+            colVals[nJdata_tmp - 1] = k + 1 + offset;
+            nJdata_tmp = nJdata_tmp + 1;
+          }
         }
-
-        //E + HE --> HEm + E
-        rate = 2.308e-10*(std::pow(cm_to_m,3.0))
-        *std::pow(Te,0.31)*std::exp(-2.297e5/Te) * spec[EDN_ID] * spec[HE_ID];
-        spec_wdot[HEm_ID] += rate;
-        spec_wdot[EEN_ID] += -19.8*ECHARGE*rate;
-
-        //E + HEm --> HE + E
-        rate = 1.099e-11*(std::pow(cm_to_m,3.0))
-        *std::pow(Te,0.31) * spec[EDN_ID] * spec[HEm_ID];
-        spec_wdot[HEm_ID] -= rate;
-        spec_wdot[EEN_ID] += 19.8*ECHARGE*rate;
-
-        //E + HE --> HE+ + 2E
-        rate = 2.584e-12*(std::pow(cm_to_m,3.0))
-        *std::pow(Te,0.68)*std::exp(-2.854092e5/Te) * spec[EDN_ID] * spec[HE_ID];
-        spec_wdot[EDN_ID] += rate;
-        spec_wdot[HEp_ID] += rate;
-        spec_wdot[EEN_ID] += -24.6*ECHARGE*rate;
-
-        //E + HEm --> HE+ + 2E
-        rate = 4.661e-10*(std::pow(cm_to_m,3.0))
-        *std::pow(Te,0.6)*std::exp(-5.546e4/Te) * spec[EDN_ID] * spec[HEm_ID];
-        spec_wdot[EDN_ID] += rate;
-        spec_wdot[HEm_ID] -= rate;
-        spec_wdot[HEp_ID] += rate;
-        spec_wdot[EEN_ID] += -4.78*ECHARGE*rate;
-
-        //E + HE2m --> HE2p + 2E
-        rate = 1.268e-12*(std::pow(cm_to_m,3.0))
-        *std::pow(Te,0.71)*std::exp(-3.945e4/Te) * spec[EDN_ID] * spec[HE2m_ID];
-        spec_wdot[EDN_ID]  += rate;
-        spec_wdot[HE2m_ID] -= rate;
-        spec_wdot[HE2p_ID] += rate;
-        spec_wdot[EEN_ID]  += -3.4*ECHARGE*rate; 
-
-        //E + HE2p --> HEm + HE
-        rate = 5.386e-7*(std::pow(cm_to_m,3.0))
-        *std::pow(Te,-0.5) * spec[EDN_ID] *  spec[HE2p_ID];
-        spec_wdot[EDN_ID]  -= rate;
-        spec_wdot[HE2p_ID] -= rate;
-        spec_wdot[HEm_ID]  += rate;
-        spec_wdot[EEN_ID]  += 0.0; 
-
-        //2 HEm --> HE+ + HE + E
-        rate = 2.7e-10*(std::pow(cm_to_m,3.0)) * std::pow(spec[HEm_ID],2.0);
-        spec_wdot[HEm_ID]  -= 2.0*rate;
-        spec_wdot[HEp_ID]  += rate;
-        spec_wdot[EDN_ID]  += rate;
-        spec_wdot[EEN_ID]  += 15.0*ECHARGE*rate;
-
-        //HEm + 2HE --> HE2m + HE
-        rate = 1.3e-33*(std::pow(cm_to_m,3.0)) * spec[HEm_ID] * std::pow(spec[HE_ID],2.0);
-        spec_wdot[HEm_ID]  -= rate;
-        spec_wdot[HE2m_ID] += rate;
-        spec_wdot[EEN_ID]  += 0.0;
-
-        //HE+ + 2HE --> HE2+ + HE
-        rate = 1.e-31*(std::pow(cm_to_m,3.0)) * spec[HEp_ID] * std::pow(spec[HE_ID],2.0);
-        spec_wdot[HEp_ID]  -= rate;
-        spec_wdot[HE2p_ID] += rate;
-        spec_wdot[EEN_ID]  += 0.0;
-
+        rowPtrs[offset + (l + 1)] = nJdata_tmp;
+      }
     }
-    
-    AMREX_GPU_DEVICE 
-    amrex::Real mobility(int specid,
-                         amrex::Real Te, 
-                         amrex::Real efield,
-                         Real Tg, Real Pg)
-
-    {
-        amrex::Real mob=0.0;
-        //mobility is scaled by charge
-        
-        //reduced mobility obtained from Yuan and Raja,
-        //IEEE. Trans. Plasma Sci.,31,4,2003
-        //they say these are 393K, may be temperature
-        //scaling is necessary
-        //amrex::Real Pres_ratio = (P_NTP/Pg);
-        //amrex::Real elecmob=-0.1132*Pres_ratio;
-
-        amrex::Real N=Pg/K_B/Tg;
-        amrex::Real EbyN=efield/N/TDUNIT;
-        amrex::Real meanE = 1.5*Te/eV;
-
-        //mobility from 
-        //Turner, Miles M., et al. "Simulation benchmarks for low-pressure
-        //plasmas: Capacitive discharges." 
-        //Physics of Plasmas 20.1 (2013): 013507.
-        amrex::Real Hepmob=2.69*std::pow((1.0+1.2e-3*std::pow(EbyN,2.0)+4.2e-8*std::pow(EbyN,4.0)),-0.125);
-        amrex::Real He2pmob=Hepmob;
-        
-        //computed by Taaresh Taneja (U Minnesota) using Turner's cross sections
-        amrex::Real elecmob = (-1.0)*std::exp(55.0 + 0.3942*std::log(meanE) + 2.134/meanE 
-                   -0.6433/std::pow(meanE,2.0) + (0.7112e-1)/std::pow(meanE,3.0)) / N;
-        
-        if(specid==EDN_ID)
-        {
-            mob=elecmob;
+  } else {
+    rowPtrs[0] = 0;
+    int nJdata_tmp = 0;
+    for (int nc = 0; nc < NCELLS; nc++) {
+      int offset = nc * 7;
+      for (int l = 0; l < 7; l++) {
+        for (int k = 0; k < 7; k++) {
+          if (Jac[7 * k + l] != 0.0) {
+            colVals[nJdata_tmp] = k + offset;
+            nJdata_tmp = nJdata_tmp + 1;
+          }
         }
-        if(specid==HEp_ID)
-        {
-            //mob=0.001482*Pres_ratio;
-            mob=Hepmob;
-        }
-        if(specid==HE2p_ID)
-        {
-            //mob=0.002403*Pres_ratio;
-            mob=He2pmob;
-        }
-        if(specid==EEN_ID)
-        {
-            mob=fivebythree*elecmob;
-        }
-
-        return(mob);
+        rowPtrs[offset + (l + 1)] = nJdata_tmp;
+      }
     }
-    
-    AMREX_GPU_DEVICE 
-    amrex::Real diffusion_coeff(int specid,
-                                amrex::Real Te,
-                                amrex::Real efield,
-                                amrex::Real Tg, amrex::Real Pg)
+  }
+}
 
-    {
-        amrex::Real Pres_ratio = (P_NTP/Pg);
-        amrex::Real elecdcoeff=0.1737*(Te/17406.0)*Pres_ratio;
-        amrex::Real dcoeff=0.0;
-        if(specid==EDN_ID)
-        {
-            dcoeff=elecdcoeff;
-        }
-        if(specid==HEp_ID)
-        {
-            dcoeff=5.026e-5*Pres_ratio;
-            //dcoeff=0.0;
-        }
-	if(specid==HE2p_ID)
-        {
-           dcoeff=8.148e-5*Pres_ratio;
-        }
-	if(specid==HEm_ID)
-        {
-           dcoeff=4.116e-4*Pres_ratio;
-        }
-        if(specid==HE2m_ID)
-        {
-	  dcoeff=2.029e-4*Pres_ratio;
-        }
-        if(specid==EEN_ID)
-        {
-            dcoeff=fivebythree*elecdcoeff;
-        }
+// compute the sparsity pattern of the system Jacobian
+// CSR format BASE is user choice
+void SPARSITY_PREPROC_SYST_CSR(int *colVals, int *rowPtr, const int *consP,
+                               int NCELLS, int base) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian(Jac.data(), conc.data(), 1500.0, *consP);
 
-        return(dcoeff);
+  if (base == 1) {
+    rowPtr[0] = 1;
+    int nJdata_tmp = 1;
+    for (int nc = 0; nc < NCELLS; nc++) {
+      int offset = nc * 7;
+      for (int l = 0; l < 7; l++) {
+        for (int k = 0; k < 7; k++) {
+          if (k == l) {
+            colVals[nJdata_tmp - 1] = l + 1 + offset;
+            nJdata_tmp = nJdata_tmp + 1;
+          } else {
+            if (Jac[7 * k + l] != 0.0) {
+              colVals[nJdata_tmp - 1] = k + 1 + offset;
+              nJdata_tmp = nJdata_tmp + 1;
+            }
+          }
+        }
+        rowPtr[offset + (l + 1)] = nJdata_tmp;
+      }
     }
-
-    AMREX_GPU_DEVICE 
-    amrex::Real electron_collision_freq(
-                               amrex::Real Te,
-                               amrex::Real efield,
-                               Real Tg, Real Pg)
-
-    {
-        amrex::Real mu = mobility(EDN_ID, Te, efield, Tg, Pg);
-        amrex::Real collfreq = -ECHARGE/ME/mu;
-        return(collfreq);
+  } else {
+    rowPtr[0] = 0;
+    int nJdata_tmp = 0;
+    for (int nc = 0; nc < NCELLS; nc++) {
+      int offset = nc * 7;
+      for (int l = 0; l < 7; l++) {
+        for (int k = 0; k < 7; k++) {
+          if (k == l) {
+            colVals[nJdata_tmp] = l + offset;
+            nJdata_tmp = nJdata_tmp + 1;
+          } else {
+            if (Jac[7 * k + l] != 0.0) {
+              colVals[nJdata_tmp] = k + offset;
+              nJdata_tmp = nJdata_tmp + 1;
+            }
+          }
+        }
+        rowPtr[offset + (l + 1)] = nJdata_tmp;
+      }
     }
+  }
+}
+
+// compute the sparsity pattern of the simplified (for precond) system Jacobian
+// on CPU BASE 0
+void SPARSITY_PREPROC_SYST_SIMPLIFIED_CSC(int *rowVals, int *colPtrs, int *indx,
+                                          const int *consP) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian_precond(Jac.data(), conc.data(), 1500.0, *consP);
+
+  colPtrs[0] = 0;
+  int nJdata_tmp = 0;
+  for (int k = 0; k < 7; k++) {
+    for (int l = 0; l < 7; l++) {
+      if (k == l) {
+        rowVals[nJdata_tmp] = l;
+        indx[nJdata_tmp] = 7 * k + l;
+        nJdata_tmp = nJdata_tmp + 1;
+      } else {
+        if (Jac[7 * k + l] != 0.0) {
+          rowVals[nJdata_tmp] = l;
+          indx[nJdata_tmp] = 7 * k + l;
+          nJdata_tmp = nJdata_tmp + 1;
+        }
+      }
+    }
+    colPtrs[k + 1] = nJdata_tmp;
+  }
+}
+
+// compute the sparsity pattern of the simplified (for precond) system Jacobian
+// CSR format BASE is under choice
+void SPARSITY_PREPROC_SYST_SIMPLIFIED_CSR(int *colVals, int *rowPtr,
+                                          const int *consP, int base) {
+  amrex::GpuArray<amrex::Real, 49> Jac = {0.0};
+  amrex::GpuArray<amrex::Real, 6> conc = {0.0};
+  for (int n = 0; n < 6; n++) {
+    conc[n] = 1.0 / 6.000000;
+  }
+  aJacobian_precond(Jac.data(), conc.data(), 1500.0, *consP);
+
+  if (base == 1) {
+    rowPtr[0] = 1;
+    int nJdata_tmp = 1;
+    for (int l = 0; l < 7; l++) {
+      for (int k = 0; k < 7; k++) {
+        if (k == l) {
+          colVals[nJdata_tmp - 1] = l + 1;
+          nJdata_tmp = nJdata_tmp + 1;
+        } else {
+          if (Jac[7 * k + l] != 0.0) {
+            colVals[nJdata_tmp - 1] = k + 1;
+            nJdata_tmp = nJdata_tmp + 1;
+          }
+        }
+      }
+      rowPtr[l + 1] = nJdata_tmp;
+    }
+  } else {
+    rowPtr[0] = 0;
+    int nJdata_tmp = 0;
+    for (int l = 0; l < 7; l++) {
+      for (int k = 0; k < 7; k++) {
+        if (k == l) {
+          colVals[nJdata_tmp] = l;
+          nJdata_tmp = nJdata_tmp + 1;
+        } else {
+          if (Jac[7 * k + l] != 0.0) {
+            colVals[nJdata_tmp] = k;
+            nJdata_tmp = nJdata_tmp + 1;
+          }
+        }
+      }
+      rowPtr[l + 1] = nJdata_tmp;
+    }
+  }
 }

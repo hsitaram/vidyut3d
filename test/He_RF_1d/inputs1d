@@ -60,7 +60,8 @@ vidyut.min_species_density=1e10
 vidyut.linsolve_maxiter=200
 vidyut.elecenergy_solve=1
 
-prob.V=120.0
+prob.V1=120.0
+prob.V2=0.0
 prob.f=13.56e6
 
 vidyut.gas_pressure=133.0
