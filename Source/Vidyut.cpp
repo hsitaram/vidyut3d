@@ -318,15 +318,15 @@ void Vidyut::ReadParameters()
         
         // Voltage options
         pp.query("voltage_profile", voltage_profile);
+        pp.get("voltage_amp_1", voltage_amp_1);
+        pp.get("voltage_amp_2", voltage_amp_2);
         if(voltage_profile == 1){
-            pp.query("voltage_amp_1", voltage_amp_1);   // Assumed grounded by default
-            pp.get("voltage_amp_2", voltage_amp_2);
             pp.get("voltage_freq", voltage_freq);
         } else if (voltage_profile == 2) {
-            pp.query("voltage_amp_1", voltage_amp_1);   // Assumed grounded by default
-            pp.get("voltage_amp_2", voltage_amp_2);
             pp.get("voltage_dur", voltage_dur);
             pp.get("voltage_center", voltage_center);
+        } else if(voltage_profile == 3){
+            pp.get("voltage_freq", voltage_freq);
         }
 
         pp.query("monitor_file_int", monitor_file_int);

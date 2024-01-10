@@ -21,6 +21,10 @@ amr.regrid_int      = 5       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 1e-12
 
+# Voltage settings
+vidyut.voltage_amp_1=0.0
+vidyut.voltage_amp_2=18.75e3
+
 # Tagging
 vidyut.tagged_vars = Potential 
 vidyut.Potential_refine = 1e20
@@ -66,8 +70,6 @@ prob.loc_z=1.5625e-3
 prob.rad=0.4e-3
 prob.ampl=5e18
 prob.bg=1e13
-prob.V1=0.0
-prob.V2=18.75e3
 prob.twod=1
 prob.nscale=1.0
 prob.potscale=1.0

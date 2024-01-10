@@ -4,6 +4,7 @@
 #include <AMReX_Box.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_Geometry.H>
+#include <AMReX_ParmParse.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
 #include <UnivConstants.H>

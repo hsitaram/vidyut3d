@@ -334,6 +334,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     robin_f.clear();
 }
 
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
 {
     ProbParm const* localprobparm = d_prob_parm;
@@ -347,6 +348,8 @@ amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
         } else {
             voltage = (current_time - voltage_center < voltage_dur/2.0) ? (1.0 - (current_time - voltage_center)/(voltage_dur/2.0))*voltage_amp:0.0;
         }
+    } else if(voltage_profile == 3) {
+        voltage = voltage_amp*sin(2.0*PI*current_time*voltage_freq);
     } else {
         voltage = (domain_end==-1) ? localprobparm->V1:localprobparm->V2;
     }
