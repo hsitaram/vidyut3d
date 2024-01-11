@@ -1545,7 +1545,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void CKWXR(const amrex::Real rho,
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void CKCHRG(int kcharge[]) {
   kcharge[0] = -1; // E
   kcharge[1] = 0;  // N2
-  kcharge[2] = 0;  // N2p
+  kcharge[2] = 1;  // N2p
 }
 
 //  species charge per unit mass
