@@ -20,8 +20,14 @@ void compute_flux(
         int sweepdir,
         int specid,
         Array4<Real> const& phi, // state variable
-        Array4<Real> const& vel,
+        const GpuArray<int, AMREX_SPACEDIM> bclo,
+        const GpuArray<int, AMREX_SPACEDIM> bchi,
+        const GpuArray<int, AMREX_SPACEDIM> domlo,
+        const GpuArray<int, AMREX_SPACEDIM> domhi,
         Array4<Real> const& fx,
+        amrex::Real Tg,
+        amrex::Real Pg,
+        amrex::Real time,
         const GpuArray<Real, AMREX_SPACEDIM>& dx,
         ProbParm const& prob_parm)
 {
@@ -30,6 +36,7 @@ void compute_flux(
     //|--(i-2)--|--(i-1)--|--i--|--(i+1)--|
     //remember: face i separates (i-1) and i cells
 
+    IntVect face(i,j,k);
     IntVect left(i, j, k);
     IntVect left1(i, j, k);
     IntVect right(i, j, k);
@@ -41,29 +48,29 @@ void compute_flux(
 
     // find face vel
     Real smallval = 1e-10;
-    Real dtr = phi(right, specid) - phi(left, specid);
-    if (!(std::abs(dtr) > 0.0))
-    {
-        dtr = dtr + smallval;
-    }
-    Real r_left = (phi(left, specid) - phi(left1, specid)) / dtr;
-    Real lim_left = std::max(0.0, std::min(1.0, r_left));
-
-    dtr = phi(right1, specid) - phi(right, specid);
-    if (!(std::abs(dtr) > 0.0))
-    {
-        dtr = dtr + smallval;
-    }
-    Real r_right = (phi(right, specid) - phi(left, specid)) / dtr;
-    Real lim_right = std::max(0.0, std::min(1.0, r_right));
-
-    //Real phi_L = phi(left, specid) + 0.5 * lim_left * (phi(left, specid) - phi(left1, specid));
-    //Real phi_R = phi(right, specid) - 0.5 * lim_right * (phi(right1, specid) - phi(right, specid));
     
     Real phi_L = phi(left, specid);
     Real phi_R = phi(right, specid);
 
-    Real vel_mid = vel(i, j, k);
-    fx(i, j, k) = phi_L * 0.5 * (vel_mid + fabs(vel_mid)) + phi_R * 0.5 * (vel_mid - fabs(vel_mid));
+    Real vel_L = plasmachem_transport::compute_vel(left[0],left[1],left[2],sweepdir,
+                     specid,phi,dx,time,prob_parm,Tg,Pg);
+
+    Real vel_R = plasmachem_transport::compute_vel(right[0],right[1],right[2],sweepdir,
+                     specid,phi,dx,time,prob_parm,Tg,Pg);
+
+    Real vel_mid=0.5*(vel_L+vel_R);
+    Real vel_sgn = std::copysign(1.0, vel_mid);
+
+    fx(face) = phi_L * vel_L *  0.5 * (vel_sgn + fabs(vel_sgn)) 
+                + phi_R * vel_R *  0.5 * (vel_sgn - fabs(vel_sgn));
+    
+    if( (face[sweepdir]==domlo[sweepdir]) && (bclo[sweepdir]==IHNEUBC) )
+    {
+        fx(face)=0.0;
+    }
+    if( (face[sweepdir]==(domhi[sweepdir]+1)) && (bchi[sweepdir]==IHNEUBC) )
+    {
+        fx(face)=0.0;
+    }
 }
 #endif

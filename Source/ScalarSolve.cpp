@@ -59,6 +59,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<MultiFab>& rxn_src, 
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
+                                            Vector<int>& bc_lo, Vector<int>& bc_hi,
                                             amrex::Real cur_time)
 {
     for(int lev=0; lev <= finest_level; lev++)
@@ -72,7 +73,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     for(int lev=0; lev <= finest_level; lev++)
     {
         compute_scalar_transport_flux(lev, Sborder[lev].nGrow(), Sborder[lev], 
-                                      flux[lev], efield[lev],cur_time, specid);
+                                      flux[lev], bc_lo, bc_hi, cur_time, specid);
     }
 
     // =======================================================
@@ -159,8 +160,8 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
 
 void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                            Array<MultiFab,AMREX_SPACEDIM>& flux, 
-                                           Array<MultiFab,AMREX_SPACEDIM>& efield, 
-                                           Real time,int specid)
+                                           Vector<int>& bc_lo, Vector<int>& bc_hi,
+                                           Real current_time,int specid)
 {
     const auto dx = geom[lev].CellSizeArray();
     auto prob_lo = geom[lev].ProbLoArray();
@@ -178,6 +179,10 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
 
     GpuArray<int,AMREX_SPACEDIM> domlo={domlo_arr[0], domlo_arr[1], domlo_arr[2]};
     GpuArray<int,AMREX_SPACEDIM> domhi={domhi_arr[0], domhi_arr[1], domhi_arr[2]};
+    
+    GpuArray<int,AMREX_SPACEDIM> bclo={bc_lo[0], bc_lo[1], bc_lo[2]};
+    GpuArray<int,AMREX_SPACEDIM> bchi={bc_hi[0], bc_hi[1], bc_hi[2]};
+
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -186,66 +191,38 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
         {
             const Box& bx = mfi.tilebox();
             const Box& gbx = amrex::grow(bx, 1);
-            Box bx_x = convert(bx, IntVect::TheDimensionVector(0));
-            Box bx_y = convert(bx, IntVect::TheDimensionVector(1));
-            Box bx_z = convert(bx, IntVect::TheDimensionVector(2));
-
-            FArrayBox velx_fab(bx_x, 1);
-            FArrayBox vely_fab(bx_y, 1);
-            FArrayBox velz_fab(bx_z, 1);
-
-            Elixir velx_fab_eli = velx_fab.elixir();
-            Elixir vely_fab_eli = vely_fab.elixir();
-            Elixir velz_fab_eli = velz_fab.elixir();
+            Box bx_x = convert(bx, {1, 0, 0});
+            Box bx_y = convert(bx, {0, 1, 0});
+            Box bx_z = convert(bx, {0, 0, 1});
+            
+            Real time = current_time; // for GPU capture
 
             Array4<Real> sborder_arr = Sborder.array(mfi);
-            Array4<Real> velx_arr = velx_fab.array();
-            Array4<Real> vely_arr = vely_fab.array();
-            Array4<Real> velz_arr = velz_fab.array();
 
             GpuArray<Array4<Real>, AMREX_SPACEDIM> 
             flux_arr{AMREX_D_DECL(flux[0].array(mfi), 
                                   flux[1].array(mfi), flux[2].array(mfi))};
 
-            GpuArray<Array4<Real>, AMREX_SPACEDIM> 
-            efield_arr{AMREX_D_DECL(efield[0].array(mfi), 
-                                    efield[1].array(mfi), efield[2].array(mfi))};
-
-            velx_fab.setVal<RunOn::Device>(0.0);
-            vely_fab.setVal<RunOn::Device>(0.0);
-            velz_fab.setVal<RunOn::Device>(0.0);
-
-            amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, efield_arr[0], velx_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
-                                                  captured_gastemp,captured_gaspres);
-            });
-
-            amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, efield_arr[1], vely_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
-                                                  captured_gastemp,captured_gaspres);
-            });
-
-            amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, efield_arr[2], velz_arr, 
-                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
-                                                  captured_gastemp,captured_gaspres);
-            });
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 0, captured_specid, sborder_arr, 
-                             velx_arr, flux_arr[0], dx, *localprobparm); 
+                             bclo, bchi, domlo, domhi, flux_arr[0], 
+                             captured_gastemp,captured_gaspres,
+                             time, dx, *localprobparm); 
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 1, captured_specid, sborder_arr, 
-                             vely_arr, flux_arr[1], dx, *localprobparm); 
+                             bclo, bchi, domlo, domhi, flux_arr[1], 
+                             captured_gastemp,captured_gaspres,
+                             time, dx, *localprobparm); 
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 2, captured_specid, sborder_arr, 
-                             velz_arr, flux_arr[2], dx, *localprobparm);
+                             bclo, bchi, domlo, domhi, flux_arr[2], 
+                             captured_gastemp, captured_gaspres,
+                             time, dx, *localprobparm);
             });
         }
     }

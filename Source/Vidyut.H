@@ -75,7 +75,7 @@ public:
 
    void compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
-                                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
+                                             Vector<int>& bc_lo, Vector<int>& bc_hi,
                                              Real time,int specid);
 
     void compute_dsdt(int lev, const int num_grow, int specid, 
@@ -94,6 +94,7 @@ public:
                                             Vector<MultiFab>& rxn_src, 
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
+                                            Vector<int>& bc_lo, Vector<int>& bc_hi,
                                             amrex::Real cur_time);
     
     void update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,

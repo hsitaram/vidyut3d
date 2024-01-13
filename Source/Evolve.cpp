@@ -141,7 +141,8 @@ void Vidyut::Evolve()
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
           }*/
 
-            update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, cur_time);
+            update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, 
+                    eden_bc_lo,eden_bc_hi,cur_time);
             implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
 
             /*for(int lev=0;lev<=finest_level;lev++)
@@ -151,7 +152,9 @@ void Vidyut::Evolve()
 
         if(elecenergy_solve)
         {
-            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, cur_time);
+            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, 
+                    eenrg_bc_lo,eenrg_bc_hi,
+                    cur_time);
             for (int lev = 0; lev <= finest_level; lev++)
             {
                 compute_elecenergy_source(lev, num_grow, Sborder[lev],
@@ -181,18 +184,25 @@ void Vidyut::Evolve()
 
             if(solveflag)
             {
-                update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
-                                             efield_fc, expl_src, cur_time);
 
                 //ions
                 if(plasmachem::get_charge(ind)!=0.0)
                 {
+                     update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
+                                             efield_fc, expl_src, 
+                                             ion_bc_lo,ion_bc_hi,
+                                             cur_time);
                     implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi,grad_fc);
                 }
                 //neutrals
                 else
                 {
-                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi,grad_fc);
+                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
+                                             efield_fc, expl_src, 
+                                             neutral_bc_lo,neutral_bc_hi,
+                                             cur_time);
+                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,
+                            neutral_bc_lo,neutral_bc_hi,grad_fc);
                 }
 
                 /*for(int lev=0;lev<=finest_level;lev++)

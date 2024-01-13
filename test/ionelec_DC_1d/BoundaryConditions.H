@@ -121,7 +121,26 @@ namespace plasmachem_transport
 
         if(spec_id==I_ID)
         {
-            bc_arr(ghost_cell)=0.0;
+            amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
+                                            std::pow(phi(cell_int,EFY_ID),2.0)+
+                                            std::pow(phi(cell_int,EFZ_ID),2.0));
+        
+            amrex::Real mu = plasmachem::mobility(spec_id,phi(cell_int,ETEMP_ID),
+                                           efieldmag,
+                                           Tg,Pg);
+
+            amrex::Real D = plasmachem::diffusion_coeff(spec_id,phi(cell_int,ETEMP_ID),
+                                           efieldmag,
+                                           Tg,Pg);
+            
+            amrex::Real efield_dotn=phi(cell_int,EFX_ID+dir)*outward_normal[dir];
+            
+            amrex::Real ion_drift_flux=mu*phi(cell_int,spec_id)*efield_dotn;
+            
+            //if driftvel is pointing towards the wall
+            //then flux=v n - D dndx = v n
+            //else  flux = v n - D dndx = 0 
+            bc_arr(ghost_cell)=(ion_drift_flux >= 0.0)?(-ion_drift_flux/D):0.0;
         }
 
         if(spec_id==EEN_ID)
@@ -198,23 +217,10 @@ namespace plasmachem_transport
             {
                 Real outward_normal_sgn=(face[dir]==domlo[dir])?-1.0:1.0;
 
-                if( (specid==EDN_ID) || (specid==EEN_ID) )
+                if( (specid==EDN_ID) || (specid==EEN_ID) || (specid==I_ID) )
                 {
                     //false Neumann for robin bc
                     vel(face)=0.0;
-                }
-                else if(specid==I_ID)
-                {
-                    //if driftvel is pointing towards the wall
-                    //then flux=v n - D dndx = v n => dndx=0 true Neumann bc
-                    //else  flux = v n - D dndx = 0 false Neumann for robin bc
-                    //
-                    //Real iondriftvel = mu_face*0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
-                    Real iondriftvel=driftvel;
-                    vel(face)=(iondriftvel*outward_normal_sgn > 0)?iondriftvel:0.0;
-
-                    //vel(face)=0.0;
-                    //amrex::Print()<<"ion vel,sgn,face:"<<vel(face)<<"\t"<<outward_normal_sgn<<"\t"<<face<<"\n";
                 }
             }
             else
