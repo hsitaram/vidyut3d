@@ -23,6 +23,8 @@ amr.regrid_int      = 2       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 0.1
 
+vidyut.user_defined_transport = 1
+
 # Tagging
 vidyut.tagged_vars = AR
 vidyut.AR_refine = 0.5

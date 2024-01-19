@@ -203,6 +203,7 @@ public:
     int do_reactions=1;
     int do_transport=1;
     int do_spacechrg=1;
+    int user_defined_transport = 0;
 
     // Transport vars
     int const_ele_trans=0;

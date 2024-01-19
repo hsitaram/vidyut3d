@@ -21,6 +21,8 @@ amr.regrid_int      = 5       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 2e-11
 
+vidyut.user_defined_transport = 1
+
 # Tagging
 vidyut.tagged_vars = Potential 
 vidyut.Potential_refine = 1e20
@@ -54,7 +56,7 @@ vidyut.voltage_freq = 13.56e6
 
 # PLOTFILES
 amr.plot_file  = plt    # root name of plot file
-amr.plot_int   = 100000     # number of timesteps between plot files
+amr.plot_int   = 1000     # number of timesteps between plot files
 
 # CHECKPOINT
 amr.chk_file = chk      # root name of checkpoint file

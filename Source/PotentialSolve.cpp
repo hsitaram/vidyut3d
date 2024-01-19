@@ -245,12 +245,21 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                     amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         int domend = -1;
                         amrex::Real app_voltage = get_applied_potential(time, domend);
-                        plasmachem_transport::potential_bc(i, j, k, idim, -1, 
+                        if(user_defined_transport == 1){
+                            user_transport::potential_bc(i, j, k, idim, -1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
                                                            prob_lo, prob_hi, dx, time, 
                                                            *localprobparm,captured_gastemp,
                                                            captured_gaspres, app_voltage);
+                        } else {
+                            plasmachem_transport::potential_bc(i, j, k, idim, -1, 
+                                                           phi_arr, bc_arr, robin_a_arr, 
+                                                           robin_b_arr, robin_f_arr, 
+                                                           prob_lo, prob_hi, dx, time, 
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres, app_voltage);
+                        }
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
@@ -258,12 +267,21 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         int domend = 1;
                         amrex::Real app_voltage = get_applied_potential(time, domend);
-                        plasmachem_transport::potential_bc(i, j, k, idim, +1, 
+                        if(user_defined_transport == 1){
+                            user_transport::potential_bc(i, j, k, idim, +1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
                                                            prob_lo, prob_hi, dx, time,
                                                            *localprobparm,captured_gastemp,
                                                            captured_gaspres, app_voltage);
+                        } else {
+                            plasmachem_transport::potential_bc(i, j, k, idim, +1, 
+                                                           phi_arr, bc_arr, robin_a_arr, 
+                                                           robin_b_arr, robin_f_arr, 
+                                                           prob_lo, prob_hi, dx, time,
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres, app_voltage);
+                        }
                     });
                 }
             }

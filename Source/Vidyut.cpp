@@ -303,6 +303,7 @@ void Vidyut::ReadParameters()
         pp.query("do_reactions",do_reactions);
         pp.query("do_transport",do_transport);
         pp.query("do_spacechrg",do_spacechrg);
+        pp.query("user_defined_transport", user_defined_transport);
 
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);

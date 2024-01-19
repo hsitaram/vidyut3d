@@ -212,21 +212,39 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
             velz_fab.setVal<RunOn::Device>(0.0);
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, efield_arr[0], velx_arr, 
+                if(user_defined_transport == 1){
+                    user_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, efield_arr[0], velx_arr, 
                                                   prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
                                                   captured_gastemp,captured_gaspres);
+                } else {
+                    plasmachem_transport::compute_vel(i, j, k, 0, captured_specid, sborder_arr, efield_arr[0], velx_arr, 
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
+                }
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, efield_arr[1], vely_arr, 
+                if(user_defined_transport == 1) {
+                    user_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, efield_arr[1], vely_arr, 
                                                   prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
                                                   captured_gastemp,captured_gaspres);
+                } else {
+                    plasmachem_transport::compute_vel(i, j, k, 1, captured_specid, sborder_arr, efield_arr[1], vely_arr, 
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
+                }
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, efield_arr[2], velz_arr, 
+                if(user_defined_transport == 1){
+                    user_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, efield_arr[2], velz_arr, 
                                                   prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
                                                   captured_gastemp,captured_gaspres);
+                } else {
+                    plasmachem_transport::compute_vel(i, j, k, 2, captured_specid, sborder_arr, efield_arr[2], velz_arr, 
+                                                  prob_lo, prob_hi, domlo, domhi, dx, time, *localprobparm,
+                                                  captured_gastemp,captured_gaspres);
+                }
             });
 
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -476,21 +494,37 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     if (bx.smallEnd(idim) == domain.smallEnd(idim))
                     {
                         amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                            plasmachem_transport::species_bc(i, j, k, idim, -1, 
+                            if(user_defined_transport == 1){
+                                user_transport::species_bc(i, j, k, idim, -1, 
                                                              captured_spec_id, sb_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
                                                              prob_lo, prob_hi, dx, time, *localprobparm,
                                                              captured_gastemp,captured_gaspres);
+                            } else {
+                                plasmachem_transport::species_bc(i, j, k, idim, -1, 
+                                                             captured_spec_id, sb_arr, bc_arr, robin_a_arr,
+                                                             robin_b_arr, robin_f_arr, 
+                                                             prob_lo, prob_hi, dx, time, *localprobparm,
+                                                             captured_gastemp,captured_gaspres);
+                            }
                         });
                     }
                     if (bx.bigEnd(idim) == domain.bigEnd(idim))
                     {
                         amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                            plasmachem_transport::species_bc(i, j, k, idim, +1, 
+                            if(user_defined_transport == 1){
+                                user_transport::species_bc(i, j, k, idim, +1, 
                                                              captured_spec_id, sb_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,
                                                              prob_lo, prob_hi, dx, time, *localprobparm,
                                                              captured_gastemp,captured_gaspres);
+                            } else {
+                                plasmachem_transport::species_bc(i, j, k, idim, +1, 
+                                                             captured_spec_id, sb_arr, bc_arr, robin_a_arr, 
+                                                             robin_b_arr, robin_f_arr,
+                                                             prob_lo, prob_hi, dx, time, *localprobparm,
+                                                             captured_gastemp,captured_gaspres);
+                            }
                         });
                     }
                 }

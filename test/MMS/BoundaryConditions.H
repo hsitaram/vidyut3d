@@ -8,7 +8,7 @@
 #include <VarDefines.H>
 
 using namespace amrex;
-namespace plasmachem_transport
+namespace user_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
@@ -23,7 +23,7 @@ namespace plasmachem_transport
                            GpuArray<Real, AMREX_SPACEDIM> dx,
                            const Real time,
                            ProbParm const& prob_parm,
-                           Real Tg, Real Pg)
+                           Real Tg, Real Pg, Real app_voltage)
     {
         //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
