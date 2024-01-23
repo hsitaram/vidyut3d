@@ -63,7 +63,7 @@ void Vidyut::compute_elecenergy_source(int lev, const int num_grow,
             //Joule heating
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
-            amrex::Real charge=ECHARGE;
+            amrex::Real charge=plasmachem::get_charge(E_IDX)*ECHARGE;
             amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
