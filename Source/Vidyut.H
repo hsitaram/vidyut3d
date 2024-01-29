@@ -180,6 +180,7 @@ public:
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
     amrex::Real min_species_density=1e-20;
+    amrex::Real min_electron_density=1e12;
     amrex::Real min_electron_temp=300.0;
 
     amrex::Real gas_pressure=101325.0;

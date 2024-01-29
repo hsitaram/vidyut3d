@@ -555,6 +555,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     { 
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {
+            amrex::Real minelecden=min_electron_density; 
             amrex::Real minspecden=min_species_density; 
             for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
             {
@@ -562,11 +563,17 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                 Array4<Real> soln_arr = solution[ilev].array(mfi);
                 amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                    if(soln_arr(i,j,k) < minspecden)
-                    {
+                    if(electron_flag){
+                      if(soln_arr(i,j,k) < minelecden)
+                      {
+                        soln_arr(i,j,k)=minelecden;
+                      } 
+                    } else {
+                      if(soln_arr(i,j,k) < minspecden)
+                      {
                         soln_arr(i,j,k)=minspecden;
+                      } 
                     }
-                    // if(i==1 && j ==1 && k ==1) printf("Value for species %i is %.6e\n", spec_id, soln_arr(i,j,k));
                 });
             }
         }

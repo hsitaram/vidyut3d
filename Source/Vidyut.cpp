@@ -298,6 +298,7 @@ void Vidyut::ReadParameters()
         pp.query("linsolve_max_coarsening_level",linsolve_max_coarsening_level);
         pp.query("bound_specden", bound_specden);
         pp.query("min_species_density",min_species_density);
+        pp.query("min_electron_density",min_electron_density);
         pp.query("min_electron_temp",min_electron_temp);
         pp.query("elecenergy_solve",elecenergy_solve);
         pp.query("do_reactions",do_reactions);
