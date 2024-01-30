@@ -204,6 +204,8 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
                                   flux[1].array(mfi), flux[2].array(mfi))};
 
 
+            //amrex::Print()<<"bx:"<<bx<<"\n";
+            //amrex::Print()<<"bx_x:"<<bx_x<<"\n";
             amrex::ParallelFor(bx_x, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 0, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[0], 

@@ -130,6 +130,12 @@ void Vidyut::Evolve()
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi, efield_fc);
+        
+        for(int lev=0;lev<=finest_level;lev++)
+        {
+          Sborder[lev].setVal(0.0);
+          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+        }
 
         update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
 

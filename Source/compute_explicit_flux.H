@@ -61,8 +61,15 @@ void compute_flux(
     Real vel_mid=0.5*(vel_L+vel_R);
     Real vel_sgn = std::copysign(1.0, vel_mid);
 
-    fx(face) = phi_L * vel_L *  0.5 * (vel_sgn + fabs(vel_sgn)) 
-                + phi_R * vel_R *  0.5 * (vel_sgn - fabs(vel_sgn));
+    fx(face) = phi_L * vel_L *  0.5 * (fabs(vel_sgn) + vel_sgn) 
+                + phi_R * vel_R *  0.5 * (fabs(vel_sgn) - vel_sgn);
+
+    /*if(vel_sgn<0.0)
+    {
+        amrex::Print()<<"specid:"<<specid<<"\n";
+        amrex::Print()<<"phi_L,phi_R,vel_L,vel_R,fx:"<<phi_L<<"\t"<<phi_R<<"\t"<<
+        vel_L<<"\t"<<vel_R<<"\t"<<fx(face)<<"\t"<<face<<"\n";
+    }*/
     
     if( (face[sweepdir]==domlo[sweepdir]) && (bclo[sweepdir]==IHNEUBC) )
     {

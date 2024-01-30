@@ -80,7 +80,7 @@ namespace plasmachem_transport
         IntVect cell_int(i,j,k);
         IntVect ghost_cell(i,j,k);
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
-        outward_normal[dir]=sgn;
+        outward_normal[dir]=Real(sgn);
         
         int gcell_adjust,cell_adjust;
 
@@ -110,8 +110,11 @@ namespace plasmachem_transport
             
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
-            amrex::Real flx = ne*cbar/4.0*Real(sgn);
+            amrex::Real flx = ne*cbar/4.0*outward_normal[dir];
 
+            //why -flx/D?
+            //because diffusive flux -D dc/dx = flx
+            //so dc/dx = -flx/D
             bc_arr(ghost_cell)=(-flx/D);
         }
 
@@ -131,14 +134,12 @@ namespace plasmachem_transport
             
             amrex::Real efield_dotn=phi(cell_int,EFX_ID+dir)*outward_normal[dir];
             
-            amrex::Real ion_drift_flux=mu*phi(cell_int,spec_id)*efield_dotn;
+            amrex::Real ion_drift_flux = mu*phi(cell_int,spec_id)*efield_dotn;
             
             //if driftvel is pointing towards the wall
             //then flux=v n - D dndx = v n
             //else  flux = v n - D dndx = 0 
             bc_arr(ghost_cell)=(ion_drift_flux >= 0.0)?(-ion_drift_flux/D):0.0;
-            amrex::Print()<<"cell_int, outward_normal, ion flux, bc:"<<cell_int<<"\t"<<
-            outward_normal[dir]<<"\t"<<ion_drift_flux<<"\t"<<bc_arr(ghost_cell)<<"\n";
         }
 
         if(spec_id==ARm_ID)

@@ -106,71 +106,31 @@ namespace plasmachem_transport
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_vel(int i, int j, int k, int dir,
+    amrex::Real compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
-                     Array4<Real> const& efield,
-                     Array4<Real> const& vel,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                     const GpuArray<int, AMREX_SPACEDIM> domlo,
-                     const GpuArray<int, AMREX_SPACEDIM> domhi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
                      const Real time,
                      ProbParm const& prob_parm,
-                     amrex::Real Tg, amrex::Real Pg)
+                     amrex::Real Tg,amrex::Real Pg)
     {
-        Real xlen,ylen,zlen,maxlen;
-        int bigdir=0;
+        IntVect cellid(i, j, k);
 
-        xlen=prob_hi[0]-prob_lo[0];
-        ylen=prob_hi[1]-prob_lo[1];
-        zlen=prob_hi[2]-prob_lo[2];
-
-
-        IntVect face(i, j, k);
-        IntVect leftcell(i, j, k);
-        IntVect rightcell(i, j, k);
-        leftcell[dir] -= 1;
-
-        maxlen=std::max(xlen,std::max(ylen,zlen));
-
-        if(maxlen==xlen) bigdir=0;
-        if(maxlen==ylen) bigdir=1;
-        if(maxlen==zlen) bigdir=2;
-
-        vel(i,j,k)=0.0;
-        
-        if(dir==bigdir && specid==S1_ID)
+        amrex::Real vel=0.0;
+        if(dir==prob_parm.axdir && specid==S1_ID)
         {
-            //use this condition if using a robin bc that involves
-            //velocity
-            /*if( (right[dir]==domlo[dir]) || (right[dir]==(domhi[dir]+1)) )
-              {
-              vel(i,j,k,S1_ID)=0.0;
-              }*/
-            //else
-            Real efield_magL = std::sqrt(std::pow(phi(leftcell,EFX_ID),2.0) +
-                                         std::pow(phi(leftcell,EFY_ID),2.0) +
-                                         std::pow(phi(leftcell,EFZ_ID),2.0) );
+            Real efieldmag = std::sqrt(std::pow(phi(cellid,EFX_ID),2.0) +
+                                       std::pow(phi(cellid,EFY_ID),2.0) +
+                                       std::pow(phi(cellid,EFZ_ID),2.0) );
             
-            Real efield_magR = std::sqrt(std::pow(phi(rightcell,EFX_ID),2.0) +
-                                         std::pow(phi(rightcell,EFY_ID),2.0) +
-                                         std::pow(phi(rightcell,EFZ_ID),2.0) );
-            
-            amrex::Real mu_left = plasmachem::mobility(specid,phi(leftcell,ETEMP_ID),
-                                           efield_magL,
+            amrex::Real mu = plasmachem::mobility(specid,phi(cellid,ETEMP_ID),
+                                           efieldmag,
                                            Tg,Pg);
+            vel=mu*phi(cellid,EFX_ID+dir);
 
-            amrex::Real mu_right = plasmachem::mobility(specid,phi(rightcell,ETEMP_ID),
-                                            efield_magR,
-                                            Tg,Pg);
-
-            amrex::Real mu_face = 0.5*(mu_left+mu_right);
-            //amrex::Real Efld_face = 0.5*(phi(leftcell,EFX_ID+dir)+phi(rightcell,EFX_ID+dir));
-            amrex::Real Efld_face = efield(face);
-            vel(i,j,k) = mu_face*Efld_face;
         }
+        
+        return(vel);
     }
 }
 #endif
