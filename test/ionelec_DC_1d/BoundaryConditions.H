@@ -84,7 +84,7 @@ namespace plasmachem_transport
         IntVect cell_int(i,j,k);
         IntVect ghost_cell(i,j,k);
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
-        outward_normal[dir]=sgn;
+        outward_normal[dir]=Real(sgn);
         
         int gcell_adjust,cell_adjust;
 
@@ -114,7 +114,7 @@ namespace plasmachem_transport
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
-            amrex::Real flx = ne*cbar/4.0*Real(sgn);
+            amrex::Real flx = ne*cbar/4.0*outward_normal[dir];
 
             bc_arr(ghost_cell)=(-flx/D);
         }
@@ -133,14 +133,14 @@ namespace plasmachem_transport
                                            efieldmag,
                                            Tg,Pg);
             
-            amrex::Real efield_dotn=phi(cell_int,EFX_ID+dir)*outward_normal[dir];
-            
-            amrex::Real ion_drift_flux=mu*phi(cell_int,spec_id)*efield_dotn;
+            amrex::Real efield=phi(cell_int,EFX_ID+dir);
+            amrex::Real ion_drift_flux=mu*phi(cell_int,spec_id)*efield;
+            amrex::Real ion_drift_flux_dotn=ion_drift_flux*outward_normal[dir];
             
             //if driftvel is pointing towards the wall
             //then flux=v n - D dndx = v n
             //else  flux = v n - D dndx = 0 
-            bc_arr(ghost_cell)=(ion_drift_flux >= 0.0)?(-ion_drift_flux/D):0.0;
+            bc_arr(ghost_cell)=(ion_drift_flux_dotn >= 0.0)?(-ion_drift_flux/D):0.0;
         }
 
         if(spec_id==EEN_ID)
@@ -158,80 +158,31 @@ namespace plasmachem_transport
             
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
             
-            amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*Real(sgn);
+            amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*outward_normal[dir];
             bc_arr(ghost_cell)=(-flx/D);
         }
 
     }
-
-    AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-    void compute_vel(int i, int j, int k, int dir,
+    
+    AMREX_GPU_DEVICE AMREX_INLINE
+    amrex::Real compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
-                     Array4<Real> const& efield,
-                     Array4<Real> const& vel,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                     const GpuArray<int, AMREX_SPACEDIM> domlo,
-                     const GpuArray<int, AMREX_SPACEDIM> domhi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
                      const Real time,
                      ProbParm const& prob_parm,
                      amrex::Real Tg,amrex::Real Pg)
     {
-        IntVect leftcell(i, j, k);
-        IntVect rightcell(i, j, k);
-        IntVect face(i, j, k);
-        leftcell[dir] -= 1;
+        IntVect cellid(i, j, k);
+        amrex::Real efieldmag=std::sqrt( std::pow(phi(cellid,EFX_ID),2.0)+
+                                         std::pow(phi(cellid,EFY_ID),2.0)+
+                                         std::pow(phi(cellid,EFZ_ID),2.0) );
         
-        //in this case, discharge is along x
-        int dischargedir=0;
+        amrex::Real mu = plasmachem::mobility(specid,phi(cellid,ETEMP_ID),
+                                              efieldmag,Tg,Pg);
 
-        vel(face)=0.0;
-        amrex::Real efieldmag_L=std::sqrt(std::pow(phi(leftcell,EFX_ID),2.0)+
-                                        std::pow(phi(leftcell,EFY_ID),2.0)+
-                                        std::pow(phi(leftcell,EFZ_ID),2.0));
-        
-        amrex::Real efieldmag_R=std::sqrt(std::pow(phi(rightcell,EFX_ID),2.0)+
-                                        std::pow(phi(rightcell,EFY_ID),2.0)+
-                                        std::pow(phi(rightcell,EFZ_ID),2.0));
-
-        amrex::Real mu_leftcell = plasmachem::mobility(specid,phi(leftcell,ETEMP_ID),
-                                           efieldmag_L,
-                                           Tg,Pg);
-
-        amrex::Real mu_rightcell = plasmachem::mobility(specid,phi(rightcell,ETEMP_ID),
-                                            efieldmag_R,
-                                            Tg,Pg);
-
-        amrex::Real mu_face = 0.5*(mu_leftcell+mu_rightcell);
-
-        //Real efield_face = -(phi(rightcell,POT_ID) - phi(leftcell,POT_ID))/dx[dir];
-        //Real efield_face = 0.5*(phi(rightcell,EFX_ID+dir) + phi(leftcell,EFX_ID+dir));
-        Real efield_face = efield(face);
-        Real driftvel = mu_face*efield_face;
-
-        if(dir==dischargedir)
-        {
-            if( (face[dir]==domlo[dir]) || (face[dir]==(domhi[dir]+1)) )
-            {
-                Real outward_normal_sgn=(face[dir]==domlo[dir])?-1.0:1.0;
-
-                if( (specid==EDN_ID) || (specid==EEN_ID) || (specid==I_ID) )
-                {
-                    //false Neumann for robin bc
-                    vel(face)=0.0;
-                }
-            }
-            else
-            {
-                vel(face) = driftvel;
-            }
-        }
-        else
-        {
-            vel(face) = driftvel;
-        }
+        return(mu*phi(cellid,EFX_ID+dir));
     }
+
 }
 #endif
