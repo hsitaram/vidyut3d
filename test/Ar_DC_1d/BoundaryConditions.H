@@ -132,14 +132,14 @@ namespace plasmachem_transport
                                            efieldmag,
                                            Tg,Pg);
             
-            amrex::Real efield_dotn=phi(cell_int,EFX_ID+dir)*outward_normal[dir];
-            
-            amrex::Real ion_drift_flux = mu*phi(cell_int,spec_id)*efield_dotn;
+            amrex::Real efield=phi(cell_int,EFX_ID+dir);
+            amrex::Real ion_drift_flux = mu*phi(cell_int,spec_id)*efield;
+            amrex::Real ion_drift_flux_dotn = ion_drift_flux*outward_normal[dir];
             
             //if driftvel is pointing towards the wall
             //then flux=v n - D dndx = v n
             //else  flux = v n - D dndx = 0 
-            bc_arr(ghost_cell)=(ion_drift_flux >= 0.0)?(-ion_drift_flux/D):0.0;
+            bc_arr(ghost_cell)=(ion_drift_flux_dotn >= 0.0)?(-ion_drift_flux/D):0.0;
         }
 
         if(spec_id==ARm_ID)

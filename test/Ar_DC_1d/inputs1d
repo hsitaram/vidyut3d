@@ -62,7 +62,7 @@ vidyut.linsolve_reltol=1e-9
 
 vidyut.elecenergy_solve=1
 
-prob.V=300.0
+prob.V=-300.0
 
 vidyut.gas_pressure=133.0
 vidyut.gas_temperature=300.0

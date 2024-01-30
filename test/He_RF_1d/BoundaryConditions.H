@@ -84,7 +84,7 @@ namespace plasmachem_transport
         IntVect cell_int(i,j,k);
         IntVect ghost_cell(i,j,k);
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
-        outward_normal[dir]=sgn;
+        outward_normal[dir]=Real(sgn);
         
         int gcell_adjust,cell_adjust;
 
@@ -114,7 +114,7 @@ namespace plasmachem_transport
             
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
-            amrex::Real flx = ne*cbar/4.0*Real(sgn);
+            amrex::Real flx = ne*cbar/4.0*outward_normal[dir];
 
             //why -flx/D?
             //because diffusive flux -D dc/dx = flx
@@ -136,14 +136,14 @@ namespace plasmachem_transport
                                            efieldmag,
                                            Tg,Pg);
             
-            amrex::Real efield_dotn=phi(cell_int,EFX_ID+dir)*outward_normal[dir];
-            
-            amrex::Real ion_drift_flux = mu*phi(cell_int,spec_id)*efield_dotn;
+            amrex::Real efield=phi(cell_int,EFX_ID+dir);
+            amrex::Real ion_drift_flux = mu*phi(cell_int,spec_id)*efield;
+            amrex::Real ion_drift_flux_dotn = ion_drift_flux*outward_normal[dir];
             
             //if driftvel is pointing towards the wall
             //then flux=v n - D dndx = v n
             //else  flux = v n - D dndx = 0 
-            bc_arr(ghost_cell)=(ion_drift_flux >= 0.0)?(-ion_drift_flux/D):0.0;
+            bc_arr(ghost_cell)=(ion_drift_flux_dotn >= 0.0)?(-ion_drift_flux/D):0.0;
         }
 
         if(spec_id==HEm_ID || spec_id==HE2m_ID)
@@ -158,7 +158,7 @@ namespace plasmachem_transport
                                           Tg,Pg);
             
             amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/plasmachem::get_molwt(spec_id));
-            amrex::Real flx = phi(i,j,k,spec_id)*cbar/4.0*Real(sgn);
+            amrex::Real flx = phi(i,j,k,spec_id)*cbar/4.0*outward_normal[dir];
             bc_arr(ghost_cell)=(-flx/D);
         }
 
@@ -177,7 +177,7 @@ namespace plasmachem_transport
             
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
             
-            amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*Real(sgn);
+            amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*outward_normal[dir];
             bc_arr(ghost_cell)=(-flx/D);
         }
 
