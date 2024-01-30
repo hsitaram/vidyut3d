@@ -35,8 +35,8 @@ vidyut.Potential_refinegrad = 400.0
 vidyut.pot_bc_lo = 2 1 0
 vidyut.pot_bc_hi = 2 1 0
 
-vidyut.eden_bc_lo = 2 2 0
-vidyut.eden_bc_hi = 2 2 0 
+vidyut.eden_bc_lo = 3 3 0
+vidyut.eden_bc_hi = 3 3 0 
 
 vidyut.eenrg_bc_lo = 2 2 0
 vidyut.eenrg_bc_hi = 2 2 0

@@ -39,8 +39,8 @@ vidyut.Ion_density_refinegrad = 1e20
 vidyut.pot_bc_lo = 2 1 2
 vidyut.pot_bc_hi = 2 1 2
 
-vidyut.eden_bc_lo = 2 2 2
-vidyut.eden_bc_hi = 2 2 2 
+vidyut.eden_bc_lo = 3 3 3
+vidyut.eden_bc_hi = 3 3 3 
 
 vidyut.eenrg_bc_lo = 2 2 2
 vidyut.eenrg_bc_hi = 2 2 2
