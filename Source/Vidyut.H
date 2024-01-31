@@ -73,13 +73,12 @@ public:
     virtual void ErrorEst(int lev, amrex::TagBoxArray& tags, 
                           amrex::Real time, int ngrow) override;
 
-   void compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+   void compute_scalar_transport_flux(int lev, MultiFab& Sborder, 
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Vector<int>& bc_lo, Vector<int>& bc_hi,
                                              Real time,int specid);
 
-    void compute_dsdt(int lev, const int num_grow, int specid, 
-                      MultiFab& Sborder, 
+    void compute_dsdt(int lev, int specid, 
         Array<MultiFab,AMREX_SPACEDIM>& flux, 
         MultiFab& rxn_src,
         MultiFab& dsdt,
@@ -92,7 +91,6 @@ public:
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
                                             Vector<MultiFab>& rxn_src, 
-                                            Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
                                             Vector<int>& bc_lo, Vector<int>& bc_hi,
                                             amrex::Real cur_time);
@@ -106,7 +104,7 @@ public:
                          Vector<int>& bc_lo, Vector<int>& bc_hi,
                          Vector<Array<MultiFab,AMREX_SPACEDIM>>& grad_fc);
 
-    void compute_elecenergy_source(int lev, const int num_grow, 
+    void compute_elecenergy_source(int lev, 
                             MultiFab& Sborder, 
                             MultiFab& rxnsrc, 
                             Array<MultiFab,AMREX_SPACEDIM>& efield, 
@@ -195,6 +193,8 @@ public:
     int linsolve_maxiter=100;
     int linsolve_max_coarsening_level=10;
     int bound_specden=0;
+    int hyp_order=1;
+    int ngrow_for_fillpatch=2;
 
     int elecenergy_solve=0;
 

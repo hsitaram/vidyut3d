@@ -281,10 +281,29 @@ void Vidyut::ReadParameters()
         pp.query("min_species_density",min_species_density);
         pp.query("min_electron_temp",min_electron_temp);
         pp.query("elecenergy_solve",elecenergy_solve);
+        pp.query("hyp_order",hyp_order);
 
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);
         pp.queryarr("bg_species_ids",bg_specid_list);
+
+        if(hyp_order==1) //first order upwind
+        {
+           ngrow_for_fillpatch=1;
+        }
+        else if(hyp_order==2) //second-order flux limited
+        {
+           ngrow_for_fillpatch=2;
+        }
+        else if(hyp_order==5)  //weno 5
+        {
+           ngrow_for_fillpatch=3;
+           amrex::Abort("hyp_order 5 not implemented yet");
+        }
+        else
+        {
+           amrex::Abort("Specified hyp_order not implemented yet");
+        }
     }
 }
 

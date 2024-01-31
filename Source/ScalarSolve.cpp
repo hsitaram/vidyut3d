@@ -14,7 +14,7 @@
 #include <compute_explicit_flux.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sborder, 
+void Vidyut::compute_dsdt(int lev, int specid, 
                             Array<MultiFab,AMREX_SPACEDIM>& flux, 
                             MultiFab& rxn_src,
                             MultiFab& dsdt,
@@ -25,7 +25,6 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
     auto prob_hi = geom[lev].ProbHiArray();
     ProbParm const* localprobparm = d_prob_parm;
 
-    int ncomp = Sborder.nComp();
     int captured_specid = specid;
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
@@ -33,9 +32,7 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
     for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
-        const Box& gbx = amrex::grow(bx, 1);
 
-        Array4<Real> sborder_arr = Sborder.array(mfi);
         Array4<Real> rxn_arr = rxn_src.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
 
@@ -57,7 +54,6 @@ void Vidyut::compute_dsdt(int lev, const int num_grow, int specid, MultiFab& Sbo
 void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
                                             Vector<MultiFab>& rxn_src, 
-                                            Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield,
                                             Vector<MultiFab>& expl_src, 
                                             Vector<int>& bc_lo, Vector<int>& bc_hi,
                                             amrex::Real cur_time)
@@ -72,8 +68,9 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
 
     for(int lev=0; lev <= finest_level; lev++)
     {
-        compute_scalar_transport_flux(lev, Sborder[lev].nGrow(), Sborder[lev], 
-                                      flux[lev], bc_lo, bc_hi, cur_time, specid);
+        compute_scalar_transport_flux(lev, Sborder[lev], 
+                                      flux[lev], bc_lo, bc_hi, 
+                                      cur_time, specid);
     }
 
     // =======================================================
@@ -89,7 +86,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     for(int lev=0;lev<=finest_level;lev++)
     {
         //FIXME: need to avoid this fillpatch
-        compute_dsdt(lev, Sborder[lev].nGrow(), specid, Sborder[lev], 
+        compute_dsdt(lev, specid, 
                      flux[lev], rxn_src[lev], expl_src[lev], 
                      cur_time, dt[lev]);
     }
@@ -158,7 +155,7 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
     }
 }
 
-void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab& Sborder, 
+void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder, 
                                            Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                            Vector<int>& bc_lo, Vector<int>& bc_hi,
                                            Real current_time,int specid)
@@ -168,10 +165,13 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
     auto prob_hi = geom[lev].ProbHiArray();
     ProbParm const* localprobparm = d_prob_parm;
 
-    int ncomp = Sborder.nComp();
     int captured_specid = specid;
+    //class member variable
+    int captured_hyporder = hyp_order; 
+    
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
+    amrex::Real lev_dt=dt[lev];
 
     // Get the boundary ids
     const int* domlo_arr = geom[lev].Domain().loVect();
@@ -190,7 +190,6 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
         for (MFIter mfi(Sborder, TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
-            const Box& gbx = amrex::grow(bx, 1);
             Box bx_x = convert(bx, {1, 0, 0});
             Box bx_y = convert(bx, {0, 1, 0});
             Box bx_z = convert(bx, {0, 0, 1});
@@ -210,21 +209,21 @@ void Vidyut::compute_scalar_transport_flux(int lev, const int num_grow, MultiFab
                 compute_flux(i, j, k, 0, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[0], 
                              captured_gastemp,captured_gaspres,
-                             time, dx, *localprobparm); 
+                             time, dx, lev_dt, *localprobparm, captured_hyporder); 
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 1, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[1], 
                              captured_gastemp,captured_gaspres,
-                             time, dx, *localprobparm); 
+                             time, dx, lev_dt, *localprobparm, captured_hyporder); 
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 2, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[2], 
                              captured_gastemp, captured_gaspres,
-                             time, dx, *localprobparm);
+                             time, dx, lev_dt, *localprobparm, captured_hyporder);
             });
         }
     }
@@ -383,7 +382,6 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
         solution[ilev].setVal(0.0);
         amrex::MultiFab::Copy(solution[ilev], specdata[ilev], 0, 0, 1, 0);
-        int ncomp = Sborder[ilev].nComp();
 
         // fill cell centered diffusion coefficients and rhs
         for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)

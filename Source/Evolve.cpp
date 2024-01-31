@@ -73,7 +73,10 @@ void Vidyut::Evolve()
             << " dt = " << dt[0] << std::endl;
         }
         amrex::Real dt_common=dt[0]; //no subcycling
-        int num_grow=2;
+
+        //ngrow fillpatch set in Vidyut.cpp
+        //depending on hyperbolic order
+        int num_grow=ngrow_for_fillpatch; 
 
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
 
@@ -147,9 +150,10 @@ void Vidyut::Evolve()
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
           }*/
 
-            update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, 
+            update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, expl_src, 
                     eden_bc_lo,eden_bc_hi,cur_time);
-            implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
+            implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,
+                                  eden_bc_lo,eden_bc_hi, gradne_fc);
 
             /*for(int lev=0;lev<=finest_level;lev++)
               {
@@ -158,12 +162,12 @@ void Vidyut::Evolve()
 
         if(elecenergy_solve)
         {
-            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, efield_fc, expl_src, 
+            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
                     eenrg_bc_lo,eenrg_bc_hi,
                     cur_time);
             for (int lev = 0; lev <= finest_level; lev++)
             {
-                compute_elecenergy_source(lev, num_grow, Sborder[lev],
+                compute_elecenergy_source(lev, Sborder[lev],
                                           rxn_src[lev], 
                                           efield_fc[lev], gradne_fc[lev],
                                           expl_src[lev], cur_time, dt_common);
@@ -195,7 +199,7 @@ void Vidyut::Evolve()
                 if(plasmachem::get_charge(ind)!=0.0)
                 {
                      update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
-                                             efield_fc, expl_src, 
+                                             expl_src, 
                                              ion_bc_lo,ion_bc_hi,
                                              cur_time);
                     implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi,grad_fc);
@@ -204,7 +208,7 @@ void Vidyut::Evolve()
                 else
                 {
                     update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
-                                             efield_fc, expl_src, 
+                                             expl_src, 
                                              neutral_bc_lo,neutral_bc_hi,
                                              cur_time);
                     implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,
