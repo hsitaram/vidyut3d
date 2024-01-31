@@ -10,6 +10,10 @@
 using namespace amrex;
 
 #define heps 1.0e-30
+
+//MINBEE vesion of limiter for
+//WAF scheme, see page 502, 
+//Toro's Riemann solver textbook
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE 
 amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
                           amrex::Real diff_mid,
@@ -115,6 +119,9 @@ void compute_flux(
         Real c=vel_mid*dt/dxmin;
 
         Real lim=get_slope_lim(c,diff_left,diff_mid,diff_right);
+
+        //See TVD Version of WAF schemes
+        //Page 501, Toro's Riemann solver texbook
         fx(face)=0.5*(fL+fR)-0.5*vel_sgn*lim*(fR-fL);
     }
     else
