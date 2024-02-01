@@ -11,13 +11,13 @@ using namespace amrex;
 
 #define heps 1.0e-30
 
-//==========================================================================================
+//===========================================================================
 // WENO 5 JS (Original Jiang GS, Shu CW. Efficient Implementation of Weighted
 // ENO Schemes.
 //             J. Comput. Phys. 1996; 126(1): 202–228.
 //             doi: 10.1006/jcph.1996.0130)
-// @param s      Stencils i-2, i-1, i, i+1, i+2, i+3
-//==========================================================================================
+// Stencils i-2, i-1, i, i+1, i+2, i+3
+//===========================================================================
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void
@@ -90,8 +90,7 @@ weno_reconstruct(amrex::Real uim2,
     umhalf = (1.0 / 6.0) * alpha1 *
     (alpha[2] * vr[2] + alpha[1] * vr[1] + alpha[0] * vr[0]);
 }
-//==========================================================================================
-
+//====================================================================
 //MINBEE vesion of limiter for
 //WAF scheme, see page 502, 
 //Toro's Riemann solver textbook
@@ -111,6 +110,10 @@ amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
     }
     else if(r>0.0 && r<=1.0)
     {
+        //NOTE: something funky can happen
+        //if c or advective CFL is greater than 1
+        //But we should be safe with 
+        //explicit advection :)
         lim=1.0-(1.0-amrex::Math::abs(c))*r;
     }
     else
@@ -119,20 +122,6 @@ amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
     }
     return(lim);
 }
-
-AMREX_GPU_DEVICE AMREX_FORCE_INLINE
-amrex::Real get_firstorder_upwind_flux(amrex::Real vel_L,amrex::Real vel_R,
-                                       amrex::Real phi_L,amrex::Real phi_R)
-{
-    amrex::Real fL=phi_L*vel_L;
-    amrex::Real fR=phi_R*vel_R;
-    amrex::Real vel_mid=0.5*(vel_L+vel_R);
-    amrex::Real vel_sgn = std::copysign(1.0, vel_mid);
-    amrex::Real flux = fL *  0.5 * (1.0 + vel_sgn) 
-    + fR *  0.5 * (1.0 - vel_sgn);
-    return(flux);
-}
-
 //See TVD Version of WAF schemes
 //Page 501, Toro's Riemann solver texbook
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
@@ -154,6 +143,18 @@ amrex::Real get_secondorder_WAF_flux(amrex::Real vel_L,amrex::Real vel_R,
 
     amrex::Real flux=0.5*(fL+fR)-0.5*vel_sgn*lim*(fR-fL);
 
+    return(flux);
+}
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_firstorder_upwind_flux(amrex::Real vel_L,amrex::Real vel_R,
+                                       amrex::Real phi_L,amrex::Real phi_R)
+{
+    amrex::Real fL=phi_L*vel_L;
+    amrex::Real fR=phi_R*vel_R;
+    amrex::Real vel_mid=0.5*(vel_L+vel_R);
+    amrex::Real vel_sgn = std::copysign(1.0, vel_mid);
+    amrex::Real flux = fL *  0.5 * (1.0 + vel_sgn) 
+    + fR *  0.5 * (1.0 - vel_sgn);
     return(flux);
 }
 
@@ -241,7 +242,6 @@ void compute_flux(
                                                                 sweepdir,specid,
                                                                 phi,dx,time,prob_parm,Tg,Pg);
 
-        
         amrex::Real ulm2=phi(left2,specid);
         amrex::Real ulm1=phi(left1,specid);
         amrex::Real ul=phi(left,specid);
