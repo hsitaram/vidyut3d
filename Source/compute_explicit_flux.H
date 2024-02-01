@@ -21,14 +21,7 @@ amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
 {
     amrex::Real r,lim;
     r=0.0;
-    if(c>=0.0)
-    {
-        r=diff_left/(diff_mid+heps);
-    }
-    else
-    {
-        r=diff_right/(diff_mid+heps);
-    }
+    r=(c>=0.0)?diff_left/(diff_mid+heps):diff_right/(diff_mid+heps);
 
     lim=0.0;
     if(r<=0.0)
@@ -43,8 +36,44 @@ amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
     {
         lim=amrex::Math::abs(c);
     }
-
     return(lim);
+}
+
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_firstorder_upwind_flux(amrex::Real vel_L,amrex::Real vel_R,
+                                       amrex::Real phi_L,amrex::Real phi_R)
+{
+    amrex::Real fL=phi_L*vel_L;
+    amrex::Real fR=phi_R*vel_R;
+    amrex::Real vel_mid=0.5*(vel_L+vel_R);
+    amrex::Real vel_sgn = std::copysign(1.0, vel_mid);
+    amrex::Real flux = fL *  0.5 * (1.0 + vel_sgn) 
+    + fR *  0.5 * (1.0 - vel_sgn);
+    return(flux);
+}
+
+//See TVD Version of WAF schemes
+//Page 501, Toro's Riemann solver texbook
+AMREX_GPU_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_secondorder_WAF_flux(amrex::Real vel_L,amrex::Real vel_R,
+                                     amrex::Real phi_Lm1,amrex::Real phi_L,
+                                     amrex::Real phi_R,amrex::Real phi_Rp1,
+                                     amrex::Real dx, amrex::Real dt)
+{
+    amrex::Real diff_left=phi_L-phi_Lm1;
+    amrex::Real diff_mid=phi_R-phi_L;
+    amrex::Real diff_right=phi_Rp1-phi_R;
+    amrex::Real vel_mid=0.5*(vel_L+vel_R);
+    amrex::Real vel_sgn = std::copysign(1.0, vel_mid);
+    amrex::Real c=vel_mid*dt/dx;
+    amrex::Real fL=phi_L*vel_L;
+    amrex::Real fR=phi_R*vel_R;
+
+    amrex::Real lim=get_slope_lim(c,diff_left,diff_mid,diff_right);
+
+    amrex::Real flux=0.5*(fL+fR)-0.5*vel_sgn*lim*(fR-fL);
+
+    return(flux);
 }
 
 AMREX_GPU_DEVICE
@@ -75,14 +104,8 @@ void compute_flux(
 
     IntVect face(i,j,k);
     IntVect left(i, j, k);
-    IntVect left1(i, j, k);
     IntVect right(i, j, k);
-    IntVect right1(i, j, k);
-
     left[sweepdir] -= 1;
-
-    // find face vel
-    Real smallval = 1e-10;
 
     Real phi_L = phi(left, specid);
     Real phi_R = phi(right, specid);
@@ -93,36 +116,22 @@ void compute_flux(
     Real vel_R = plasmachem_transport::compute_vel(right[0],right[1],right[2],sweepdir,
                                                    specid,phi,dx,time,prob_parm,Tg,Pg);
 
-    Real vel_mid=0.5*(vel_L+vel_R);
-
-    Real fL=phi_L*vel_L;
-    Real fR=phi_R*vel_R;
-    Real vel_sgn = std::copysign(1.0, vel_mid);
-
     if(hyp_order==1)
     {
-
-        fx(face) = fL *  0.5 * (1.0 + vel_sgn) 
-        + fR *  0.5 * (1.0 - vel_sgn);
+        fx(face)=get_firstorder_upwind_flux(vel_L,vel_R,phi_L,phi_R);
     }
     else if(hyp_order==2)
     {
+        IntVect left1(i, j, k);
+        IntVect right1(i, j, k);
         left1[sweepdir] -= 2;
         right1[sweepdir] += 1;
-        Real phi_Lm1 = phi(left1, specid);
-        Real phi_Rp1 = phi(right1, specid);
-        Real dxmin=std::min(dx[0],std::min(dx[1],dx[2]));
+        amrex::Real phi_Lm1 = phi(left1, specid);
+        amrex::Real phi_Rp1 = phi(right1, specid);
+        amrex::Real dxmin=std::min(dx[0],std::min(dx[1],dx[2]));
 
-        Real diff_left=phi_L-phi_Lm1;
-        Real diff_mid=phi_R-phi_L;
-        Real diff_right=phi_Rp1-phi_R;
-        Real c=vel_mid*dt/dxmin;
-
-        Real lim=get_slope_lim(c,diff_left,diff_mid,diff_right);
-
-        //See TVD Version of WAF schemes
-        //Page 501, Toro's Riemann solver texbook
-        fx(face)=0.5*(fL+fR)-0.5*vel_sgn*lim*(fR-fL);
+        fx(face)=get_secondorder_WAF_flux(vel_L,vel_R,phi_Lm1,phi_L,
+                                          phi_R,phi_Rp1,dxmin,dt);
     }
     else
     {
