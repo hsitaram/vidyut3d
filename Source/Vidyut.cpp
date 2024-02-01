@@ -298,7 +298,7 @@ void Vidyut::ReadParameters()
         else if(hyp_order==5)  //weno 5
         {
            ngrow_for_fillpatch=3;
-           amrex::Abort("hyp_order 5 not implemented yet");
+           //amrex::Abort("hyp_order 5 not implemented yet");
         }
         else
         {
