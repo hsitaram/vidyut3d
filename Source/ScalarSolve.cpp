@@ -444,6 +444,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                                                      std::pow(sb_arr(i,j,k,EFZ_ID),2.0));
                 
                     amrex::Real ndens = 0.0;
+                    for(int sp=0; sp<NUM_SPECIES; sp++) ndens += sb_arr(i,j,k,sp);
                     bcoeff_arr(i,j,k)=specDiff(captured_spec_id, 
                                                sb_arr(i,j,k,ETEMP_ID), ndens,
                                                efield_mag, 
