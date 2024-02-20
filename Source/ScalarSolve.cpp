@@ -611,7 +611,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                 Array4<Real> sb_arr = Sborder[ilev].array(mfi);
                 amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/phi_arr(i,j,k,E_IDX);
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/sb_arr(i,j,k,E_IDX);
                     if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
                     {
                         phi_arr(i,j,k,ETEMP_ID)=minetemp;
