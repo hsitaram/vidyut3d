@@ -1381,6 +1381,15 @@ productionRate(amrex::Real* wdot, const amrex::Real* sc, const amrex::Real T, co
     int elidx = 0;
     comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, tc[1], Te);
   }
+
+  // Calculate electron energy loss via elastic collisions
+  amrex::Real emag = 0.0;
+  amrex::Real ndens = 0.0;
+  for(int sp=0; sp<NUM_SPECIES; sp++) ndens += sc[sp]*N_A;
+  amrex::Real mu = specMob(E_ID,Te,ndens,emag,tc[1]);
+  amrex::Real nu = -ECHARGE/ME/mu;
+  amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * sc[0] * N_A * (Te-tc[1]) * nu * (2.0*ME/(4.0*M_AMU));
+  *enerExch -= elec_elastic_coll_term;
 }
 
 // compute the production rate for each species

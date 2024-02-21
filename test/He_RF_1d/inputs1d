@@ -49,14 +49,14 @@ vidyut.ion_bc_hi = 3 0 0
 vidyut.neutral_bc_lo = 3 0 0
 vidyut.neutral_bc_hi = 3 0 0
 
-vidyut.voltage_profile = 0
+vidyut.voltage_profile = 1
 vidyut.voltage_amp_1 = 120.0
 vidyut.voltage_amp_2 = 0.0
 vidyut.voltage_freq = 13.56e6
 
 # PLOTFILES
 amr.plot_file  = plt    # root name of plot file
-amr.plot_int   = 1000     # number of timesteps between plot files
+amr.plot_int   = 100000     # number of timesteps between plot files
 
 # CHECKPOINT
 amr.chk_file = chk      # root name of checkpoint file

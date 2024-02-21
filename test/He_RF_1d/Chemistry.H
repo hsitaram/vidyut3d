@@ -1936,6 +1936,15 @@ CKWC(const amrex::Real T, amrex::Real C[], amrex::Real wdot[], const amrex::Real
   // convert to chemkin units
   productionRate(wdot, C, T, Te, ener_exch);
 
+  // Calculate electron energy loss via elastic collisions
+  amrex::Real ndens = 0.0;
+  for(int sp=0; sp<NUM_SPECIES; sp++) ndens += C[sp]*N_A;
+  amrex::Real emag = EN * ndens * 1.0e-21;
+  amrex::Real mu = specMob(E_ID,Te,ndens,emag,T);
+  amrex::Real nu = -ECHARGE/ME/mu;
+  amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * C[0] * N_A * (Te-T) * nu * (2.0*ME/(4.0*M_AMU));
+  *ener_exch -= elec_elastic_coll_term;
+
   // convert to chemkin units
   for (int id = 0; id < 6; ++id) {
     C[id] *= 1.0e-6;

@@ -136,7 +136,7 @@ namespace user_transport
             amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
             
             // amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/plasmachem::get_molwt(spec_id));
-            amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/h_global_mw[spec_id]*M_AMU);
+            amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/(h_global_mw[spec_id]*M_AMU));
             amrex::Real flx = phi(i,j,k,spec_id)*cbar/4.0*Real(sgn);
             bc_arr(ghost_cell)=(-flx/D);
         }
