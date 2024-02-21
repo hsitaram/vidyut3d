@@ -49,7 +49,7 @@ vidyut.ion_bc_hi = 3 0 0
 vidyut.neutral_bc_lo = 3 0 0
 vidyut.neutral_bc_hi = 3 0 0
 
-vidyut.voltage_profile = 3
+vidyut.voltage_profile = 0
 vidyut.voltage_amp_1 = 120.0
 vidyut.voltage_amp_2 = 0.0
 vidyut.voltage_freq = 13.56e6
@@ -64,6 +64,8 @@ amr.chk_int  = -1       # number of timesteps between checkpoint files
 
 vidyut.bound_specden=1
 vidyut.min_species_density=1e10
+vidyut.min_electron_density=1e10
+vidyut.min_electron_temp=1160.4518
 vidyut.linsolve_maxiter=200
 vidyut.elecenergy_solve=1
 

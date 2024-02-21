@@ -1341,6 +1341,7 @@ specMob(const int specid, const amrex::Real Te, const amrex::Real ndens, const a
     amrex::Real nu_elec = std::sqrt(8.0*K_B*Te/PI/ME)*ndens*E_cs;
     amrex::Real elecmob = -ECHARGE/ME/nu_elec;
 
+
     amrex::Real mob=0.0;
     if(specid==E_ID)
     {
@@ -1547,29 +1548,37 @@ productionRate(amrex::Real* wdot, const amrex::Real* sc, const amrex::Real T, co
 
   {
     // reaction 1:  AR + E => ARp + E + E
-    const amrex::Real k_f = 42581353.6;
+    const amrex::Real k_f = 42581353.6*std::pow(Te,0.60983)*std::exp(-1.8712e5/Te);
     const amrex::Real qf = k_f * (sc[0] * sc[1]);
     const amrex::Real qr = 0.0;
     const amrex::Real qdot = qf - qr;
     wdot[0] += qdot;
     wdot[1] -= qdot;
     wdot[3] += qdot;
+    int rxntype = 2;
+    amrex::Real eexci = 16.0;
+    int elidx = 0;
+    comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, tc[1], Te);
   }
 
   {
     // reaction 2:  ARm + E => ARp + E + E
-    const amrex::Real k_f = 75011786500;
+    const amrex::Real k_f = 75011786500*std::pow(Te,0.050382)*std::exp(-6.0524e4/Te);
     const amrex::Real qf = k_f * (sc[0] * sc[2]);
     const amrex::Real qr = 0.0;
     const amrex::Real qdot = qf - qr;
     wdot[0] += qdot;
     wdot[2] -= qdot;
     wdot[3] += qdot;
+    int rxntype = 2;
+    amrex::Real eexci = 4.43;
+    int elidx = 0;
+    comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, tc[1], Te);
   }
 
   {
     // reaction 0:  AR + E => ARm + E
-    const amrex::Real k_f = 7074811070;
+    const amrex::Real k_f = 7074811070*std::pow(Te,0.046639)*std::exp(-1.3856e5/Te);
     const amrex::Real qf = k_f * (sc[0] * sc[1]);
     const amrex::Real qr = 0.0;
     const amrex::Real qdot = qf - qr;
@@ -1577,6 +1586,10 @@ productionRate(amrex::Real* wdot, const amrex::Real* sc, const amrex::Real T, co
     wdot[0] += qdot;
     wdot[1] -= qdot;
     wdot[2] += qdot;
+    int rxntype = 1;
+    amrex::Real eexci = 11.56;
+    int elidx = 0;
+    comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, tc[1], Te);
   }
 
   {
@@ -1589,6 +1602,10 @@ productionRate(amrex::Real* wdot, const amrex::Real* sc, const amrex::Real T, co
     wdot[1] += qdot;
     wdot[2] -= 2.000000 * qdot;
     wdot[3] += qdot;
+    int rxntype = 2;
+    amrex::Real eexci = -7.0;
+    int elidx = 0;
+    comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, tc[1], Te);
   }
 
   {
@@ -1601,6 +1618,10 @@ productionRate(amrex::Real* wdot, const amrex::Real* sc, const amrex::Real T, co
     wdot[0] += qdot;
     wdot[1] += qdot;
     wdot[2] -= qdot;
+    int rxntype = 1;
+    amrex::Real eexci = -11.56;
+    int elidx = 0;
+    comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, tc[1], Te);
   }
 
   {
