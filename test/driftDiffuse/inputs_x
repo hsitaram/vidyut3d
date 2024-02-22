@@ -28,6 +28,8 @@ vidyut.S2_refine = 0.11
 vidyut.S1_refinegrad = 0.2
 vidyut.S2_refinegrad = 1e20
 
+vidyut.user_defined_transport = 1
+
 #0 - periodic
 #1 - Dirichlet
 #2 - Homogenous Neumann

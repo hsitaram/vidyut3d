@@ -8,7 +8,7 @@
 #include <VarDefines.H>
 
 using namespace amrex;
-namespace plasmachem_transport
+namespace user_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
@@ -23,7 +23,7 @@ namespace plasmachem_transport
                            GpuArray<Real, AMREX_SPACEDIM> dx,
                            const Real time,
                            ProbParm const& prob_parm,
-                           Real Tg, Real Pg)
+                           Real Tg, Real Pg, Real app_voltage)
     {
         //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
@@ -141,7 +141,7 @@ namespace plasmachem_transport
 
         vel(i,j,k)=0.0;
         
-        if(dir==bigdir && specid==S1_ID)
+        if(dir==bigdir && specid==AR_ID)
         {
             //use this condition if using a robin bc that involves
             //velocity
@@ -158,13 +158,14 @@ namespace plasmachem_transport
                                          std::pow(phi(rightcell,EFY_ID),2.0) +
                                          std::pow(phi(rightcell,EFZ_ID),2.0) );
             
-            amrex::Real mu_left = plasmachem::mobility(specid,phi(leftcell,ETEMP_ID),
-                                           efield_magL,
-                                           Tg,Pg);
+            amrex::Real ndens = 0.0;
+            amrex::Real mu_left = specMob(specid,phi(leftcell,ETEMP_ID),
+                                           ndens, efield_magL,
+                                           Tg);
 
-            amrex::Real mu_right = plasmachem::mobility(specid,phi(rightcell,ETEMP_ID),
-                                            efield_magR,
-                                            Tg,Pg);
+            amrex::Real mu_right = specMob(specid,phi(rightcell,ETEMP_ID),
+                                            ndens, efield_magR,
+                                            Tg);
 
             amrex::Real mu_face = 0.5*(mu_left+mu_right);
             //amrex::Real Efld_face = 0.5*(phi(leftcell,EFX_ID+dir)+phi(rightcell,EFX_ID+dir));

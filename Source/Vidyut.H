@@ -112,6 +112,8 @@ public:
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt);
+    
+    amrex::Real get_applied_potential(Real current_time, int domain_end);
 
     // compute dt from CFL considerations
     void find_time_scales(int lev,amrex::Real& dt_edrift,amrex::Real &dt_ediff,
@@ -177,11 +179,13 @@ public:
     amrex::Real linsolve_abstol = 1e-10;
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
-    amrex::Real min_species_density=1e12;
-    amrex::Real min_electron_temp=0.1*eV;
+    amrex::Real min_species_density=1e-20;
+    amrex::Real min_electron_density=1e12;
+    amrex::Real min_electron_temp=300.0;
 
     amrex::Real gas_pressure=101325.0;
     amrex::Real gas_temperature=300.0;
+    amrex::Real gas_num_dens=2.446e25;
 
     amrex::Vector<std::string> plasma_param_names;
     amrex::Vector<std::string> allvarnames;
@@ -195,7 +199,25 @@ public:
     int linsolve_max_coarsening_level=10;
     int bound_specden=0;
 
+    // Include physics
     int elecenergy_solve=0;
+    int do_reactions=1;
+    int do_transport=1;
+    int do_spacechrg=1;
+    int user_defined_transport = 0;
+
+    // Transport vars
+    int const_ele_trans=0;
+    amrex::Real ele_mob=1.0e24;  // Normalized (1/m/V/s)
+    amrex::Real ele_diff=1.0e24; // Normalized (1/m/s)
+
+    // Voltage options
+    int voltage_profile=0;
+    amrex::Real voltage_amp_1=0.0;
+    amrex::Real voltage_amp_2=0.0;
+    amrex::Real voltage_freq=1.0; 
+    amrex::Real voltage_dur=0.0; 
+    amrex::Real voltage_center=0.0; 
 
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
@@ -213,6 +235,12 @@ public:
     // checkpoint prefix and frequency
     std::string chk_file{"chk"};
     int chk_int = -1;
+
+    // Electron species index
+    int E_IDX = 0;
+
+    // Moitor file options
+    int monitor_file_int = -1;
 
 private:
     ////////////////
@@ -258,6 +286,9 @@ private:
     static void GotoNextLine(std::istream& is);
 
     Vector<int> bg_specid_list{-1};
+
+    // Creates monitor file showing the maximum domain value of all variables 
+    void WriteMonitorFile(amrex::Real time);
 
 };
 

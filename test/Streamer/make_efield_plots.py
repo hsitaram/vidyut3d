@@ -33,7 +33,7 @@ if(len(argv) > 3):
 
 for i, fn in enumerate(fn_list):
     ds=yt.load(fn)
-    ds.add_field(("gas", "efieldmag"), function=_efieldmag, units="")
+    ds.add_field(("gas", "efieldmag"), function=_efieldmag, units="", sampling_type="local")
     slc = yt.SlicePlot(ds, 'z', fieldname)
     slc.set_log(fieldname,False)
     if(set_minmax):

@@ -4,10 +4,12 @@
 #include <AMReX_Box.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_Geometry.H>
+#include <AMReX_ParmParse.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
 #include <UnivConstants.H>
 #include <VarDefines.H>
+
 
 using namespace amrex;
 
@@ -68,12 +70,12 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                     dist2 += std::pow(z-prob_parm->loc_z,2.0);
                 }
                
-                phi(i,j,k,N_ID)    = P_NTP/K_B/T_NTP;  
-                phi(i,j,k,I_ID)    = (prob_parm->bg + 
+                phi(i,j,k,N2_ID)    = P_NTP/K_B/T_NTP;  
+                phi(i,j,k,N2p_ID)    = (prob_parm->bg + 
                                       prob_parm->ampl*exp(-dist2/prob_parm->rad/prob_parm->rad))/prob_parm->ns;
-                phi(i,j,k,EDN_ID)  = prob_parm->bg/prob_parm->ns;
+                phi(i,j,k,E_ID)  = prob_parm->bg/prob_parm->ns;
                 phi(i,j,k,ETEMP_ID) = 0.5*eV;
-                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,EDN_ID)*K_B*phi(i,j,k,ETEMP_ID);
+                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,E_ID)*K_B*phi(i,j,k,ETEMP_ID);
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;

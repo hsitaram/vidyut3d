@@ -21,6 +21,8 @@ amr.regrid_int      = 5       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 2e-11
 
+vidyut.user_defined_transport = 1
+
 # Tagging
 vidyut.tagged_vars = Potential 
 vidyut.Potential_refine = 1e20
@@ -47,6 +49,11 @@ vidyut.ion_bc_hi = 3 0 0
 vidyut.neutral_bc_lo = 3 0 0
 vidyut.neutral_bc_hi = 3 0 0
 
+vidyut.voltage_profile = 1
+vidyut.voltage_amp_1 = 120.0
+vidyut.voltage_amp_2 = 0.0
+vidyut.voltage_freq = 13.56e6
+
 # PLOTFILES
 amr.plot_file  = plt    # root name of plot file
 amr.plot_int   = 100000     # number of timesteps between plot files
@@ -57,11 +64,10 @@ amr.chk_int  = -1       # number of timesteps between checkpoint files
 
 vidyut.bound_specden=1
 vidyut.min_species_density=1e10
+vidyut.min_electron_density=1e10
+vidyut.min_electron_temp=1160.4518
 vidyut.linsolve_maxiter=200
 vidyut.elecenergy_solve=1
-
-prob.V=120.0
-prob.f=13.56e6
 
 vidyut.gas_pressure=133.0
 vidyut.gas_temperature=300.0
