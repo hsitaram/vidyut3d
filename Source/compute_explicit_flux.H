@@ -192,10 +192,10 @@ void compute_flux(
     Real phi_L = phi(left, specid);
     Real phi_R = phi(right, specid);
 
-    Real vel_L = plasmachem_transport::compute_vel(left[0],left[1],left[2],sweepdir,
+    Real vel_L = user_transport::compute_vel(left[0],left[1],left[2],sweepdir,
                                                    specid,phi,dx,time,prob_parm,Tg,Pg);
 
-    Real vel_R = plasmachem_transport::compute_vel(right[0],right[1],right[2],sweepdir,
+    Real vel_R = user_transport::compute_vel(right[0],right[1],right[2],sweepdir,
                                                    specid,phi,dx,time,prob_parm,Tg,Pg);
 
     if(hyp_order==1)
@@ -226,19 +226,19 @@ void compute_flux(
         left2[sweepdir] -= 3;
         right2[sweepdir] += 2;
         
-        amrex::Real vel_Lm1 = plasmachem_transport::compute_vel(left1[0],left1[1],left1[2],
+        amrex::Real vel_Lm1 = user_transport::compute_vel(left1[0],left1[1],left1[2],
                                                                 sweepdir,specid,
                                                                 phi,dx,time,prob_parm,Tg,Pg);
         
-        amrex::Real vel_Lm2 = plasmachem_transport::compute_vel(left2[0],left2[1],left2[2],
+        amrex::Real vel_Lm2 = user_transport::compute_vel(left2[0],left2[1],left2[2],
                                                                 sweepdir,specid,
                                                                 phi,dx,time,prob_parm,Tg,Pg);
         
-        amrex::Real vel_Rp1 = plasmachem_transport::compute_vel(right1[0],right1[1],right1[2],
+        amrex::Real vel_Rp1 = user_transport::compute_vel(right1[0],right1[1],right1[2],
                                                                 sweepdir,specid,
                                                                 phi,dx,time,prob_parm,Tg,Pg);
         
-        amrex::Real vel_Rp2 = plasmachem_transport::compute_vel(right2[0],right2[1],right2[2],
+        amrex::Real vel_Rp2 = user_transport::compute_vel(right2[0],right2[1],right2[2],
                                                                 sweepdir,specid,
                                                                 phi,dx,time,prob_parm,Tg,Pg);
 

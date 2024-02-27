@@ -4,6 +4,7 @@
 #include <AMReX_Box.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_Geometry.H>
+#include <AMReX_ParmParse.H>
 #include <Chemistry.H>
 #include <ProbParm.H>
 #include <UnivConstants.H>
@@ -16,7 +17,8 @@ void amrex_probinit (ProbParm & h_prob_parm, ProbParm & d_prob_parm)
 {
     // read problem specific parmparse parameters here
     amrex::ParmParse pp("prob");
-    pp.query("V", h_prob_parm.V );
+    pp.query("V1", h_prob_parm.V1 );
+    pp.query("V2", h_prob_parm.V2 );
     pp.query("f", h_prob_parm.f );
     
     amrex::ParmParse pp_solver("vidyut");
@@ -63,9 +65,9 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
                 phi(i,j,k,HE2p_ID)  = 0.2e14; 
                 phi(i,j,k,HEm_ID)  = 1e12; 
                 phi(i,j,k,HE2m_ID)  = 1e12; 
-                phi(i,j,k,EDN_ID)  = 2.56e14;
+                phi(i,j,k,E_ID)  = 2.56e14;
                 phi(i,j,k,ETEMP_ID) = 3e4;
-                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,EDN_ID)*K_B*phi(i,j,k,ETEMP_ID);
+                phi(i,j,k,EEN_ID) = 1.5*phi(i,j,k,E_ID)*K_B*phi(i,j,k,ETEMP_ID);
                 phi(i,j,k,EFX_ID) = 0.0;
                 phi(i,j,k,EFY_ID) = 0.0;
                 phi(i,j,k,EFZ_ID) = 0.0;

@@ -31,7 +31,7 @@ void Vidyut::WritePlotFile(int plotfilenum) const
     const std::string& plotfilename = amrex::Concatenate(plot_file, plotfilenum, 5);
     const auto& mf = PlotFileMF();
 
-    amrex::Print() << "Writing plotfile " << plotfilename << "\n";
+    // amrex::Print() << "Writing plotfile " << plotfilename << "\n";
 
     amrex::WriteMultiLevelPlotfile(plotfilename, finest_level + 1, mf, 
                                    allvarnames, Geom(), t_new[0], istep, refRatio());
@@ -205,5 +205,38 @@ void Vidyut::ReadCheckpointFile()
     for (int lev = 0; lev <= finest_level; ++lev)
     {
         VisMF::Read(phi_new[lev], amrex::MultiFabFileFullPrefix(lev, restart_chkfile, "Level_", "phi"));
+    }
+}
+
+void Vidyut::WriteMonitorFile(amrex::Real time){
+    for (int lev = 0; lev <= finest_level; ++lev){
+        // Check to see if monitor file exists already, and create if it doesn't
+        std::string baseName = "MonitorFile_Level";
+        std::string datString = ".dat";
+        std::string intString = std::to_string(lev);
+        std::string monitorFileName = (baseName + intString + datString);
+        if (ParallelDescriptor::IOProcessor()){
+            if (!std::filesystem::exists(monitorFileName.c_str())){
+                std::ofstream MonitorFile;
+                MonitorFile.open(monitorFileName.c_str(), std::ios::out);
+                MonitorFile << "# (1)time\t";
+                for(int i=0; i<NVAR; i++) MonitorFile << "(" << std::to_string(i+2) << ")" << allvarnames[i] << "\t";
+                MonitorFile << std::endl;
+                MonitorFile.close();    
+            }
+        }
+
+        // Output maximum value in domain for each variable
+        if (ParallelDescriptor::IOProcessor()){
+            std::ofstream MonitorFile;
+            MonitorFile.open(monitorFileName.c_str(), std::ios::out | std::ios::app);
+            MonitorFile << time << "\t";
+            for(int i=0; i<NVAR; i++) MonitorFile << phi_new[lev].max(i,0,false) << "\t";
+            MonitorFile << std::endl;
+            MonitorFile.close();    
+        }
+        
+
+
     }
 }

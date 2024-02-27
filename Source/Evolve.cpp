@@ -10,6 +10,7 @@
 #include <Vidyut.H>
 #include <Chemistry.H>
 #include <BoundaryConditions.H>
+#include <PlasmaChem.H>
 #include <AMReX_MLABecLaplacian.H>
 
 // advance solution to final time
@@ -126,8 +127,7 @@ void Vidyut::Evolve()
                 expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
                 expl_src[lev].setVal(0.0);
 
-                //all species including electrons and electron energy
-                rxn_src[lev].define(grids[lev], dmap[lev], NUM_ALL_SPECIES+1, 0);
+                rxn_src[lev].define(grids[lev], dmap[lev], NUM_SPECIES+1, 0);
                 rxn_src[lev].setVal(0.0);
             }
         }
@@ -140,31 +140,50 @@ void Vidyut::Evolve()
           FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
         }
 
-        update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
+        // Calculate the reactive source terms for all species/levels
+        if(do_reactions)
+        {
+            update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
+        }
 
-        // note that phi_new is updated instead of sborder
-        // so older potential and efield are used as opposed to new ones
-        // call fillpatch to improve implicitness
-        /*for(int lev=0;lev<=finest_level;lev++)
-          {
-          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-          }*/
-
-            update_explsrc_at_all_levels(EDN_ID, Sborder, flux, rxn_src, expl_src, 
-                    eden_bc_lo,eden_bc_hi,cur_time);
-            implicit_solve_scalar(cur_time,dt_common,EDN_ID,Sborder,expl_src,
-                                  eden_bc_lo,eden_bc_hi, gradne_fc);
-
-            /*for(int lev=0;lev<=finest_level;lev++)
-              {
-          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-          }*/
+        for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
+        {
+            bool solveflag=true;
+            auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
+            if(it != bg_specid_list.end())
+            {
+                solveflag=false;
+            }
+            if(solveflag)
+            {
+                //electrons and ions
+                if(plasmachem::get_charge(ind)!=0)
+                {
+                    if(ind == E_IDX)
+                    {
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
+                        implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
+                    } 
+                    else 
+                    {
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
+                        implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
+                    }
+                }
+                //neutrals
+                else
+                {
+                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, neutral_bc_lo, neutral_bc_hi, cur_time);
+                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
+                }
+            }
+        }
 
         if(elecenergy_solve)
         {
             update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
-                    eenrg_bc_lo,eenrg_bc_hi,
-                    cur_time);
+                                         eenrg_bc_lo,eenrg_bc_hi,
+                                         cur_time);
             for (int lev = 0; lev <= finest_level; lev++)
             {
                 compute_elecenergy_source(lev, Sborder[lev],
@@ -174,52 +193,6 @@ void Vidyut::Evolve()
             }
             implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
                                   expl_src,eenrg_bc_lo,eenrg_bc_hi, grad_fc);
-
-            /*for(int lev=0;lev<=finest_level;lev++)
-              {
-              FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-              }*/
-        }
-
-        for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
-        {
-
-            int loc=-1;
-            bool solveflag=true;
-            auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
-            if(it != bg_specid_list.end())
-            {
-                solveflag=false;
-            }
-
-            if(solveflag)
-            {
-
-                //ions
-                if(plasmachem::get_charge(ind)!=0.0)
-                {
-                     update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
-                                             expl_src, 
-                                             ion_bc_lo,ion_bc_hi,
-                                             cur_time);
-                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi,grad_fc);
-                }
-                //neutrals
-                else
-                {
-                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
-                                             expl_src, 
-                                             neutral_bc_lo,neutral_bc_hi,
-                                             cur_time);
-                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,
-                            neutral_bc_lo,neutral_bc_hi,grad_fc);
-                }
-
-                /*for(int lev=0;lev<=finest_level;lev++)
-                  {
-                  FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-                  }*/
-            }
         }
 
         AverageDown ();
@@ -255,6 +228,11 @@ void Vidyut::Evolve()
         {
             chkfilenum++;
             WriteCheckpointFile(chkfilenum);
+        }
+
+        if (monitor_file_int > 0 && (step + 1) % monitor_file_int == 0)
+        {
+            WriteMonitorFile(cur_time);
         }
 
         if (cur_time >= stop_time - 1.e-6 * dt_common) break;

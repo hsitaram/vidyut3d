@@ -7,7 +7,7 @@
 #include <Chemistry.H>
 
 using namespace amrex;
-namespace plasmachem_transport
+namespace user_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
@@ -22,7 +22,8 @@ namespace plasmachem_transport
                       GpuArray<Real, AMREX_SPACEDIM> dx,
                       const Real time,
                       ProbParm const& prob_parm,
-                      amrex::Real Tg,amrex::Real Pg)
+                      amrex::Real Tg,amrex::Real Pg,
+                      amrex::Real app_voltage)
     {
         IntVect cell_int(i,j,k);
         IntVect ghost_cell(i,j,k);
@@ -44,15 +45,15 @@ namespace plasmachem_transport
         { // lo sides
             robin_a(ghost_cell) = 1.0;
             robin_b(ghost_cell) = 0.0;
-            robin_f(ghost_cell) = prob_parm.V1/prob_parm.phis;
-            bc_arr(ghost_cell) = prob_parm.V1/prob_parm.phis;
+            robin_f(ghost_cell) = app_voltage;
+            bc_arr(ghost_cell) = app_voltage;
         }
         else if(sgn == 1 && dir==1)
         {
             robin_a(ghost_cell) = 1.0;
             robin_b(ghost_cell) = 0.0;
-            robin_f(ghost_cell) = prob_parm.V2/prob_parm.phis;
-            bc_arr(ghost_cell) = prob_parm.V2/prob_parm.phis;
+            robin_f(ghost_cell) = app_voltage;
+            bc_arr(ghost_cell) = app_voltage;
         }
         else
         {

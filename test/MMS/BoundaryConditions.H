@@ -8,7 +8,7 @@
 #include <VarDefines.H>
 
 using namespace amrex;
-namespace plasmachem_transport
+namespace user_transport
 {
     AMREX_GPU_DEVICE AMREX_INLINE
     void potential_bc(int i, int j, int k,
@@ -23,7 +23,7 @@ namespace plasmachem_transport
                            GpuArray<Real, AMREX_SPACEDIM> dx,
                            const Real time,
                            ProbParm const& prob_parm,
-                           Real Tg, Real Pg)
+                           Real Tg, Real Pg, Real app_voltage)
     {
         //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
@@ -117,17 +117,16 @@ namespace plasmachem_transport
         IntVect cellid(i, j, k);
 
         amrex::Real vel=0.0;
-        if(dir==prob_parm.axdir && specid==S1_ID)
+        if(dir==prob_parm.axdir && specid==AR_ID)
         {
             Real efieldmag = std::sqrt(std::pow(phi(cellid,EFX_ID),2.0) +
                                        std::pow(phi(cellid,EFY_ID),2.0) +
                                        std::pow(phi(cellid,EFZ_ID),2.0) );
             
-            amrex::Real mu = plasmachem::mobility(specid,phi(cellid,ETEMP_ID),
+            amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
                                            efieldmag,
                                            Tg,Pg);
             vel=mu*phi(cellid,EFX_ID+dir);
-
         }
         
         return(vel);

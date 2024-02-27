@@ -11,6 +11,7 @@
 #include <UserSources.H>
 #include <Chemistry.H>
 #include <BoundaryConditions.H>
+#include <PlasmaChem.H>
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -149,7 +150,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         amrex::Copy(potential[ilev], Sborder[ilev], POT_ID, 0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
-        amrex::MultiFab::Copy(solution[ilev], potential[ilev], 0, 0, 1, 0);
+        // FIXME: for some reason copying in current soln breaks the solver...
+        // amrex::MultiFab::Copy(solution[ilev], potential[ilev], 0, 0, 1, 0);
         rhs[ilev].setVal(0.0);
         acoeff[ilev].setVal(0.0);
 
@@ -167,41 +169,43 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
 
         // fill cell centered diffusion coefficients and rhs
-        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            const Box& gbx = amrex::grow(bx, 1);
-            const auto dx = geom[ilev].CellSizeArray();
-            auto prob_lo = geom[ilev].ProbLoArray();
-            auto prob_hi = geom[ilev].ProbHiArray();
-            const Box& domain = geom[ilev].Domain();
+        if(do_spacechrg){
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                const Box& gbx = amrex::grow(bx, 1);
+                const auto dx = geom[ilev].CellSizeArray();
+                auto prob_lo = geom[ilev].ProbLoArray();
+                auto prob_hi = geom[ilev].ProbHiArray();
+                const Box& domain = geom[ilev].Domain();
 
-            Real time = current_time; // for GPU capture
+                Real time = current_time; // for GPU capture
 
-            Array4<Real> phi_arr = Sborder[ilev].array(mfi);
-            Array4<Real> rhs_arr = rhs[ilev].array(mfi);
+                Array4<Real> phi_arr = Sborder[ilev].array(mfi);
+                Array4<Real> rhs_arr = rhs[ilev].array(mfi);
             
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                //include electrons
-                rhs_arr(i,j,k)=0.0;
-                for(int sp=0;sp<NUM_ALL_SPECIES;sp++)
-                {
-                    if(amrex::Math::abs(plasmachem::get_charge(sp)) > 0)
+                    //include electrons
+                    rhs_arr(i,j,k)=0.0;
+                    for(int sp=0;sp<NUM_SPECIES;sp++)
                     {
-                       rhs_arr(i,j,k)+=plasmachem::get_charge(sp)*phi_arr(i,j,k,sp);
+                        if(amrex::Math::abs(plasmachem::get_charge(sp)) > 0)
+                        {
+                           rhs_arr(i,j,k)+=plasmachem::get_charge(sp)*phi_arr(i,j,k,sp);
+                        }
                     }
-                }
-                //why minus sign?
-                //remember del.E = rho/eps0
-                //but E= -grad phi
-                //del^2 phi = -rho/eps0
-                rhs_arr(i,j,k)*=(-ECHARGE/EPS0);
+                    //why minus sign?
+                    //remember del.E = rho/eps0
+                    //but E= -grad phi
+                    //del^2 phi = -rho/eps0
+                    rhs_arr(i,j,k)*=(-ECHARGE/EPS0);
 
-                user_sources::add_user_potential_sources(i, j, k, phi_arr, 
-                                                     rhs_arr, prob_lo, prob_hi, 
-                                                     dx, time, *localprobparm);
-            });
+                    user_sources::add_user_potential_sources(i, j, k, phi_arr, 
+                                                         rhs_arr, prob_lo, prob_hi, 
+                                                         dx, time, *localprobparm);
+                });
+            }
         }
 
         // average cell coefficients to faces, this includes boundary faces
@@ -239,23 +243,45 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                 if (bx.smallEnd(idim) == domain.smallEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                        plasmachem_transport::potential_bc(i, j, k, idim, -1, 
+                        int domend = -1;
+                        amrex::Real app_voltage = get_applied_potential(time, domend);
+                        if(user_defined_transport == 1){
+                            user_transport::potential_bc(i, j, k, idim, -1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
                                                            prob_lo, prob_hi, dx, time, 
                                                            *localprobparm,captured_gastemp,
-                                                           captured_gaspres);
+                                                           captured_gaspres, app_voltage);
+                        } else {
+                            plasmachem_transport::potential_bc(i, j, k, idim, -1, 
+                                                           phi_arr, bc_arr, robin_a_arr, 
+                                                           robin_b_arr, robin_f_arr, 
+                                                           prob_lo, prob_hi, dx, time, 
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres, app_voltage);
+                        }
                     });
                 }
                 if (bx.bigEnd(idim) == domain.bigEnd(idim))
                 {
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                        plasmachem_transport::potential_bc(i, j, k, idim, +1, 
+                        int domend = 1;
+                        amrex::Real app_voltage = get_applied_potential(time, domend);
+                        if(user_defined_transport == 1){
+                            user_transport::potential_bc(i, j, k, idim, +1, 
                                                            phi_arr, bc_arr, robin_a_arr, 
                                                            robin_b_arr, robin_f_arr, 
                                                            prob_lo, prob_hi, dx, time,
                                                            *localprobparm,captured_gastemp,
-                                                           captured_gaspres);
+                                                           captured_gaspres, app_voltage);
+                        } else {
+                            plasmachem_transport::potential_bc(i, j, k, idim, +1, 
+                                                           phi_arr, bc_arr, robin_a_arr, 
+                                                           robin_b_arr, robin_f_arr, 
+                                                           prob_lo, prob_hi, dx, time,
+                                                           *localprobparm,captured_gastemp,
+                                                           captured_gaspres, app_voltage);
+                        }
                     });
                 }
             }
@@ -290,7 +316,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
-        
         efield_fc[ilev][0].mult(-1.0,0,1);
         efield_fc[ilev][1].mult(-1.0,0,1);
         efield_fc[ilev][2].mult(-1.0,0,1);
@@ -298,6 +323,22 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&efield_fc[ilev][0], 
             &efield_fc[ilev][1], &efield_fc[ilev][2]};
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
+
+        // Calculate the reduced electric field
+        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            const Box& gbx = amrex::grow(bx, 1);
+
+            Array4<Real> s_arr = phi_new[ilev].array(mfi);
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                Real Ex = s_arr(i,j,k,EFX_ID);
+                Real Ey = s_arr(i,j,k,EFY_ID);
+                Real Ez = s_arr(i,j,k,EFZ_ID);
+                s_arr(i,j,k,REF_ID) = (pow(Ex*Ex + Ey*Ey + Ez*Ez, 0.5) / gas_num_dens) / 1.0e-21;
+            });
+        }
     }
 
     //clean-up
@@ -309,4 +350,25 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     robin_a.clear();
     robin_b.clear();
     robin_f.clear();
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
+{
+    ProbParm const* localprobparm = d_prob_parm;
+    Real voltage;
+    Real voltage_amp = (domain_end == -1) ? voltage_amp_1:voltage_amp_2;
+    if(voltage_profile == 1) {  // Sinusoidal pulse shape
+        voltage = sin(2.0*PI*voltage_freq*current_time)*voltage_amp;
+    } else if (voltage_profile == 2) {    // Single triangular pulse
+        if(current_time <= voltage_center) {
+            voltage = (voltage_center - current_time < voltage_dur/2.0) ? (1.0 - (voltage_center - current_time)/(voltage_dur/2.0))*voltage_amp:0.0;
+        } else {
+            voltage = (current_time - voltage_center < voltage_dur/2.0) ? (1.0 - (current_time - voltage_center)/(voltage_dur/2.0))*voltage_amp:0.0;
+        }
+    } else {
+        voltage = (domain_end==-1) ? voltage_amp_1:voltage_amp_2;
+    }
+    
+    return voltage;
 }

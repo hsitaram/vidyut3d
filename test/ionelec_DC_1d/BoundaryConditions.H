@@ -7,7 +7,7 @@
 #include <Chemistry.H>
 
 using namespace amrex;
-namespace plasmachem_transport
+namespace user_transport
 {
     AMREX_GPU_DEVICE AMREX_FORCE_INLINE
     void potential_bc(int i, int j, int k,
@@ -22,7 +22,7 @@ namespace plasmachem_transport
                       GpuArray<Real, AMREX_SPACEDIM> dx,
                       const Real time,
                       ProbParm const& prob_parm,
-                               Real Tg, Real Pg)
+                      Real Tg, Real Pg, Real app_voltage)
     {
         IntVect cell_int(i,j,k);
         IntVect ghost_cell(i,j,k);
@@ -43,15 +43,15 @@ namespace plasmachem_transport
         { // lo sides
             robin_a(ghost_cell) = 1.0;
             robin_b(ghost_cell) = 0.0;
-            robin_f(ghost_cell) = prob_parm.V1/prob_parm.phis;
-            bc_arr(ghost_cell) = prob_parm.V1/prob_parm.phis;
+            robin_f(ghost_cell) = app_voltage;
+            bc_arr(ghost_cell) = app_voltage;
         }
         else if(sgn == 1)
         {
             robin_a(ghost_cell) = 1.0;
             robin_b(ghost_cell) = 0.0;
-            robin_f(ghost_cell) = prob_parm.V2/prob_parm.phis;
-            bc_arr(ghost_cell) = prob_parm.V2/prob_parm.phis;
+            robin_f(ghost_cell) = app_voltage;
+            bc_arr(ghost_cell) = app_voltage;
         }
         else
         {
@@ -101,16 +101,16 @@ namespace plasmachem_transport
         robin_b(ghost_cell) = 1.0;
         robin_f(ghost_cell) = 0.0;
 
-        if(spec_id==EDN_ID)
+        if(spec_id==E_ID)
         {
-            amrex::Real ne=phi(cell_int,EDN_ID);
+            amrex::Real ne=phi(cell_int,E_ID);
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
             
-            amrex::Real D=plasmachem::diffusion_coeff(spec_id, phi(cell_int,ETEMP_ID),
-                                          efieldmag,
-                                          Tg,Pg);
+            amrex::Real ndens = 0.0;
+            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
+            amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
@@ -119,17 +119,17 @@ namespace plasmachem_transport
             bc_arr(ghost_cell)=(-flx/D);
         }
 
-        if(spec_id==I_ID)
+        if(spec_id==HEp_ID)
         {
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
         
-            amrex::Real mu = plasmachem::mobility(spec_id,phi(cell_int,ETEMP_ID),
+            amrex::Real mu = specMob(spec_id,phi(cell_int,ETEMP_ID),
                                            efieldmag,
                                            Tg,Pg);
 
-            amrex::Real D = plasmachem::diffusion_coeff(spec_id,phi(cell_int,ETEMP_ID),
+            amrex::Real D = specDiff(spec_id,phi(cell_int,ETEMP_ID),
                                            efieldmag,
                                            Tg,Pg);
             
@@ -145,16 +145,16 @@ namespace plasmachem_transport
 
         if(spec_id==EEN_ID)
         {
-            amrex::Real ne=phi(cell_int,EDN_ID);
+            amrex::Real ne=phi(cell_int,E_ID);
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
             
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             
-            amrex::Real D=plasmachem::diffusion_coeff(spec_id, Te,
-                                          efieldmag,
-                                          Tg,Pg);
+            amrex::Real ndens = 0.0;
+            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
+            amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
             
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
             
@@ -178,7 +178,7 @@ namespace plasmachem_transport
                                          std::pow(phi(cellid,EFY_ID),2.0)+
                                          std::pow(phi(cellid,EFZ_ID),2.0) );
         
-        amrex::Real mu = plasmachem::mobility(specid,phi(cellid,ETEMP_ID),
+        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
                                               efieldmag,Tg,Pg);
 
         return(mu*phi(cellid,EFX_ID+dir));
