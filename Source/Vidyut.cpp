@@ -54,11 +54,6 @@ Vidyut::Vidyut()
         allvarnames[i+NUM_SPECIES] = plasma_param_names[i];
     }
 
-    // Geometry on all levels has been defined already.
-
-    // No valid BoxArray and DistributionMapping have been defined.
-    // But the arrays for them have been resized.
-
     int nlevs_max = max_level + 1;
 
     istep.resize(nlevs_max, 0);
@@ -96,6 +91,8 @@ Vidyut::Vidyut()
     pp.queryarr("neutral_bc_lo", neutral_bc_lo, 0, AMREX_SPACEDIM);
     pp.queryarr("neutral_bc_hi", neutral_bc_hi, 0, AMREX_SPACEDIM);
 
+    //foextrap all states as bcs imposed
+    //through linear solver
     bcspec.resize(NVAR);
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
     {
@@ -114,16 +111,12 @@ Vidyut::Vidyut()
                 (plasmachem::find_id("E-") != -1)? plasmachem::find_id("E-"):
                 (plasmachem::find_id("e") != -1) ? plasmachem::find_id("e"):
                 plasmachem::find_id("e-");
+
     if(E_idx != -1){
       E_IDX = E_idx;
     } else{
       amrex::Abort("Electron not found in chemistry mechanism!\n");
     }
-
-    // stores fluxes at coarse-fine interface for synchronization
-    // this will be sized "nlevs_max+1"
-    // NOTE: the flux register associated with flux_reg[lev] is associated
-    // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
 }
 
 Vidyut::~Vidyut()
@@ -176,13 +169,8 @@ void Vidyut::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
     if (first)
     {
         first = false;
-        // read in an array of "phierr", which is the tagging threshold
-        // in this example, we tag values of "phi" which are greater than phierr
-        // for that particular level
-        // in subroutine state_error, you could use more elaborate tagging, such
-        // as more advanced logical expressions, or gradients, etc.
         ParmParse pp("vidyut");
-            if (pp.contains("tagged_vars"))
+        if (pp.contains("tagged_vars"))
         {
             int nvars = pp.countval("tagged_vars");
             refine_phi.resize(nvars);
@@ -217,7 +205,7 @@ void Vidyut::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
                 }
                 else
                 {
-                   refine_phi_comps[i] = spec_id;
+                    refine_phi_comps[i] = spec_id;
                 }
             }
         }
@@ -313,20 +301,20 @@ void Vidyut::ReadParameters()
 
         if(hyp_order==1) //first order upwind
         {
-           ngrow_for_fillpatch=1;
+            ngrow_for_fillpatch=1;
         }
         else if(hyp_order==2) //second-order flux limited
         {
-           ngrow_for_fillpatch=2;
+            ngrow_for_fillpatch=2;
         }
         else if(hyp_order==5)  //weno 5
         {
-           ngrow_for_fillpatch=3;
-           //amrex::Abort("hyp_order 5 not implemented yet");
+            ngrow_for_fillpatch=3;
+            //amrex::Abort("hyp_order 5 not implemented yet");
         }
         else
         {
-           amrex::Abort("Specified hyp_order not implemented yet");
+            amrex::Abort("Specified hyp_order not implemented yet");
         }
         pp.query("gas_num_dens",gas_num_dens);
 
@@ -336,7 +324,7 @@ void Vidyut::ReadParameters()
             pp.get("ele_mob", ele_mob);
             pp.get("ele_diff", ele_diff);
         }
-        
+
         // Voltage options
         pp.query("voltage_profile", voltage_profile);
         pp.query("voltage_amp_1", voltage_amp_1);

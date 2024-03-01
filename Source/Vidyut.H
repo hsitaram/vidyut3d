@@ -7,10 +7,6 @@
 #include <limits>
 #include <memory>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #ifdef AMREX_USE_HYPRE
 #include <AMReX_Hypre.H>
 #endif
@@ -223,9 +219,6 @@ public:
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
     int regrid_int = 2;
-
-    // hyperbolic refluxing as part of multilevel synchronization
-    int do_reflux = 1;
 
     int use_hypre=0;
 
