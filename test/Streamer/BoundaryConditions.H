@@ -123,9 +123,11 @@ namespace user_transport
         amrex::Real efieldmag=std::sqrt( std::pow(phi(cellid,EFX_ID),2.0)+
                                          std::pow(phi(cellid,EFY_ID),2.0)+
                                          std::pow(phi(cellid,EFZ_ID),2.0) );
+        amrex::Real ndens = 0.0;
+        for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cellid,sp);
         
-        amrex::Real mu = plasmachem::mobility(specid,phi(cellid,ETEMP_ID),
-                                              efieldmag,Tg,Pg);
+        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
+                                              ndens,efieldmag,Tg);
 
         return(mu*phi(cellid,EFX_ID+dir));
     }

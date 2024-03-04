@@ -123,9 +123,10 @@ namespace user_transport
                                        std::pow(phi(cellid,EFY_ID),2.0) +
                                        std::pow(phi(cellid,EFZ_ID),2.0) );
             
-            amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
+            amrex::Real ndens=1.0; //dummy
+            amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID), ndens,
                                            efieldmag,
-                                           Tg,Pg);
+                                           Tg);
             vel=mu*phi(cellid,EFX_ID+dir);
         }
         

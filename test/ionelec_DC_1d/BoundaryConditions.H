@@ -100,6 +100,9 @@ namespace user_transport
         robin_a(ghost_cell) = 0.0;
         robin_b(ghost_cell) = 1.0;
         robin_f(ghost_cell) = 0.0;
+            
+        amrex::Real ndens = 0.0;
+        for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
 
         if(spec_id==E_ID)
         {
@@ -108,8 +111,6 @@ namespace user_transport
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
             
-            amrex::Real ndens = 0.0;
-            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
             amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
 
             amrex::Real Te=phi(cell_int,ETEMP_ID);
@@ -126,12 +127,12 @@ namespace user_transport
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
         
             amrex::Real mu = specMob(spec_id,phi(cell_int,ETEMP_ID),
-                                           efieldmag,
-                                           Tg,Pg);
+                                           ndens,efieldmag,
+                                           Tg);
 
             amrex::Real D = specDiff(spec_id,phi(cell_int,ETEMP_ID),
-                                           efieldmag,
-                                           Tg,Pg);
+                                           ndens,efieldmag,
+                                           Tg);
             
             amrex::Real efield=phi(cell_int,EFX_ID+dir);
             amrex::Real ion_drift_flux=mu*phi(cell_int,spec_id)*efield;
@@ -152,8 +153,6 @@ namespace user_transport
             
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             
-            amrex::Real ndens = 0.0;
-            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
             amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
             
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
@@ -178,8 +177,11 @@ namespace user_transport
                                          std::pow(phi(cellid,EFY_ID),2.0)+
                                          std::pow(phi(cellid,EFZ_ID),2.0) );
         
-        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
-                                              efieldmag,Tg,Pg);
+        amrex::Real ndens = 0.0;
+        for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cellid,sp);
+
+        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),ndens,
+                                              efieldmag,Tg);
 
         return(mu*phi(cellid,EFX_ID+dir));
     }

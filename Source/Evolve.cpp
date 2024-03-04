@@ -146,39 +146,9 @@ void Vidyut::Evolve()
             update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
         }
 
-        for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
-        {
-            bool solveflag=true;
-            auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
-            if(it != bg_specid_list.end())
-            {
-                solveflag=false;
-            }
-            if(solveflag)
-            {
-                //electrons and ions
-                if(plasmachem::get_charge(ind)!=0)
-                {
-                    if(ind == E_IDX)
-                    {
-                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
-                        implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
-                    } 
-                    else 
-                    {
-                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
-                        implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
-                    }
-                }
-                //neutrals
-                else
-                {
-                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, neutral_bc_lo, neutral_bc_hi, cur_time);
-                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
-                }
-            }
-        }
-
+        update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
+        implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
+        
         if(elecenergy_solve)
         {
             update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
@@ -194,6 +164,32 @@ void Vidyut::Evolve()
             implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
                                   expl_src,eenrg_bc_lo,eenrg_bc_hi, grad_fc);
         }
+
+        for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
+        {
+            bool solveflag=true;
+            auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
+            if(it != bg_specid_list.end())
+            {
+                solveflag=false;
+            }
+            if(solveflag)
+            {
+                //electrons and ions
+                if(plasmachem::get_charge(ind)!=0 && ind!=E_IDX)
+                {
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
+                        implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
+                }
+                //neutrals
+                else
+                {
+                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, neutral_bc_lo, neutral_bc_hi, cur_time);
+                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
+                }
+            }
+        }
+
 
         AverageDown ();
 

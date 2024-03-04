@@ -96,6 +96,9 @@ namespace user_transport
         robin_a(ghost_cell) = 0.0;
         robin_b(ghost_cell) = 1.0;
         robin_f(ghost_cell) = 0.0;
+        
+        amrex::Real ndens = 0.0;
+        for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
 
         if(spec_id==E_ID)
         {
@@ -103,11 +106,9 @@ namespace user_transport
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
-           
-            amrex::Real ndens = 0.0;
-            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
+
             amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
-            
+
             amrex::Real Te=phi(cell_int,ETEMP_ID);
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
             amrex::Real flx = ne*cbar/4.0*outward_normal[dir];
@@ -123,19 +124,19 @@ namespace user_transport
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
-        
-            amrex::Real mu = specMob(spec_id,phi(cell_int,ETEMP_ID),
-                                           efieldmag,
-                                           Tg,Pg);
 
-            amrex::Real D = specDiff(spec_id,phi(cell_int,ETEMP_ID),
-                                           efieldmag,
-                                           Tg,Pg);
-            
+            amrex::Real mu = specMob(spec_id,phi(cell_int,ETEMP_ID), ndens,
+                                     efieldmag,
+                                     Tg);
+
+            amrex::Real D = specDiff(spec_id,phi(cell_int,ETEMP_ID), ndens, 
+                                     efieldmag,
+                                     Tg);
+
             amrex::Real efield=phi(cell_int,EFX_ID+dir);
             amrex::Real ion_drift_flux = mu*phi(cell_int,spec_id)*efield;
             amrex::Real ion_drift_flux_dotn = ion_drift_flux*outward_normal[dir];
-            
+
             //if driftvel is pointing towards the wall
             //then flux=v n - D dndx = v n
             //else  flux = v n - D dndx = 0 
@@ -147,11 +148,9 @@ namespace user_transport
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
-            
-            amrex::Real ndens = 0.0;
-            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
+
             amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
-            
+
             amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/(39.948*M_AMU));
             amrex::Real flx = phi(i,j,k,spec_id)*cbar/4.0*Real(sgn);
             bc_arr(ghost_cell)=(-flx/D);
@@ -163,15 +162,13 @@ namespace user_transport
             amrex::Real efieldmag=std::sqrt(std::pow(phi(cell_int,EFX_ID),2.0)+
                                             std::pow(phi(cell_int,EFY_ID),2.0)+
                                             std::pow(phi(cell_int,EFZ_ID),2.0));
-            
+
             amrex::Real Te=phi(cell_int,ETEMP_ID);
-            
-            amrex::Real ndens = 0.0;
-            for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cell_int,sp);
-            amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
-            
+
+            amrex::Real D=specDiff(spec_id, Te, ndens, efieldmag, Tg);
+
             amrex::Real cbar=sqrt(8.0*K_B*Te/PI/ME);
-            
+
             amrex::Real flx = (2.0*K_B*Te)*ne*cbar/4.0*Real(sgn);
             bc_arr(ghost_cell)=(-flx/D);
         }
@@ -181,20 +178,23 @@ namespace user_transport
 
     AMREX_GPU_DEVICE AMREX_INLINE
     amrex::Real compute_vel(int i, int j, int k, int dir,
-                     int specid,
-                     Array4<Real> const& phi,
-                     GpuArray<Real, AMREX_SPACEDIM> dx,
-                     const Real time,
-                     ProbParm const& prob_parm,
-                     amrex::Real Tg,amrex::Real Pg)
+                            int specid,
+                            Array4<Real> const& phi,
+                            GpuArray<Real, AMREX_SPACEDIM> dx,
+                            const Real time,
+                            ProbParm const& prob_parm,
+                            amrex::Real Tg,amrex::Real Pg)
     {
         IntVect cellid(i, j, k);
         amrex::Real efieldmag=std::sqrt( std::pow(phi(cellid,EFX_ID),2.0)+
-                                         std::pow(phi(cellid,EFY_ID),2.0)+
-                                         std::pow(phi(cellid,EFZ_ID),2.0) );
+                                        std::pow(phi(cellid,EFY_ID),2.0)+
+                                        std::pow(phi(cellid,EFZ_ID),2.0) );
         
-        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
-                                              efieldmag,Tg,Pg);
+        amrex::Real ndens = 0.0;
+        for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cellid,sp);
+
+        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),ndens,
+                                 efieldmag,Tg);
 
         return(mu*phi(cellid,EFX_ID+dir));
     }
