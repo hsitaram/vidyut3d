@@ -5,8 +5,14 @@ stop_time = 2e-3
 geometry.is_periodic =  0  1  1
 geometry.coord_sys   =  0       # 0 => cart
 geometry.prob_lo     =  0.0   0.0     0.0 
-geometry.prob_hi     =  0.01  0.00015625 0.00015625 
+geometry.prob_hi     =  0.02  0.00015625 0.00015625 
 amr.n_cell           =   128  2  2
+
+#use 4 cells minimum for hyp_order 5
+#other wise we wont have enough ghost cells 
+#and will result nan flux
+#geometry.prob_hi     =  0.02  0.0003125 0.0003125
+#amr.n_cell           =   128  4  4
 
 # VERBOSITY
 amr.v              = 1       # verbosity in Amr
@@ -19,7 +25,7 @@ amr.max_grid_size   = 32
 amr.regrid_int      = 5       # how often to regrid
 
 # TIME STEP CONTROL
-vidyut.dt             = 2e-11
+vidyut.dt             = 1e-11
 
 vidyut.user_defined_transport = 1
 
@@ -67,9 +73,9 @@ vidyut.linsolve_reltol=1e-9
 vidyut.elecenergy_solve=1
 
 vidyut.voltage_profile = 0
-vidyut.voltage_amp_1 = 300.0
+vidyut.voltage_amp_1 = -300.0
 vidyut.voltage_amp_2 = 0.0
 
 vidyut.gas_pressure=133.0
 vidyut.gas_temperature=300.0
-vidyut.bg_species_ids=0
+vidyut.bg_species_ids=1

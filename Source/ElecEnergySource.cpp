@@ -14,7 +14,7 @@
 #include <PlasmaChem.H>
 #include <AMReX_MLABecLaplacian.H>
 
-void Vidyut::compute_elecenergy_source(int lev, const int num_grow, 
+void Vidyut::compute_elecenergy_source(int lev, 
                             MultiFab& Sborder, 
                             MultiFab& rxnsrc, 
                             Array<MultiFab,AMREX_SPACEDIM>& efield, 

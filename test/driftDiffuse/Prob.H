@@ -19,6 +19,7 @@ void amrex_probinit (ProbParm & h_prob_parm, ProbParm & d_prob_parm)
     amrex::ParmParse pp("prob");
     pp.query("source1", h_prob_parm.r1 );
     pp.query("source2", h_prob_parm.r2 );
+    pp.query("axial_dir", h_prob_parm.axdir );
 
 #ifdef AMREX_USE_GPU
     amrex::Gpu::htod_memcpy(&d_prob_parm, &h_prob_parm, sizeof(ProbParm));

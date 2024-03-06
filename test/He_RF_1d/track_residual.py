@@ -43,7 +43,7 @@ for i in range(1,len(fn_list)):
 
     field=np.array(ad[fieldname])
     fieldm1=np.array(adm1[fieldname])
-    residual=np.sqrt(np.mean((field-fieldm1)**2))
+    residual=np.abs(np.max(field)-np.max(fieldm1))
     if(i==1):
         first_res=residual
     print("abs/rel residual:",residual,residual/first_res)

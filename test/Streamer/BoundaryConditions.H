@@ -109,61 +109,27 @@ namespace user_transport
         } 
 
     }
-
+    
     AMREX_GPU_DEVICE AMREX_INLINE
-    void compute_vel(int i, int j, int k, int dir,
+    amrex::Real compute_vel(int i, int j, int k, int dir,
                      int specid,
                      Array4<Real> const& phi,
-                     Array4<Real> const& efield,
-                     Array4<Real> const& vel,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_lo,
-                     GpuArray<Real, AMREX_SPACEDIM> prob_hi,
-                     const GpuArray<int, AMREX_SPACEDIM> domlo,
-                     const GpuArray<int, AMREX_SPACEDIM> domhi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
                      const Real time,
                      ProbParm const& prob_parm,
-                     amrex::Real Tg, amrex::Real Pg)
+                     amrex::Real Tg,amrex::Real Pg)
     {
-        IntVect leftcell(i, j, k);
-        IntVect rightcell(i, j, k);
-        IntVect face(i, j, k);
-        leftcell[dir] -= 1;
+        IntVect cellid(i, j, k);
+        amrex::Real efieldmag=std::sqrt( std::pow(phi(cellid,EFX_ID),2.0)+
+                                         std::pow(phi(cellid,EFY_ID),2.0)+
+                                         std::pow(phi(cellid,EFZ_ID),2.0) );
+        amrex::Real ndens = 0.0;
+        for(int sp=0; sp<NUM_SPECIES; sp++) ndens += phi(cellid,sp);
+        
+        amrex::Real mu = specMob(specid,phi(cellid,ETEMP_ID),
+                                              ndens,efieldmag,Tg);
 
-        vel(i,j,k)=0.0;
-
-        if(specid==E_ID)
-        {
-            //to impose 0 flux condition
-            if( (face[dir]==domlo[dir]) || (face[dir]==(domhi[dir]+1)) )
-            {
-                vel(i,j,k)=0.0;
-            }
-            else
-            {
-                /*amrex::Real mu_left = mobility(left[0],left[1],left[2],specid,phi,prob_lo,
-                  prob_hi,dx,time,prob_parm,Tg,Pg);
-
-                  amrex::Real mu_right = mobility(right[0],right[1],right[2],specid,phi,prob_lo,
-                  prob_hi,dx,time,prob_parm,Tg,Pg);
-
-                  amrex::Real mu_face = 0.5*(mu_left+mu_right);*/
-
-                Real efield_magL = std::sqrt(std::pow(phi(leftcell,EFX_ID),2.0) +
-                                             std::pow(phi(leftcell,EFY_ID),2.0) +
-                                             std::pow(phi(leftcell,EFZ_ID),2.0) );
-
-                Real efield_magR = std::sqrt(std::pow(phi(rightcell,EFX_ID),2.0) +
-                                             std::pow(phi(rightcell,EFY_ID),2.0) +
-                                             std::pow(phi(rightcell,EFZ_ID),2.0) );
-
-                Real efield_mag=0.5*(efield_magL+efield_magR)*prob_parm.phis;
-                Real mu_face = -2.3987*std::pow(efield_mag,-0.26);
-
-                Real efield_face = -(phi(rightcell,POT_ID) - phi(leftcell,POT_ID))/dx[dir]*prob_parm.phis;
-                vel(i,j,k) = mu_face*efield_face;
-            }
-        }
+        return(mu*phi(cellid,EFX_ID+dir));
     }
 }
 #endif

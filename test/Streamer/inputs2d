@@ -1,5 +1,5 @@
 max_step  = 2000000
-stop_time = 6e-9
+stop_time = 5.9e-9
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0  0  1
@@ -41,8 +41,8 @@ vidyut.Potential_refinegrad = 400.0
 vidyut.pot_bc_lo = 2 1 0
 vidyut.pot_bc_hi = 2 1 0
 
-vidyut.eden_bc_lo = 2 2 0
-vidyut.eden_bc_hi = 2 2 0 
+vidyut.eden_bc_lo = 3 3 0
+vidyut.eden_bc_hi = 3 3 0 
 
 vidyut.eenrg_bc_lo = 2 2 0
 vidyut.eenrg_bc_hi = 2 2 0
@@ -64,7 +64,7 @@ amr.chk_int  = -1       # number of timesteps between checkpoint files
 vidyut.bound_specden=1
 vidyut.min_species_density=1e13
 vidyut.linsolve_maxiter=200
-vidyut.bg_species_ids=0
+vidyut.bg_species_ids=1
 
 prob.loc_x=0.0
 prob.loc_y=0.85e-2
