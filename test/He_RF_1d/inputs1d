@@ -71,4 +71,4 @@ vidyut.elecenergy_solve=1
 
 vidyut.gas_pressure=133.0
 vidyut.gas_temperature=300.0
-vidyut.bg_species_ids=0
+vidyut.bg_species_ids=1

@@ -63,14 +63,14 @@ for i, fn in enumerate(fn_list):
     covgrid_lev=maxlev
     res=np.array([ncells[0]* (2**covgrid_lev),ncells[1]* (2**covgrid_lev),ncells[2]* (2**covgrid_lev)])
     dx_frb=probsize/res
-    fields_load=["Potential","Electron_density","Electron_energy","Electron_Temp","He2+"]
+    fields_load=["Potential","E","Electron_energy","Electron_Temp","HEp"]
     ad = ds.covering_grid(level=covgrid_lev, left_edge=prob_lo, dims=res, fields=fields_load)
 
     pot=np.array(ad["Potential"])
-    elecden=np.array(ad["Electron_density"])
+    elecden=np.array(ad["E"])
     etemp=np.array(ad["Electron_Temp"])
     eenrg=np.array(ad["Electron_energy"])
-    ionden=np.array(ad["He2+"])
+    ionden=np.array(ad["HEp"])
     ejheat=np.array(ad["Electron_Jheat"])
     inelheat=np.array(ad["Electron_inelasticHeat"])
     elheat=np.array(ad["Electron_elasticHeat"])
