@@ -86,5 +86,5 @@ for i, fn in enumerate(fn_list):
     elhl=get_oned_data(elheat,axialdir)
     inelhl=get_oned_data(inelheat,axialdir)
 
-    np.savetxt("linedata_"+axialdir_char+"%d.dat"%(i),\
+    np.savetxt("linedata_"+axialdir_char+"%4.4d.dat"%(i),\
             np.transpose(np.vstack((xarr,potl,edenl,iondenl,etempl,eenrgl,ejl,elhl,inelhl))),delimiter="  ")
