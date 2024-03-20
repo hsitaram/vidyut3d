@@ -202,10 +202,11 @@ public:
     int do_transport=1;
     int do_spacechrg=1;
     int user_defined_transport = 0;
+    int do_bg_reactions=1;
 
     // Transport vars
     int const_ele_trans=0;
-    amrex::Real ele_mob=1.0e24;  // Normalized (1/m/V/s)
+    amrex::Real ele_mob=-1.0e24;  // Normalized (1/m/V/s)
     amrex::Real ele_diff=1.0e24; // Normalized (1/m/s)
 
     // Voltage options

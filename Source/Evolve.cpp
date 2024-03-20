@@ -187,6 +187,23 @@ void Vidyut::Evolve()
                     update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, neutral_bc_lo, neutral_bc_hi, cur_time);
                     implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
                 }
+            } else if (do_bg_reactions){
+                for (int ilev = 0; ilev <= finest_level; ilev++)
+                {
+                    for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+                    {
+                        const Box& bx = mfi.tilebox();
+                        Array4<Real> phi_arr = phi_new[ilev].array(mfi);
+                        Array4<Real> rxn_arr = rxn_src[ilev].array(mfi);
+                        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                            phi_arr(i,j,k,ind) += rxn_arr(i,j,k,ind)*dt_common;
+                            if(phi_arr(i,j,k,ind) < min_species_density && bound_specden)
+                            {
+                                phi_arr(i,j,k,ind) = min_species_density;
+                            }
+                        });
+                    }
+                }
             }
         }
 
