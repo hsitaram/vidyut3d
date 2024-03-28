@@ -106,8 +106,8 @@ namespace plasmachem_transport
                       amrex::Real voltage)
     {
       // TODO: Make this routine more flexible/general
-        IntVect cell_int(i,j,k);
-        IntVect ghost_cell(i,j,k);
+        IntVect cell_int{AMREX_D_DECL(i,j,k)};
+        IntVect ghost_cell{AMREX_D_DECL(i,j,k)};
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
 

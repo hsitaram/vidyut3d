@@ -25,8 +25,8 @@ namespace user_transport
                       amrex::Real Tg,amrex::Real Pg,
                       amrex::Real app_voltage)
     {
-        IntVect cell_int(i,j,k);
-        IntVect ghost_cell(i,j,k);
+        IntVect cell_int{AMREX_D_DECL(i,j,k)};
+        IntVect ghost_cell{AMREX_D_DECL(i,j,k)};
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
@@ -79,8 +79,8 @@ namespace user_transport
                     amrex::Real Tg,amrex::Real Pg)
 
     {
-        IntVect cell_int(i,j,k);
-        IntVect ghost_cell(i,j,k);
+        IntVect cell_int{AMREX_D_DECL(i,j,k)};
+        IntVect ghost_cell{AMREX_D_DECL(i,j,k)};
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
@@ -111,7 +111,7 @@ namespace user_transport
     }
     
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real compute_vel(int i, int j, int k, int dir,
+    amrex::Real compute_vel(IntVect cellid, int dir,
                      int specid,
                      Array4<Real> const& phi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -119,7 +119,6 @@ namespace user_transport
                      ProbParm const& prob_parm,
                      amrex::Real Tg,amrex::Real Pg)
     {
-        IntVect cellid(i, j, k);
         amrex::Real efieldmag=std::sqrt( std::pow(phi(cellid,EFX_ID),2.0)+
                                          std::pow(phi(cellid,EFY_ID),2.0)+
                                          std::pow(phi(cellid,EFZ_ID),2.0) );

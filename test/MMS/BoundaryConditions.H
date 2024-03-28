@@ -28,8 +28,8 @@ namespace user_transport
         //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
         //so the ghost cell index at left side is i-1 while it is i on the right
-        IntVect cell_int(i,j,k);
-        IntVect ghost_cell(i,j,k);
+        IntVect cell_int{AMREX_D_DECL(i,j,k)};
+        IntVect ghost_cell{AMREX_D_DECL(i,j,k)};
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
         
@@ -75,8 +75,8 @@ namespace user_transport
         //note: bdryLo/bdryHi grabs the face indices from bx that are at the boundary
         //since they are face indices, the bdry normal index is 0/n+1, n is number of cells
         //so the ghost cell index at left side is i-1 while it is i on the right
-        IntVect cell_int(i,j,k);
-        IntVect ghost_cell(i,j,k);
+        IntVect cell_int{AMREX_D_DECL(i,j,k)};
+        IntVect ghost_cell{AMREX_D_DECL(i,j,k)};
         amrex::Real outward_normal[AMREX_SPACEDIM]={0.0};
         outward_normal[dir]=sgn;
 
@@ -106,7 +106,7 @@ namespace user_transport
     }
 
     AMREX_GPU_DEVICE AMREX_INLINE
-    amrex::Real compute_vel(int i, int j, int k, int dir,
+    amrex::Real compute_vel(IntVect cellid, int dir,
                      int specid,
                      Array4<Real> const& phi,
                      GpuArray<Real, AMREX_SPACEDIM> dx,
@@ -114,8 +114,6 @@ namespace user_transport
                      ProbParm const& prob_parm,
                      amrex::Real Tg,amrex::Real Pg)
     {
-        IntVect cellid(i, j, k);
-
         amrex::Real vel=0.0;
         if(dir==prob_parm.axdir && specid==AR_ID)
         {

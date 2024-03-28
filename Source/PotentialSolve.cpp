@@ -51,10 +51,10 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_lo 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
+    = {AMREX_D_DECL(LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin)}; 
 
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_hi 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
+    = {AMREX_D_DECL(LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin)}; 
 
     int mixedbc=0;
     for (int idim = 0; idim < AMREX_SPACEDIM; idim++)
@@ -164,8 +164,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
         const int* domlo_arr = geom[ilev].Domain().loVect();
         const int* domhi_arr = geom[ilev].Domain().hiVect();
 
-        GpuArray<int,AMREX_SPACEDIM> domlo={domlo_arr[0], domlo_arr[1], domlo_arr[2]};
-        GpuArray<int,AMREX_SPACEDIM> domhi={domhi_arr[0], domhi_arr[1], domhi_arr[2]};
+        GpuArray<int,AMREX_SPACEDIM> domlo={AMREX_D_DECL(domlo_arr[0], domlo_arr[1], domlo_arr[2])};
+        GpuArray<int,AMREX_SPACEDIM> domhi={AMREX_D_DECL(domhi_arr[0], domhi_arr[1], domhi_arr[2])};
 
 
         // fill cell centered diffusion coefficients and rhs
@@ -317,11 +317,15 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
         efield_fc[ilev][0].mult(-1.0,0,1);
+#if AMREX_SPACEDIM > 1
         efield_fc[ilev][1].mult(-1.0,0,1);
+#if AMREX_SPACEDIM == 3
         efield_fc[ilev][2].mult(-1.0,0,1);
-        
-        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {&efield_fc[ilev][0], 
-            &efield_fc[ilev][1], &efield_fc[ilev][2]};
+#endif
+#endif   
+
+        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {AMREX_D_DECL(&efield_fc[ilev][0], 
+            &efield_fc[ilev][1], &efield_fc[ilev][2])};
         average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
 
         // Calculate the reduced electric field
@@ -333,10 +337,10 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
             Array4<Real> s_arr = phi_new[ilev].array(mfi);
 
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                Real Ex = s_arr(i,j,k,EFX_ID);
-                Real Ey = s_arr(i,j,k,EFY_ID);
-                Real Ez = s_arr(i,j,k,EFZ_ID);
-                s_arr(i,j,k,REF_ID) = (pow(Ex*Ex + Ey*Ey + Ez*Ez, 0.5) / gas_num_dens) / 1.0e-21;
+                RealVect Evect{AMREX_D_DECL(s_arr(i,j,k,EFX_ID),s_arr(i,j,k,EFY_ID),s_arr(i,j,k,EFZ_ID))};
+                Real Esum = 0.0;
+                for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += Evect[dim]*Evect[dim];
+                s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / gas_num_dens) / 1.0e-21;
             });
         }
     }

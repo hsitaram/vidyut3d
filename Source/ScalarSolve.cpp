@@ -44,9 +44,14 @@ void Vidyut::compute_dsdt(int lev, int specid,
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
             dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
-            + (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1]
-            + (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2] 
             + rxn_arr(i,j,k,captured_specid);
+#if AMREX_SPACEDIM > 1
+            dsdt_arr(i,j,k) += (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1];
+#if AMREX_SPACEDIM == 3
+            dsdt_arr(i,j,k) += (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2]; 
+#endif
+#endif
+
         });
     }
 }
@@ -62,8 +67,12 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     {
         expl_src[lev].setVal(0.0);
         flux[lev][0].setVal(0.0);
+#if AMREX_SPACEDIM > 1
         flux[lev][1].setVal(0.0);
+#if AMREX_SPACEDIM == 3
         flux[lev][2].setVal(0.0);
+#endif
+#endif
     }
 
     if(do_transport)
@@ -174,11 +183,11 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
     const int* domlo_arr = geom[lev].Domain().loVect();
     const int* domhi_arr = geom[lev].Domain().hiVect();
 
-    GpuArray<int,AMREX_SPACEDIM> domlo={domlo_arr[0], domlo_arr[1], domlo_arr[2]};
-    GpuArray<int,AMREX_SPACEDIM> domhi={domhi_arr[0], domhi_arr[1], domhi_arr[2]};
+    GpuArray<int,AMREX_SPACEDIM> domlo={AMREX_D_DECL(domlo_arr[0], domlo_arr[1], domlo_arr[2])};
+    GpuArray<int,AMREX_SPACEDIM> domhi={AMREX_D_DECL(domhi_arr[0], domhi_arr[1], domhi_arr[2])};
     
-    GpuArray<int,AMREX_SPACEDIM> bclo={bc_lo[0], bc_lo[1], bc_lo[2]};
-    GpuArray<int,AMREX_SPACEDIM> bchi={bc_hi[0], bc_hi[1], bc_hi[2]};
+    GpuArray<int,AMREX_SPACEDIM> bclo={AMREX_D_DECL(bc_lo[0], bc_lo[1], bc_lo[2])};
+    GpuArray<int,AMREX_SPACEDIM> bchi={AMREX_D_DECL(bc_hi[0], bc_hi[1], bc_hi[2])};
 
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -187,9 +196,13 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
         for (MFIter mfi(Sborder, TilingIfNotGPU()); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
-            Box bx_x = convert(bx, {1, 0, 0});
-            Box bx_y = convert(bx, {0, 1, 0});
+            Box bx_x = convert(bx, {AMREX_D_DECL(1, 0, 0)});
+#if AMREX_SPACEDIM > 1
+            Box bx_y = convert(bx, {AMREX_D_DECL(0, 1, 0)});
+#if AMREX_SPACEDIM == 3
             Box bx_z = convert(bx, {0, 0, 1});
+#endif
+#endif
             
             Real time = current_time; // for GPU capture
 
@@ -208,6 +221,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              time, dx, lev_dt, *localprobparm, captured_hyporder); 
             });
 
+#if AMREX_SPACEDIM > 1
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 1, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[1], 
@@ -215,12 +229,15 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              time, dx, lev_dt, *localprobparm, captured_hyporder); 
             });
 
+#if AMREX_SPACEDIM == 3
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 2, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[2], 
                              captured_gastemp, captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder);
             });
+#endif
+#endif
         }
     }
 }
@@ -265,10 +282,10 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_lo 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
+    = {AMREX_D_DECL(LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin)}; 
 
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_hi 
-    = {LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin}; 
+    = {AMREX_D_DECL(LinOpBCType::Robin, LinOpBCType::Robin, LinOpBCType::Robin)}; 
 
     int mixedbc=0;
     for (int idim = 0; idim < AMREX_SPACEDIM; idim++)
@@ -398,9 +415,9 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
             amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
                 //FIXME:may be use updated efields here
-                    amrex::Real efield_mag=std::sqrt(std::pow(sb_arr(i,j,k,EFX_ID),2.0)+
-                                                     std::pow(sb_arr(i,j,k,EFY_ID),2.0)+
-                                                     std::pow(sb_arr(i,j,k,EFZ_ID),2.0));
+                    amrex::Real Esum = 0.0;
+                    for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += std::pow(sb_arr(i,j,k,EFX_ID+dim),2.0);
+                    amrex::Real efield_mag=std::sqrt(Esum);
                 
                     amrex::Real ndens = 0.0;
                     for(int sp=0; sp<NUM_SPECIES; sp++) ndens += sb_arr(i,j,k,sp);

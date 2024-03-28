@@ -53,9 +53,9 @@ void Vidyut::find_time_scales(int lev,amrex::Real& dt_edrift,amrex::Real &dt_edi
             amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) 
             {
                 amrex::Real etemp=state_array(i,j,k,ETEMP_ID); 
-                amrex::Real efield_mag=std::sqrt(std::pow(state_array(i,j,k,EFX_ID),2.0)+
-                                                 std::pow(state_array(i,j,k,EFY_ID),2.0)+
-                                                 std::pow(state_array(i,j,k,EFZ_ID),2.0));
+                amrex::Real Esum = 0.0;
+                for (int dim = 0; dim < AMREX_SPACEDIM; dim++) Esum += std::pow(state_array(i,j,k,EFX_ID+dim),2.0);
+                amrex::Real efield_mag=std::sqrt(Esum);
                
                 amrex::Real ndens = 0.0; 
                 for(int sp=0; sp<NUM_SPECIES; sp++) ndens += state_array(i,j,k,sp);
