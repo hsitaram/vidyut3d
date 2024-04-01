@@ -51,7 +51,6 @@ void Vidyut::compute_dsdt(int lev, int specid,
             dsdt_arr(i,j,k) += (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2]; 
 #endif
 #endif
-
         });
     }
 }
@@ -101,6 +100,14 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
         compute_dsdt(lev, specid, 
                      flux[lev], rxn_src[lev], expl_src[lev], 
                      cur_time, dt[lev]);
+    }
+
+    // Additional source terms for axisymmetric geometry
+    if(geom[0].IsRZ()){
+        for (int lev = finest_level; lev > 0; lev--)
+        {
+            compute_axisym_correction(lev, Sborder[lev], expl_src[lev], cur_time, specid);   
+        }
     }
 }
 
@@ -239,6 +246,38 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
 #endif
 #endif
         }
+    }
+}
+
+void Vidyut::compute_axisym_correction(int lev, MultiFab& Sborder,MultiFab& dsdt,
+                                       Real time,int specid)
+{
+    amrex::Real captured_gastemp=gas_temperature;
+    amrex::Real captured_gaspres=gas_pressure;
+    const auto dx = geom[lev].CellSizeArray();
+
+    for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+
+        Array4<Real> s_arr = Sborder.array(mfi);
+        Array4<Real> dsdt_arr = dsdt.array(mfi);
+
+        // Evaluate cell-centered axisymmetric source terms (Gamma_k / r)
+        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+          // calculate r
+          amrex::Real rval = amrex::Math::abs((i+0.5) * dx[0]);
+
+          // Calculate the advective source term component
+          amrex::Real etemp = s_arr(i,j,k,ETEMP_ID);
+          amrex::Real ndens = 0.0;
+          amrex::Real Esum = 0.0;
+          for(int sp=0; sp<NUM_SPECIES; sp++) ndens += s_arr(i,j,k,sp);
+          for (int dim = 0; dim < AMREX_SPACEDIM; dim++) Esum += std::pow(s_arr(i,j,k,EFX_ID+dim),2.0);
+          amrex::Real efield_mag=std::sqrt(Esum);
+          amrex::Real mu = specMob(specid, etemp, ndens, efield_mag,captured_gastemp);  
+          dsdt_arr(i,j,k,specid) -= mu * s_arr(i,j,k,specid) * s_arr(i,j,k,EFX_ID) / rval;
+        });
     }
 }
 

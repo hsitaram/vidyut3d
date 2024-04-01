@@ -73,6 +73,10 @@ public:
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Vector<int>& bc_lo, Vector<int>& bc_hi,
                                              Real time,int specid);
+  
+   void compute_axisym_correction(int lev, MultiFab& Sborder, 
+                                  MultiFab& dsdt,
+                                  Real time,int specid);
 
     void compute_dsdt(int lev, int specid, 
         Array<MultiFab,AMREX_SPACEDIM>& flux, 
