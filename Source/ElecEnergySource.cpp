@@ -142,30 +142,6 @@ void Vidyut::compute_elecenergy_source(int lev,
 
             elec_jheat*=0.5;
             
-            // amrex::Real efield_mag=std::sqrt(std::pow(sborder_arr(i,j,k,EFX_ID),2.0)+
-            //                                  std::pow(sborder_arr(i,j,k,EFY_ID),2.0)+
-            //                                  std::pow(sborder_arr(i,j,k,EFZ_ID),2.0));
-
-            // amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
-            // amrex::Real nu = plasmachem::electron_collision_freq(electemp,
-            //                                                       efield_mag,
-            //                              captured_gastemp,captured_gaspres);
-        
-            // amrex::Real specden[NUM_ALL_SPECIES]={0.0};
-            // for(int sp=0;sp<(NUM_ALL_SPECIES);sp++)
-            // {
-            //     specden[sp]=sborder_arr(i,j,k,sp); //no offset needed
-            // }
-
-            // //in case we have a mixture of gases
-            // amrex::Real molwt_bg=plasmachem::get_bg_molwt(specden);
-
-            // //amrex::Real electemp=2.0/3.0*sborder_arr(i,j,k,EEN_ID)/sborder_arr(i,j,k,E_IDX)/K_B;
-            // amrex::Real electemp=sborder_arr(i,j,k,ETEMP_ID);
-
-            // amrex::Real elec_elastic_coll_term= 3.0/2.0 * K_B * ne
-            // * (electemp-captured_gastemp) * nu * (2.0*ME/molwt_bg);
-
             //inelastic term already added through reaction source
             dsdt_arr(i, j, k) += (elec_jheat);
             // TODO: Adjust reactive source calculations to split into elastic/inelastic
