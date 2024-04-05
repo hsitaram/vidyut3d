@@ -201,7 +201,7 @@ public:
     int do_reactions=1;
     int do_transport=1;
     int do_spacechrg=1;
-    int user_defined_transport = 0;
+    int user_defined_funcs = 0;
     int do_bg_reactions=0;
 
     // Transport vars

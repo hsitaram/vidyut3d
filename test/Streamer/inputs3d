@@ -29,6 +29,7 @@ vidyut.E_refine = 1e16
 vidyut.E_refinegrad = 1e20
 vidyut.N2p_refine = 1e16
 vidyut.N2p_refinegrad = 1e20
+vidyut.user_defined_transport = 1
 
 #0 - periodic
 #1 - Dirichlet

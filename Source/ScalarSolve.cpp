@@ -454,7 +454,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     if (bx.smallEnd(idim) == domain.smallEnd(idim))
                     {
                         amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                            if(user_defined_transport == 1){
+                            if(user_defined_funcs == 1){
                                 user_transport::species_bc(i, j, k, idim, -1, 
                                                              captured_spec_id, sb_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
@@ -472,7 +472,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     if (bx.bigEnd(idim) == domain.bigEnd(idim))
                     {
                         amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                            if(user_defined_transport == 1){
+                            if(user_defined_funcs == 1){
                                 user_transport::species_bc(i, j, k, idim, +1, 
                                                              captured_spec_id, sb_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,

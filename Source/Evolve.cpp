@@ -18,7 +18,7 @@ void Vidyut::Evolve()
 {
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;
-     
+
     //there is a slight issue when restart file is not a multiple
     //a plot file may get the same number with an "old" file generated
     int plotfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(plot_int));
@@ -53,7 +53,7 @@ void Vidyut::Evolve()
                 dt_diel_relax = dt_diel_relax_lev;
             }
         }
-            
+
         amrex::Print()<<"global minimum electron drift, diffusion and dielectric relaxation time scales (sec):"<<
         dt_edrift<<"\t"<<dt_ediff<<"\t"<<dt_diel_relax<<"\n";
 
@@ -133,11 +133,13 @@ void Vidyut::Evolve()
         }
 
         solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi, efield_fc);
-        
+
+        //fillpatching here to get the latest efields and potentials in 
+        //sborder so that it can be used in drift vel calcs 
         for(int lev=0;lev<=finest_level;lev++)
         {
-          Sborder[lev].setVal(0.0);
-          FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+            Sborder[lev].setVal(0.0);
+            FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
         }
 
         // Calculate the reactive source terms for all species/levels
@@ -148,7 +150,7 @@ void Vidyut::Evolve()
 
         update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
         implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
-        
+
         if(elecenergy_solve)
         {
             update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
@@ -178,8 +180,8 @@ void Vidyut::Evolve()
                 //electrons and ions
                 if(plasmachem::get_charge(ind)!=0 && ind!=E_IDX)
                 {
-                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
-                        implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
+                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
+                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
                 }
                 //neutrals
                 else
