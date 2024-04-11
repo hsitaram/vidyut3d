@@ -12,7 +12,6 @@
 #include <BoundaryConditions.H>
 #include <UserSources.H>
 #include <compute_explicit_flux.H>
-#include <PlasmaChem.H>
 #include <AMReX_MLABecLaplacian.H>
 
 void Vidyut::compute_dsdt(int lev, int specid, 
@@ -205,21 +204,24 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                 compute_flux(i, j, k, 0, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[0], 
                              captured_gastemp,captured_gaspres,
-                             time, dx, lev_dt, *localprobparm, captured_hyporder); 
+                             time, dx, lev_dt, *localprobparm, captured_hyporder,
+                             user_defined_funcs); 
             });
 
             amrex::ParallelFor(bx_y, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 1, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[1], 
                              captured_gastemp,captured_gaspres,
-                             time, dx, lev_dt, *localprobparm, captured_hyporder); 
+                             time, dx, lev_dt, *localprobparm, captured_hyporder,
+                             user_defined_funcs); 
             });
 
             amrex::ParallelFor(bx_z, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                 compute_flux(i, j, k, 2, captured_specid, sborder_arr, 
                              bclo, bchi, domlo, domhi, flux_arr[2], 
                              captured_gastemp, captured_gaspres,
-                             time, dx, lev_dt, *localprobparm, captured_hyporder);
+                             time, dx, lev_dt, *localprobparm, captured_hyporder,
+                             user_defined_funcs);
             });
         }
     }

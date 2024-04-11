@@ -11,7 +11,6 @@
 #include <Chemistry.H>
 #include <BoundaryConditions.H>
 #include <compute_explicit_flux.H>
-#include <PlasmaChem.H>
 #include <AMReX_MLABecLaplacian.H>
 
 void Vidyut::compute_elecenergy_source(int lev, 
