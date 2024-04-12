@@ -9,7 +9,7 @@
 #include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <BoundaryConditions.H>
+#include <UserFunctions.H>
 #include <compute_explicit_flux.H>
 #include <AMReX_MLABecLaplacian.H>
 
@@ -33,8 +33,8 @@ void Vidyut::compute_elecenergy_source(int lev,
     const int* domlo_arr = geom[lev].Domain().loVect();
     const int* domhi_arr = geom[lev].Domain().hiVect();
         
-    GpuArray<int,AMREX_SPACEDIM> domlo={domlo_arr[0], domlo_arr[1], domlo_arr[2]};
-    GpuArray<int,AMREX_SPACEDIM> domhi={domhi_arr[0], domhi_arr[1], domhi_arr[2]};
+    GpuArray<int,AMREX_SPACEDIM> domlo={AMREX_D_DECL(domlo_arr[0], domlo_arr[1], domlo_arr[2])};
+    GpuArray<int,AMREX_SPACEDIM> domhi={AMREX_D_DECL(domhi_arr[0], domhi_arr[1], domhi_arr[2])};
 
     for (MFIter mfi(dsdt, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
@@ -73,7 +73,7 @@ void Vidyut::compute_elecenergy_source(int lev,
                 //left,right,top,bottom,front,back
                 for(int f=0;f<2;f++)
                 {
-                    IntVect face(i,j,k);
+                    IntVect face{AMREX_D_DECL(i,j,k)};
                     face[idim]+=f;
 
                     if(face[idim]==domlo[idim])
@@ -88,26 +88,30 @@ void Vidyut::compute_elecenergy_source(int lev,
                         face[idim]-=1;
                     }
                     
-                    IntVect lcell(face[0],face[1],face[2]);
-                    IntVect rcell(face[0],face[1],face[2]);
+                    IntVect lcell{AMREX_D_DECL(face[0],face[1],face[2])};
+                    IntVect rcell{AMREX_D_DECL(face[0],face[1],face[2])};
                     lcell[idim]-=1;
                     
                     etemp=0.5*(sborder_arr(lcell,ETEMP_ID) 
                                + sborder_arr(rcell,ETEMP_ID));
 
                     //FIXME:use face centered updated efields here?
+                    Real Esum = 0.0;
                     efield_x=0.5*(sborder_arr(lcell,EFX_ID) 
                                   + sborder_arr(rcell,EFX_ID));
-
+                    Esum += std::pow(efield_x, 2.0);
+#if AMREX_SPACEDIM > 1
                     efield_y=0.5*(sborder_arr(lcell,EFY_ID) 
                                   + sborder_arr(rcell,EFY_ID));
-
+                    Esum += std::pow(efield_y, 2.0);
+#if AMREX_SPACEDIM == 3
                     efield_z=0.5*(sborder_arr(lcell,EFZ_ID) 
                                   + sborder_arr(rcell,EFZ_ID));
+                    Esum += std::pow(efield_z, 2.0);
+#endif
+#endif
             
-                    amrex::Real efield_mag=std::sqrt(std::pow(efield_x,2.0)+
-                                                     std::pow(efield_y,2.0)+
-                                                     std::pow(efield_z,2.0));
+                    amrex::Real efield_mag=std::sqrt(Esum);
 
                     ne = 0.5*(sborder_arr(lcell,E_IDX) 
                               + sborder_arr(rcell,E_IDX));

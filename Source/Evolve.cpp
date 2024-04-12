@@ -9,7 +9,7 @@
 #include <ProbParm.H>
 #include <Vidyut.H>
 #include <Chemistry.H>
-#include <BoundaryConditions.H>
+#include <UserFunctions.H>
 #include <PlasmaChem.H>
 #include <AMReX_MLABecLaplacian.H>
 

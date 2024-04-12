@@ -179,16 +179,16 @@ void compute_flux(
     const GpuArray<Real, AMREX_SPACEDIM>& dx,
     amrex::Real dt,
     ProbParm const& prob_parm,int hyp_order,
-    int user_defined_funcs)
+    int user_defined_vel)
 {
 
     //|--left1--|--left--|--right--|--right1--|
     //|--(i-2)--|--(i-1)--|--i--|--(i+1)--|
     //remember: face i separates (i-1) and i cells
 
-    IntVect face(i,j,k);
-    IntVect left(i, j, k);
-    IntVect right(i, j, k);
+    IntVect face{AMREX_D_DECL(i,j,k)};
+    IntVect left{AMREX_D_DECL(i, j, k)};
+    IntVect right{AMREX_D_DECL(i, j, k)};
     left[sweepdir] -= 1;
 
     Real phi_L = phi(left, specid);
@@ -196,19 +196,12 @@ void compute_flux(
     Real vel_L;
     Real vel_R;
 
-    if(user_defined_funcs == 1){
-        vel_L = user_transport::compute_vel(left[0],left[1],left[2],sweepdir,
-                                                   specid,phi,dx,time,prob_parm,Tg,Pg);
-
-        vel_R = user_transport::compute_vel(right[0],right[1],right[2],sweepdir,
-                                                   specid,phi,dx,time,prob_parm,Tg,Pg);
+    if(user_defined_vel == 1){
+        vel_L = user_transport::compute_vel(left,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+        vel_R = user_transport::compute_vel(right,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
     } else {
-        vel_L = plasmachem_transport::compute_vel(left[0],left[1],left[2],sweepdir,
-                                                   specid,phi,dx,time,prob_parm,Tg,Pg);
-
-        vel_R = plasmachem_transport::compute_vel(right[0],right[1],right[2],sweepdir,
-                                                   specid,phi,dx,time,prob_parm,Tg,Pg);
-    
+        vel_L = plasmachem_transport::compute_vel(left,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+        vel_R = plasmachem_transport::compute_vel(right,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
     }
 
     if(hyp_order==1)
@@ -217,23 +210,23 @@ void compute_flux(
     }
     else if(hyp_order==2)
     {
-        IntVect left1(i, j, k);
-        IntVect right1(i, j, k);
+        IntVect left1{AMREX_D_DECL(i, j, k)};
+        IntVect right1{AMREX_D_DECL(i, j, k)};
         left1[sweepdir] -= 2;
         right1[sweepdir] += 1;
         amrex::Real phi_Lm1 = phi(left1, specid);
         amrex::Real phi_Rp1 = phi(right1, specid);
-        amrex::Real dxmin=std::min(dx[0],std::min(dx[1],dx[2]));
+        amrex::Real dxmin=amrex::min(AMREX_D_DECL(dx[0],dx[1],dx[2]));
 
         fx(face)=get_secondorder_WAF_flux(vel_L,vel_R,phi_Lm1,phi_L,
                                           phi_R,phi_Rp1,dxmin,dt);
     }
     else if(hyp_order==5)
     {
-        IntVect left1(i, j, k);
-        IntVect right1(i, j, k);
-        IntVect left2(i, j, k);
-        IntVect right2(i, j, k);
+        IntVect left1{AMREX_D_DECL(i, j, k)};
+        IntVect right1{AMREX_D_DECL(i, j, k)};
+        IntVect left2{AMREX_D_DECL(i, j, k)};
+        IntVect right2{AMREX_D_DECL(i, j, k)};
         left1[sweepdir] -= 2;
         right1[sweepdir] += 1;
         left2[sweepdir] -= 3;
@@ -241,39 +234,18 @@ void compute_flux(
 
         amrex::Real vel_Lm1, vel_Lm2, vel_Rp1, vel_Rp2;
         
-        if(user_defined_funcs == 1){
-            vel_Lm1 = user_transport::compute_vel(left1[0],left1[1],left1[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
-            
-            vel_Lm2 = user_transport::compute_vel(left2[0],left2[1],left2[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
-            
-            vel_Rp1 = user_transport::compute_vel(right1[0],right1[1],right1[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
-            
-            vel_Rp2 = user_transport::compute_vel(right2[0],right2[1],right2[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
+        if(user_defined_vel == 1){
+            vel_Lm1 = user_transport::compute_vel(left1,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+            vel_Lm2 = user_transport::compute_vel(left2,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+            vel_Rp1 = user_transport::compute_vel(right1,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+            vel_Rp2 = user_transport::compute_vel(right2,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
         } else {
-            vel_Lm1 = plasmachem_transport::compute_vel(left1[0],left1[1],left1[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
-            
-            vel_Lm2 = plasmachem_transport::compute_vel(left2[0],left2[1],left2[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
-            
-            vel_Rp1 = plasmachem_transport::compute_vel(right1[0],right1[1],right1[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
-            
-            vel_Rp2 = plasmachem_transport::compute_vel(right2[0],right2[1],right2[2],
-                                                                    sweepdir,specid,
-                                                                    phi,dx,time,prob_parm,Tg,Pg);
+            vel_Lm1 = plasmachem_transport::compute_vel(left1,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+            vel_Lm2 = plasmachem_transport::compute_vel(left2,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+            vel_Rp1 = plasmachem_transport::compute_vel(right1,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
+            vel_Rp2 = plasmachem_transport::compute_vel(right2,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
         }
+
         amrex::Real ulm2=phi(left2,specid);
         amrex::Real ulm1=phi(left1,specid);
         amrex::Real ul=phi(left,specid);

@@ -117,6 +117,16 @@ Vidyut::Vidyut()
     } else{
       amrex::Abort("Electron not found in chemistry mechanism!\n");
     }
+
+    // Check inputs for axisymmetric geometry
+    if(geom[0].IsRZ()){
+        if(AMREX_SPACEDIM != 2) amrex::Abort("AMREX_SPACEDIM should be 2 for axisymmetric coordinates");
+        // Axisymmetric implementation assumes x-low boundary is the axis of symmatry
+        if(pot_bc_lo[0] != 2 || eden_bc_lo[0] != 2 || ion_bc_lo[0] != 2 || neutral_bc_lo[0] != 2 || eenrg_bc_lo[0] != 2){
+            amrex::Abort("All x_lo boundaries must be 0 Neumann (equal to 2)");
+        }
+    }
+
 }
 
 Vidyut::~Vidyut()
@@ -293,7 +303,9 @@ void Vidyut::ReadParameters()
         pp.query("do_reactions",do_reactions);
         pp.query("do_transport",do_transport);
         pp.query("do_spacechrg",do_spacechrg);
-        pp.query("user_defined_transport", user_defined_funcs);
+        pp.query("user_defined_potential", user_defined_potential);
+        pp.query("user_defined_species", user_defined_species);
+        pp.query("user_defined_vel", user_defined_vel);
         pp.query("do_bg_reactions",do_bg_reactions);
 
         pp.query("gas_temperature",gas_temperature);
