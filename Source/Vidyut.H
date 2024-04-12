@@ -73,6 +73,10 @@ public:
                                              Array<MultiFab,AMREX_SPACEDIM>& flux, 
                                              Vector<int>& bc_lo, Vector<int>& bc_hi,
                                              Real time,int specid);
+  
+   void compute_axisym_correction(int lev, MultiFab& Sborder, 
+                                  MultiFab& dsdt,
+                                  Real time,int specid);
 
     void compute_dsdt(int lev, int specid, 
         Array<MultiFab,AMREX_SPACEDIM>& flux, 
@@ -201,7 +205,9 @@ public:
     int do_reactions=1;
     int do_transport=1;
     int do_spacechrg=1;
-    int user_defined_funcs = 0;
+    int user_defined_potential = 0;
+    int user_defined_species = 0;
+    int user_defined_vel = 0;
     int do_bg_reactions=0;
 
     // Transport vars

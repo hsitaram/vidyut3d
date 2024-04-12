@@ -25,7 +25,9 @@ vidyut.dt             = 1e-12
 vidyut.voltage_amp_1=0.0
 vidyut.voltage_amp_2=18.75e3
 
-vidyut.user_defined_transport = 1
+vidyut.user_defined_potential = 1
+vidyut.user_defined_species = 1
+vidyut.user_defined_vel = 1
 
 # Tagging
 vidyut.tagged_vars = Potential 

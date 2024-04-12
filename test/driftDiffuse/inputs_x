@@ -34,7 +34,9 @@ vidyut.S2_refine = 0.11
 vidyut.S1_refinegrad = 0.2
 vidyut.S2_refinegrad = 1e20
 
-vidyut.user_defined_transport = 1
+vidyut.user_defined_potential = 1
+vidyut.user_defined_species = 1
+vidyut.user_defined_vel = 1
 
 #0 - periodic
 #1 - Dirichlet

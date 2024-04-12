@@ -21,7 +21,9 @@ amr.regrid_int      = 5       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 2e-11
 
-vidyut.user_defined_transport = 1
+vidyut.user_defined_potential = 1
+vidyut.user_defined_species = 1
+vidyut.user_defined_vel = 1
 
 # Tagging
 vidyut.tagged_vars = Potential 
