@@ -223,6 +223,14 @@ public:
     amrex::Real voltage_dur=0.0; 
     amrex::Real voltage_center=0.0; 
 
+    int cs_technique=0;
+    int cs_ncharges=0;
+    amrex::Vector<amrex::Real> cs_rads;
+    amrex::Vector<amrex::Real> cs_locx;
+    amrex::Vector<amrex::Real> cs_locy;
+    amrex::Vector<amrex::Real> cs_locz;
+
+
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
     int regrid_int = 2;

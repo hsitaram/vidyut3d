@@ -97,17 +97,18 @@ void Vidyut::compute_elecenergy_source(int lev,
 
                     //FIXME:use face centered updated efields here?
                     Real Esum = 0.0;
-                    efield_x=0.5*(sborder_arr(lcell,EFX_ID) 
+                    Real efieldvec_face[AMREX_SPACEDIM];
+                    efieldvec_face[0]=0.5*(sborder_arr(lcell,EFX_ID) 
                                   + sborder_arr(rcell,EFX_ID));
-                    Esum += std::pow(efield_x, 2.0);
+                    Esum += std::pow(efieldvec_face[0], 2.0);
 #if AMREX_SPACEDIM > 1
-                    efield_y=0.5*(sborder_arr(lcell,EFY_ID) 
+                    efieldvec_face[1]=0.5*(sborder_arr(lcell,EFY_ID) 
                                   + sborder_arr(rcell,EFY_ID));
-                    Esum += std::pow(efield_y, 2.0);
+                    Esum += std::pow(efieldvec_face[1], 2.0);
 #if AMREX_SPACEDIM == 3
-                    efield_z=0.5*(sborder_arr(lcell,EFZ_ID) 
+                    efieldvec_face[2]=0.5*(sborder_arr(lcell,EFZ_ID) 
                                   + sborder_arr(rcell,EFZ_ID));
-                    Esum += std::pow(efield_z, 2.0);
+                    Esum += std::pow(efieldvec_face[2], 2.0);
 #endif
 #endif
             
@@ -116,7 +117,8 @@ void Vidyut::compute_elecenergy_source(int lev,
                     ne = 0.5*(sborder_arr(lcell,E_IDX) 
                               + sborder_arr(rcell,E_IDX));
 
-                    efield_face=ef_arr[idim](face);
+                    //efield_face=ef_arr[idim](face);
+                    efield_face=efieldvec_face[idim];
                     gradne_face=gradne_arr[idim](face);
 
                     amrex::Real ndens = 0.0;

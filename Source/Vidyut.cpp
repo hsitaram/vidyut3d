@@ -350,6 +350,20 @@ void Vidyut::ReadParameters()
         } 
 
         pp.query("monitor_file_int", monitor_file_int);
+    
+        pp.query("cs_technique",cs_technique);
+        if(cs_technique)
+        {
+           pp.get("cs_ncharges",cs_ncharges);
+           cs_rads.resize(cs_ncharges);
+           cs_locx.resize(cs_ncharges);
+           cs_locy.resize(cs_ncharges);
+           cs_locz.resize(cs_ncharges);
+           pp.getarr("cs_rads",cs_rads);
+           pp.getarr("cs_locx",cs_locx);
+           pp.getarr("cs_locy",cs_locy);
+           pp.getarr("cs_locz",cs_locz);
+        }
     }
 }
 
