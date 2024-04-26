@@ -16,7 +16,6 @@
 void Vidyut::compute_elecenergy_source(int lev, 
                             MultiFab& Sborder, 
                             MultiFab& rxnsrc, 
-                            Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt)
@@ -45,11 +44,6 @@ void Vidyut::compute_elecenergy_source(int lev,
         Array4<Real> dsdt_arr = dsdt.array(mfi);
         Array4<Real> phi_arr = phi_new[lev].array(mfi);
         Array4<Real> rxn_arr = rxnsrc.array(mfi);
-        
-        GpuArray<Array4<Real>, AMREX_SPACEDIM> 
-        ef_arr{AMREX_D_DECL(efield[0].array(mfi), 
-                            efield[1].array(mfi), 
-                            efield[2].array(mfi))};
         
         GpuArray<Array4<Real>, AMREX_SPACEDIM> 
         gradne_arr{AMREX_D_DECL(gradne[0].array(mfi), 

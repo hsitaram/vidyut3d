@@ -78,15 +78,14 @@ public:
                                   MultiFab& dsdt,
                                   Real time,int specid);
 
-    void compute_dsdt(int lev, int specid, 
+    void compute_dsdt(int lev, int specid,
         Array<MultiFab,AMREX_SPACEDIM>& flux, 
         MultiFab& rxn_src,
         MultiFab& dsdt,
         Real time, Real dt);
 
     void solve_potential(Real current_time, Vector<MultiFab>& Sborder, 
-                         Vector<int>& bc_lo, Vector<int>& bc_hi, 
-                         Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield_fc);
+                         Vector<int>& bc_lo, Vector<int>& bc_hi);
 
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
@@ -107,11 +106,10 @@ public:
     void compute_elecenergy_source(int lev, 
                             MultiFab& Sborder, 
                             MultiFab& rxnsrc, 
-                            Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt);
-    
+
     amrex::Real get_applied_potential(Real current_time, int domain_end);
 
     // compute dt from CFL considerations
@@ -229,6 +227,8 @@ public:
     amrex::Vector<amrex::Real> cs_locx;
     amrex::Vector<amrex::Real> cs_locy;
     amrex::Vector<amrex::Real> cs_locz;
+
+    void update_cc_efields(amrex::Vector<MultiFab>& Sborder); 
 
 
     // how often each level regrids the higher levels of refinement
