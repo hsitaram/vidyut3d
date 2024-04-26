@@ -266,7 +266,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                 {
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         int domend = 1;
-                        amrex::Real app_voltage = get_applied_potential(time, domend,*localprobparm);
+                        amrex::Real app_voltage = get_applied_potential(time, domend);
                         if(user_defined_potential == 1){
                             user_transport::potential_bc(i, j, k, idim, +1, 
                                                          phi_arr, bc_arr, robin_a_arr, 
@@ -357,7 +357,7 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
 #if AMREX_SPACEDIM > 1
                 s_arr(i,j,k,EFY_ID)=get_efield_alongdir(i,j,k,1,domlo,domhi,dx,s_arr);
 #if AMREX_SPACEDIM == 3
-                s_arr(i,j,k,EFY_ID)=get_efield_alongdir(i,j,k,2,domlo,domhi,dx,s_arr);
+                s_arr(i,j,k,EFZ_ID)=get_efield_alongdir(i,j,k,2,domlo,domhi,dx,s_arr);
 #endif
 #endif
                 phi_arr(i,j,k,EFX_ID)=s_arr(i,j,k,EFX_ID);
@@ -372,5 +372,26 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
             });
         }
     }
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
+{
+    ProbParm const* localprobparm = d_prob_parm;
+    Real voltage;
+    Real voltage_amp = (domain_end == -1) ? voltage_amp_1:voltage_amp_2;
+    if(voltage_profile == 1) {  // Sinusoidal pulse shape
+        voltage = sin(2.0*PI*voltage_freq*current_time)*voltage_amp;
+    } else if (voltage_profile == 2) {    // Single triangular pulse
+        if(current_time <= voltage_center) {
+            voltage = (voltage_center - current_time < voltage_dur/2.0) ? (1.0 - (voltage_center - current_time)/(voltage_dur/2.0))*voltage_amp:0.0;
+        } else {
+            voltage = (current_time - voltage_center < voltage_dur/2.0) ? (1.0 - (current_time - voltage_center)/(voltage_dur/2.0))*voltage_amp:0.0;
+        }
+    } else {
+        voltage = (domain_end==-1) ? voltage_amp_1:voltage_amp_2;
+    }
+
+    return voltage;
 }
 
