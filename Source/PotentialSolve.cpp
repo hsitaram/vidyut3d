@@ -14,10 +14,10 @@
 #include <PlasmaChem.H>
 #include <ProbParm.H>
 #include <AMReX_MLABecLaplacian.H>
+#include <HelperFuncs.H>
 
 void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
-                             amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi,
-                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield_fc)
+                             amrex::Vector<int>& bc_lo,amrex::Vector<int>& bc_hi)
 {
     BL_PROFILE("Vidyut::solve_potential()");
 
@@ -309,40 +309,12 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     mlmg.setMaxIter(linsolve_maxiter);
     mlmg.setVerbose(verbose);
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
-    mlmg.getGradSolution(GetVecOfArrOfPtrs(efield_fc));
 
     amrex::Print()<<"Solved Potential\n";
 
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
-        efield_fc[ilev][0].mult(-1.0,0,1);
-#if AMREX_SPACEDIM > 1
-        efield_fc[ilev][1].mult(-1.0,0,1);
-#if AMREX_SPACEDIM == 3
-        efield_fc[ilev][2].mult(-1.0,0,1);
-#endif
-#endif   
-
-        const Array<const MultiFab*, AMREX_SPACEDIM> allgrad = {AMREX_D_DECL(&efield_fc[ilev][0], 
-            &efield_fc[ilev][1], &efield_fc[ilev][2])};
-        average_face_to_cellcenter(phi_new[ilev], EFX_ID, allgrad);
-
-        // Calculate the reduced electric field
-        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            const Box& gbx = amrex::grow(bx, 1);
-
-            Array4<Real> s_arr = phi_new[ilev].array(mfi);
-
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                RealVect Evect{AMREX_D_DECL(s_arr(i,j,k,EFX_ID),s_arr(i,j,k,EFY_ID),s_arr(i,j,k,EFZ_ID))};
-                Real Esum = 0.0;
-                for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += Evect[dim]*Evect[dim];
-                s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / gas_num_dens) / 1.0e-21;
-            });
-        }
     }
 
     //clean-up
@@ -354,6 +326,52 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     robin_a.clear();
     robin_b.clear();
     robin_f.clear();
+}
+
+void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
+{
+    amrex::Real captured_gas_num_dens=gas_num_dens;
+
+    for (int ilev = 0; ilev <= finest_level; ilev++)
+    {
+        const auto dx = geom[ilev].CellSizeArray();
+        const int* domlo_arr = geom[ilev].Domain().loVect();
+        const int* domhi_arr = geom[ilev].Domain().hiVect();
+
+        GpuArray<int,AMREX_SPACEDIM> domlo={AMREX_D_DECL(domlo_arr[0], domlo_arr[1], domlo_arr[2])};
+        GpuArray<int,AMREX_SPACEDIM> domhi={AMREX_D_DECL(domhi_arr[0], domhi_arr[1], domhi_arr[2])};
+
+        for (MFIter mfi(Sborder[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            Array4<Real> s_arr   = Sborder[ilev].array(mfi);
+            Array4<Real> phi_arr = phi_new[ilev].array(mfi);
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+
+                s_arr(i,j,k,EFX_ID)=0.0;
+                s_arr(i,j,k,EFY_ID)=0.0;
+                s_arr(i,j,k,EFZ_ID)=0.0;
+
+                s_arr(i,j,k,EFX_ID)=get_efield_alongdir(i,j,k,0,domlo,domhi,dx,s_arr);
+#if AMREX_SPACEDIM > 1
+                s_arr(i,j,k,EFY_ID)=get_efield_alongdir(i,j,k,1,domlo,domhi,dx,s_arr);
+#if AMREX_SPACEDIM == 3
+                s_arr(i,j,k,EFZ_ID)=get_efield_alongdir(i,j,k,2,domlo,domhi,dx,s_arr);
+#endif
+#endif
+                phi_arr(i,j,k,EFX_ID)=s_arr(i,j,k,EFX_ID);
+                phi_arr(i,j,k,EFY_ID)=s_arr(i,j,k,EFY_ID);
+                phi_arr(i,j,k,EFZ_ID)=s_arr(i,j,k,EFZ_ID);
+
+                RealVect Evect{AMREX_D_DECL(s_arr(i,j,k,EFX_ID),s_arr(i,j,k,EFY_ID),s_arr(i,j,k,EFZ_ID))};
+                Real Esum = 0.0;
+                for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += Evect[dim]*Evect[dim];
+                s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / captured_gas_num_dens) / 1.0e-21;
+                phi_arr(i,j,k,REF_ID) = s_arr(i,j,k,REF_ID);
+            });
+        }
+    }
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
@@ -376,3 +394,4 @@ amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
 
     return voltage;
 }
+

@@ -82,7 +82,6 @@ void Vidyut::Evolve()
         Vector< Array<MultiFab,AMREX_SPACEDIM> > flux(finest_level+1);
 
         //face centered efield and electron density gradient
-        Vector< Array<MultiFab,AMREX_SPACEDIM> > efield_fc(finest_level+1);
         Vector< Array<MultiFab,AMREX_SPACEDIM> > gradne_fc(finest_level+1);
         Vector< Array<MultiFab,AMREX_SPACEDIM> > grad_fc(finest_level+1);
         Vector<MultiFab> expl_src(finest_level+1);
@@ -115,9 +114,6 @@ void Vidyut::Evolve()
                     flux[lev][idim].define(ba, dmap[lev], 1, 0);
                     flux[lev][idim].setVal(0.0);
 
-                    efield_fc[lev][idim].define(ba, dmap[lev], 1, 0);
-                    efield_fc[lev][idim].setVal(0.0);
-
                     gradne_fc[lev][idim].define(ba, dmap[lev], 1, 0);
                     gradne_fc[lev][idim].setVal(0.0);
 
@@ -132,10 +128,21 @@ void Vidyut::Evolve()
             }
         }
 
-        solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi, efield_fc);
+        solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi);
 
-        //fillpatching here to get the latest efields and potentials in 
-        //sborder so that it can be used in drift vel calcs 
+        //fillpatching here to get the latest potentials in 
+        //sborder so that it can be used in efield calc
+        for(int lev=0;lev<=finest_level;lev++)
+        {
+            Sborder[lev].setVal(0.0);
+            FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+        }
+
+        //update cell-centered electric fields
+        update_cc_efields(Sborder);
+        //fillpatching here to get the latest efields 
+        //in sborder so that it can be used in drift vel calcs
+        //may be there is a clever way to improve performance 
         for(int lev=0;lev<=finest_level;lev++)
         {
             Sborder[lev].setVal(0.0);
@@ -160,7 +167,7 @@ void Vidyut::Evolve()
             {
                 compute_elecenergy_source(lev, Sborder[lev],
                                           rxn_src[lev], 
-                                          efield_fc[lev], gradne_fc[lev],
+                                          gradne_fc[lev],
                                           expl_src[lev], cur_time, dt_common);
             }
             implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
@@ -255,7 +262,6 @@ void Vidyut::Evolve()
 
         //local cleanup
         flux.clear();
-        efield_fc.clear();
         gradne_fc.clear();
         grad_fc.clear();
         expl_src.clear();

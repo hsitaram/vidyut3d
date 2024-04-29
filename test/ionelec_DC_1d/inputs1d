@@ -72,7 +72,7 @@ vidyut.bound_specden=1
 vidyut.min_species_density=1e10
 vidyut.min_electron_density=1e10
 vidyut.min_electron_temp=1160.4518
-vidyut.linsolve_maxiter=200
+vidyut.linsolve_maxiter=1000
 vidyut.elecenergy_solve=1
 
 vidyut.voltage_profile = 0
