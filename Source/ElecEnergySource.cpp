@@ -28,6 +28,10 @@ void Vidyut::compute_elecenergy_source(int lev,
     int ncomp = Sborder.nComp();
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
+    int consteletrans = const_ele_trans;
+    amrex::Real elemob = ele_mob;
+    amrex::Real elediff = ele_diff;
+    int eidx = E_IDX;
     
     const int* domlo_arr = geom[lev].Domain().loVect();
     const int* domhi_arr = geom[lev].Domain().hiVect();
@@ -56,7 +60,7 @@ void Vidyut::compute_elecenergy_source(int lev,
             //Joule heating
             amrex::Real mu,dcoeff,etemp,ne;
             amrex::Real efield_x,efield_y,efield_z,efield_face,gradne_face;
-            amrex::Real charge=plasmachem::get_charge(E_IDX)*ECHARGE;
+            amrex::Real charge=plasmachem::get_charge(eidx)*ECHARGE;
             amrex::Real current_density;
             amrex::Real elec_jheat=0.0;
 
@@ -108,8 +112,8 @@ void Vidyut::compute_elecenergy_source(int lev,
             
                     amrex::Real efield_mag=std::sqrt(Esum);
 
-                    ne = 0.5*(sborder_arr(lcell,E_IDX) 
-                              + sborder_arr(rcell,E_IDX));
+                    ne = 0.5*(sborder_arr(lcell,eidx) 
+                              + sborder_arr(rcell,eidx));
 
                     //efield_face=ef_arr[idim](face);
                     efield_face=efieldvec_face[idim];
@@ -118,10 +122,10 @@ void Vidyut::compute_elecenergy_source(int lev,
                     amrex::Real ndens = 0.0;
                     for(int sp=0; sp<NUM_SPECIES; sp++) ndens += 0.5 * (sborder_arr(lcell,sp) + sborder_arr(rcell,sp));
 
-                    mu = (const_ele_trans) ? ele_mob/ndens:specMob(E_IDX, etemp, ndens,
+                    mu = (consteletrans) ? elemob/ndens:specMob(eidx, etemp, ndens,
                                                efield_mag,captured_gastemp);
 
-                    dcoeff = (const_ele_trans) ? ele_diff/ndens:specDiff(E_IDX, etemp, ndens,
+                    dcoeff = (consteletrans) ? elediff/ndens:specDiff(eidx, etemp, ndens,
                                                efield_mag,captured_gastemp);
 
                     current_density = charge*(mu*ne*efield_face-dcoeff*gradne_face);

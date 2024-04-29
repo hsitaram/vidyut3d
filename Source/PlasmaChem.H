@@ -177,7 +177,11 @@ namespace plasmachem_transport
 
             amrex::Real D=specDiff(spec_id, phi(cell_int,ETEMP_ID), ndens, efieldmag, Tg);
 
+#ifdef AMREX_USE_GPU
+            amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/(global_mw[spec_id]*M_AMU));
+#else
             amrex::Real cbar=sqrt(8.0*K_B*Tg/PI/(h_global_mw[spec_id]*M_AMU));
+#endif
             amrex::Real flx = phi(i,j,k,spec_id)*cbar/4.0*Real(sgn);
             bc_arr(ghost_cell)=(-flx/D);
         }
