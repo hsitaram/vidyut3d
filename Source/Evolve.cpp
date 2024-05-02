@@ -199,6 +199,8 @@ void Vidyut::Evolve()
             } else if (do_bg_reactions){
                 for (int ilev = 0; ilev <= finest_level; ilev++)
                 {
+                    amrex::Real minspecden=min_species_density; 
+                    int boundspecden = bound_specden;
                     for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
                     {
                         const Box& bx = mfi.tilebox();
@@ -206,9 +208,9 @@ void Vidyut::Evolve()
                         Array4<Real> rxn_arr = rxn_src[ilev].array(mfi);
                         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
                             phi_arr(i,j,k,ind) += rxn_arr(i,j,k,ind)*dt_common;
-                            if(phi_arr(i,j,k,ind) < min_species_density && bound_specden)
+                            if(phi_arr(i,j,k,ind) < minspecden && boundspecden)
                             {
-                                phi_arr(i,j,k,ind) = min_species_density;
+                                phi_arr(i,j,k,ind) = minspecden;
                             }
                         });
                     }

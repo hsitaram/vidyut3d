@@ -110,8 +110,6 @@ public:
                             MultiFab& dsdt,
                             Real time, Real dt);
 
-    amrex::Real get_applied_potential(Real current_time, int domain_end);
-
     // compute dt from CFL considerations
     void find_time_scales(int lev,amrex::Real& dt_edrift,amrex::Real &dt_ediff,
             amrex::Real& dt_diel_relax);
@@ -182,7 +180,6 @@ public:
 
     amrex::Real gas_pressure=101325.0;
     amrex::Real gas_temperature=300.0;
-    amrex::Real gas_num_dens=2.446e25;
 
     amrex::Vector<std::string> plasma_param_names;
     amrex::Vector<std::string> allvarnames;

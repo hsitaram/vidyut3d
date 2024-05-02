@@ -329,7 +329,6 @@ void Vidyut::ReadParameters()
         {
             amrex::Abort("Specified hyp_order not implemented yet");
         }
-        pp.query("gas_num_dens",gas_num_dens);
 
         // Transport options
         pp.query("const_ele_trans", const_ele_trans);

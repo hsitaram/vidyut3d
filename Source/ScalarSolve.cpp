@@ -195,6 +195,8 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
     GpuArray<int,AMREX_SPACEDIM> bclo={AMREX_D_DECL(bc_lo[0], bc_lo[1], bc_lo[2])};
     GpuArray<int,AMREX_SPACEDIM> bchi={AMREX_D_DECL(bc_hi[0], bc_hi[1], bc_hi[2])};
 
+    int userdefvel = user_defined_vel;
+
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
@@ -225,7 +227,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[0], 
                              captured_gastemp,captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             user_defined_vel); 
+                             userdefvel); 
             });
 
 #if AMREX_SPACEDIM > 1
@@ -234,7 +236,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[1], 
                              captured_gastemp,captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             user_defined_vel); 
+                             userdefvel); 
             });
 
 #if AMREX_SPACEDIM == 3
@@ -243,7 +245,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[2], 
                              captured_gastemp, captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             user_defined_vel);
+                             userdefvel);
             });
 #endif
 #endif
@@ -320,6 +322,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     Real bscalar = 1.0;
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
+    int userdefspec = user_defined_species;
+    int eidx = E_IDX;
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_lo 
@@ -512,7 +516,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     if (bx.smallEnd(idim) == domain.smallEnd(idim))
                     {
                         amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                            if(user_defined_species == 1){
+                            if(userdefspec == 1){
                                 user_transport::species_bc(i, j, k, idim, -1, 
                                                              captured_spec_id, sb_arr, bc_arr, robin_a_arr,
                                                              robin_b_arr, robin_f_arr, 
@@ -530,7 +534,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                     if (bx.bigEnd(idim) == domain.bigEnd(idim))
                     {
                         amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-                            if(user_defined_species == 1){
+                            if(userdefspec == 1){
                                 user_transport::species_bc(i, j, k, idim, +1, 
                                                              captured_spec_id, sb_arr, bc_arr, robin_a_arr, 
                                                              robin_b_arr, robin_f_arr,
@@ -628,11 +632,11 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                 Array4<Real> sb_arr = Sborder[ilev].array(mfi);
                 amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
 
-                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/sb_arr(i,j,k,E_IDX);
+                    phi_arr(i,j,k,ETEMP_ID)=twothird/K_B*phi_arr(i,j,k,EEN_ID)/sb_arr(i,j,k,eidx);
                     if(phi_arr(i,j,k,ETEMP_ID) < minetemp)
                     {
                         phi_arr(i,j,k,ETEMP_ID)=minetemp;
-                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*phi_arr(i,j,k,E_IDX)*minetemp;
+                        phi_arr(i,j,k,EEN_ID)=1.5*K_B*phi_arr(i,j,k,eidx)*minetemp;
                     }
                 });
             }

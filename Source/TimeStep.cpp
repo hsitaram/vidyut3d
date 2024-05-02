@@ -33,6 +33,10 @@ void Vidyut::find_time_scales(int lev,amrex::Real& dt_edrift,amrex::Real &dt_edi
     
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
+    int consteletrans = const_ele_trans;
+    amrex::Real elemob = ele_mob;
+    amrex::Real elediff = ele_diff;
+    int eidx = E_IDX;
 
     MultiFab edriftvel(S_new.boxArray(), S_new.DistributionMap(), 1, 0);
     MultiFab ediff(S_new.boxArray(), S_new.DistributionMap(), 1, 0);
@@ -60,15 +64,15 @@ void Vidyut::find_time_scales(int lev,amrex::Real& dt_edrift,amrex::Real &dt_edi
                 amrex::Real ndens = 0.0; 
                 for(int sp=0; sp<NUM_SPECIES; sp++) ndens += state_array(i,j,k,sp);
 
-                amrex::Real dcoeff = (const_ele_trans) ? ele_diff/ndens:specDiff(E_IDX, etemp, ndens,
+                amrex::Real dcoeff = (consteletrans) ? elediff/ndens:specDiff(eidx, etemp, ndens,
                                                efield_mag,captured_gastemp);
                 
-                amrex::Real mu = (const_ele_trans) ? ele_mob/ndens:specMob(E_IDX, etemp, ndens,
+                amrex::Real mu = (consteletrans) ? elemob/ndens:specMob(eidx, etemp, ndens,
                                                efield_mag, captured_gastemp);
                 
                 edriftvel_array(i,j,k)=amrex::Math::abs(mu)*efield_mag;
                 ediff_array(i,j,k)=dcoeff;
-                mue_ne_array(i,j,k)=amrex::Math::abs(mu)*state_array(i,j,k,E_IDX);
+                mue_ne_array(i,j,k)=amrex::Math::abs(mu)*state_array(i,j,k,eidx);
             });
         }
     }

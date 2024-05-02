@@ -48,6 +48,13 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     const Real tol_abs = linsolve_abstol;
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
+    int userdefpot = user_defined_potential;
+    int vprof = voltage_profile;
+    amrex::Real v1 = voltage_amp_1;
+    amrex::Real v2 = voltage_amp_2;
+    amrex::Real vfreq = voltage_freq;
+    amrex::Real vdur = voltage_dur;
+    amrex::Real vcen = voltage_center;
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_lo 
@@ -244,8 +251,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                 {
                     amrex::ParallelFor(amrex::bdryLo(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         int domend = -1;
-                        amrex::Real app_voltage = get_applied_potential(time, domend);
-                        if(user_defined_potential == 1){
+                        amrex::Real app_voltage = get_applied_potential(time, domend, vprof, v1, v2, vfreq, vdur, vcen);
+                        if(userdefpot == 1){
                             user_transport::potential_bc(i, j, k, idim, -1, 
                                                          phi_arr, bc_arr, robin_a_arr, 
                                                          robin_b_arr, robin_f_arr, 
@@ -266,8 +273,8 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
                 {
                     amrex::ParallelFor(amrex::bdryHi(bx, idim), [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
                         int domend = 1;
-                        amrex::Real app_voltage = get_applied_potential(time, domend);
-                        if(user_defined_potential == 1){
+                        amrex::Real app_voltage = get_applied_potential(time, domend, vprof, v1, v2, vfreq, vdur, vcen);
+                        if(userdefpot == 1){
                             user_transport::potential_bc(i, j, k, idim, +1, 
                                                          phi_arr, bc_arr, robin_a_arr, 
                                                          robin_b_arr, robin_f_arr, 
@@ -330,8 +337,6 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
 void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
 {
-    amrex::Real captured_gas_num_dens=gas_num_dens;
-
     for (int ilev = 0; ilev <= finest_level; ilev++)
     {
         const auto dx = geom[ilev].CellSizeArray();
@@ -365,33 +370,13 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
                 phi_arr(i,j,k,EFZ_ID)=s_arr(i,j,k,EFZ_ID);
 
                 RealVect Evect{AMREX_D_DECL(s_arr(i,j,k,EFX_ID),s_arr(i,j,k,EFY_ID),s_arr(i,j,k,EFZ_ID))};
-                Real Esum = 0.0;
+                amrex::Real ndens = 0.0;
+                amrex::Real Esum = 0.0; 
+                for(int sp=0; sp<NUM_SPECIES; sp++) ndens += s_arr(i,j,k,sp);
                 for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += Evect[dim]*Evect[dim];
-                s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / captured_gas_num_dens) / 1.0e-21;
+                s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / ndens) / 1.0e-21;
                 phi_arr(i,j,k,REF_ID) = s_arr(i,j,k,REF_ID);
             });
         }
     }
 }
-
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-amrex::Real Vidyut::get_applied_potential(Real current_time, int domain_end)
-{
-    ProbParm const* localprobparm = d_prob_parm;
-    Real voltage;
-    Real voltage_amp = (domain_end == -1) ? voltage_amp_1:voltage_amp_2;
-    if(voltage_profile == 1) {  // Sinusoidal pulse shape
-        voltage = sin(2.0*PI*voltage_freq*current_time)*voltage_amp;
-    } else if (voltage_profile == 2) {    // Single triangular pulse
-        if(current_time <= voltage_center) {
-            voltage = (voltage_center - current_time < voltage_dur/2.0) ? (1.0 - (voltage_center - current_time)/(voltage_dur/2.0))*voltage_amp:0.0;
-        } else {
-            voltage = (current_time - voltage_center < voltage_dur/2.0) ? (1.0 - (current_time - voltage_center)/(voltage_dur/2.0))*voltage_amp:0.0;
-        }
-    } else {
-        voltage = (domain_end==-1) ? voltage_amp_1:voltage_amp_2;
-    }
-
-    return voltage;
-}
-
