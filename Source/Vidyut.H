@@ -224,6 +224,9 @@ public:
     amrex::Vector<amrex::Real> cs_locx;
     amrex::Vector<amrex::Real> cs_locy;
     amrex::Vector<amrex::Real> cs_locz;
+    amrex::Vector<amrex::Real> cs_pin_locx;
+    amrex::Vector<amrex::Real> cs_pin_locy;
+    amrex::Vector<amrex::Real> cs_pin_locz;
 
     void update_cc_efields(amrex::Vector<MultiFab>& Sborder); 
 

@@ -323,6 +323,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, POT_ID, 1, 0);
     }
+    
 
     //clean-up
     potential.clear();
@@ -379,4 +380,47 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
             });
         }
     }
+}
+void Vidyut::update_cs_technique_fields()
+{
+    amrex::Vector<amrex::Real> allcharges(cs_ncharges);
+    int findlev=-1;
+    int found=0; 
+
+    for(int nch=0;nch<cs_ncharges;nch++)
+    {
+
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            const auto dx = geom[ilev].CellSizeArray();
+            const int* domlo_arr = geom[ilev].Domain().loVect();
+            const int* domhi_arr = geom[ilev].Domain().hiVect();
+
+            GpuArray<int,AMREX_SPACEDIM> domlo={AMREX_D_DECL(domlo_arr[0], domlo_arr[1], domlo_arr[2])};
+            GpuArray<int,AMREX_SPACEDIM> domhi={AMREX_D_DECL(domhi_arr[0], domhi_arr[1], domhi_arr[2])};
+
+            loc_i=amrex::Math::floor((cs_pin_locx[nch]-prob_lo[0])/dx[0]);
+            loc_j=amrex::Math::floor((cs_pin_locy[nch]-prob_lo[1])/dx[1]);
+            loc_k=amrex::Math::floor((cs_pin_locz[nch]-prob_lo[2])/dx[2]);
+
+
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                IntVect iv(loc_i,loc_j,loc_k);
+                if(bx.contains(iv))
+                {
+                    found=1;
+                    findlev=ilev;
+                }
+            }
+
+            //reduce findlev in an array
+            //find proc with max findlev
+            //probe in that processor to get charge
+        }
+
+
+    }
+
 }

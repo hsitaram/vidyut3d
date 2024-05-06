@@ -4,17 +4,14 @@
 
 #define EEN_ID (NUM_SPECIES)
 #define ETEMP_ID (NUM_SPECIES+1)
-#define EDGX_ID (NUM_SPECIES+2)
-#define EDGY_ID (NUM_SPECIES+3)
-#define EDGZ_ID (NUM_SPECIES+4)
-#define POT_ID (NUM_SPECIES+5)
-#define EFX_ID (NUM_SPECIES+6)
-#define EFY_ID (NUM_SPECIES+7)
-#define EFZ_ID (NUM_SPECIES+8)
-#define EJH_ID (NUM_SPECIES+9) //electron joule heating
-#define EIH_ID (NUM_SPECIES+10) //electron inelastic heating
-#define EEH_ID (NUM_SPECIES+11) //electron elastic heating
-#define REF_ID (NUM_SPECIES+12)
+#define POT_ID (NUM_SPECIES+2)
+#define EFX_ID (NUM_SPECIES+3)
+#define EFY_ID (NUM_SPECIES+4)
+#define EFZ_ID (NUM_SPECIES+5)
+#define EJH_ID (NUM_SPECIES+6) //electron joule heating
+#define EIH_ID (NUM_SPECIES+7) //electron inelastic heating
+#define EEH_ID (NUM_SPECIES+8) //electron elastic heating
+#define REF_ID (NUM_SPECIES+9)
 #define NUM_PLASMAVARS (REF_ID-NUM_SPECIES+1)
 #define NVAR (NUM_SPECIES+NUM_PLASMAVARS)
 
