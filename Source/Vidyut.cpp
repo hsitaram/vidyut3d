@@ -146,7 +146,7 @@ void Vidyut::InitData()
         InitFromScratch(time);
         AverageDown();
 
-        if (chk_int > 0)
+        if (chk_int > 0 || chk_time > 0.0)
         {
             WriteCheckpointFile(0);
         }
@@ -158,7 +158,7 @@ void Vidyut::InitData()
         ReadCheckpointFile();
     }
 
-    if (plot_int > 0)
+    if (plot_int > 0 || plot_time > 0.0)
     {
         WritePlotFile(amrex::Math::floor
                       (amrex::Real(istep[0])/amrex::Real(plot_int)));
@@ -271,8 +271,10 @@ void Vidyut::ReadParameters()
         pp.query("regrid_int", regrid_int);
         pp.query("plot_file", plot_file);
         pp.query("plot_int", plot_int);
+        pp.query("plot_time", plot_time);
         pp.query("chk_file", chk_file);
         pp.query("chk_int", chk_int);
+        pp.query("chk_time", chk_time);
         pp.query("restart", restart_chkfile);
     }
 
@@ -280,6 +282,16 @@ void Vidyut::ReadParameters()
         ParmParse pp("vidyut");
 
         pp.query("dt", fixed_dt);
+        pp.query("adaptive_dt", adaptive_dt);
+        if(adaptive_dt){
+            pp.query("advective_cfl", advective_cfl);
+            pp.query("diffusive_cfl", diffusive_cfl);
+            pp.query("dielectric_cfl", dielectric_cfl);
+            pp.query("dt_min", dt_min);
+            pp.query("dt_max", dt_max);
+            pp.query("adaptive_dt_delay", adaptive_dt_delay);
+            pp.query("dt_stretch", dt_stretch);
+        }
         pp.query("use_hypre",use_hypre);
 
         pp.query("linsolve_reltol",linsolve_reltol);

@@ -38,9 +38,13 @@ amrex::Real get_efield_alongdir(int i,int j,int k,int dir,
         ip2[dir]+=2;
     
         //fdash = (-f_{i+2}+4f_{i+1}-3f_i)/(2 dx)
-        efield_dir=-0.5*(  -s_arr(ip2,POT_ID) 
+        if(domhi[dir] - domlo[dir] > 2){
+            efield_dir=-0.5*(  -s_arr(ip2,POT_ID) 
                       + 4.0*s_arr(ip1,POT_ID)
                       - 3.0*s_arr(cellid,POT_ID))/dx[dir];
+        } else {
+            efield_dir=-(s_arr(ip1,POT_ID) - s_arr(cellid,POT_ID))/dx[dir];
+        }
     }
     else if(cellid[dir]==domhi[dir])
     {
@@ -50,9 +54,13 @@ amrex::Real get_efield_alongdir(int i,int j,int k,int dir,
         im2[dir]-=2;
     
         //fdash = (f_{i-2}-4f_{i-1}+3f_i)/(2 dx)
-        efield_dir=-0.5*(     s_arr(im2,POT_ID)
+        if(domhi[dir] - domlo[dir] > 2){
+            efield_dir=-0.5*(     s_arr(im2,POT_ID)
                         - 4.0*s_arr(im1,POT_ID)
                         + 3.0*s_arr(cellid,POT_ID))/dx[dir];
+        } else {
+            efield_dir=-(s_arr(cellid,POT_ID) - s_arr(im1,POT_ID))/dx[dir];
+        }
     }
     else
     {
