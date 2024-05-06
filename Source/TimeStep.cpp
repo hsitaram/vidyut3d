@@ -11,8 +11,19 @@
 #include <UserFunctions.H>
 
 // a wrapper for EstTimeStep
-void Vidyut::ComputeDt()
+void Vidyut::ComputeDt(amrex::Real cur_time, amrex::Real dt_delay, amrex::Real dt_edrift, amrex::Real dt_ediff, amrex::Real dt_diel_relax)
 {
+    if(adaptive_dt && cur_time > dt_delay){
+      amrex::Real old_dt = dt[0];
+      amrex::Real trans_min_dt = std::numeric_limits<Real>::max();
+      amrex::Real adp_dt = std::numeric_limits<Real>::max();
+      if(do_transport) trans_min_dt = std::min(dt_edrift*advective_cfl, dt_ediff*diffusive_cfl);
+      adp_dt = std::min(trans_min_dt, dt_diel_relax*dielectric_cfl);
+      if(adp_dt > dt_max) adp_dt = dt_max;
+      if(adp_dt < dt_min) adp_dt = dt_min;
+      dt[0] = std::min(old_dt*dt_stretch, adp_dt);
+    }
+
     for (int lev = 1; lev <= finest_level; ++lev)
     {
         dt[lev] = dt[lev - 1];
