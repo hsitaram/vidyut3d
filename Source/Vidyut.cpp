@@ -358,6 +358,8 @@ void Vidyut::ReadParameters()
            cs_pin_locx.resize(cs_ncharges);
            cs_pin_locy.resize(cs_ncharges);
            cs_pin_locz.resize(cs_ncharges);
+           cs_voltages.resize(cs_ncharges);
+
            pp.getarr("cs_rads",cs_rads);
            pp.getarr("cs_locx",cs_locx);
            pp.getarr("cs_locy",cs_locy);
@@ -365,6 +367,7 @@ void Vidyut::ReadParameters()
            pp.getarr("cs_pin_locx",cs_pin_locx);
            pp.getarr("cs_pin_locy",cs_pin_locy);
            pp.getarr("cs_pin_locz",cs_pin_locz);
+           pp.getarr("cs_voltages",cs_voltages);
         }
     }
 }

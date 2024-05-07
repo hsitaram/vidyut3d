@@ -130,6 +130,11 @@ void Vidyut::Evolve()
 
         solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi);
 
+        if(cs_technique)
+        {
+           update_cs_technique_fields(); 
+        }
+
         //fillpatching here to get the latest potentials in 
         //sborder so that it can be used in efield calc
         for(int lev=0;lev<=finest_level;lev++)

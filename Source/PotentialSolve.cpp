@@ -383,15 +383,20 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
 }
 void Vidyut::update_cs_technique_fields()
 {
-    amrex::Vector<amrex::Real> allcharges(cs_ncharges);
-    int findlev=-1;
+    int findlev_local=-1;
+    int findlev_global=-1;
     int found=0; 
 
     for(int nch=0;nch<cs_ncharges;nch++)
     {
+        amrex::Real dist_ch = std::sqrt(std::pow((cs_locx[nch]-cs_pin_locx[nch]),2.0) +
+                                        std::pow((cs_locy[nch]-cs_pin_locy[nch]),2.0) +
+                                        std::pow((cs_locz[nch]-cs_pin_locz[nch]),2.0));
 
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {
+            auto prob_lo = geom[ilev].ProbLoArray();
+            auto prob_hi = geom[ilev].ProbHiArray();
             const auto dx = geom[ilev].CellSizeArray();
             const int* domlo_arr = geom[ilev].Domain().loVect();
             const int* domhi_arr = geom[ilev].Domain().hiVect();
@@ -399,28 +404,95 @@ void Vidyut::update_cs_technique_fields()
             GpuArray<int,AMREX_SPACEDIM> domlo={AMREX_D_DECL(domlo_arr[0], domlo_arr[1], domlo_arr[2])};
             GpuArray<int,AMREX_SPACEDIM> domhi={AMREX_D_DECL(domhi_arr[0], domhi_arr[1], domhi_arr[2])};
 
-            loc_i=amrex::Math::floor((cs_pin_locx[nch]-prob_lo[0])/dx[0]);
-            loc_j=amrex::Math::floor((cs_pin_locy[nch]-prob_lo[1])/dx[1]);
-            loc_k=amrex::Math::floor((cs_pin_locz[nch]-prob_lo[2])/dx[2]);
-
+            int loc_i=amrex::Math::floor((cs_pin_locx[nch]-prob_lo[0])/dx[0]);
+            int loc_j=amrex::Math::floor((cs_pin_locy[nch]-prob_lo[1])/dx[1]);
+            int loc_k=amrex::Math::floor((cs_pin_locz[nch]-prob_lo[2])/dx[2]);
 
             for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
             {
                 const Box& bx = mfi.tilebox();
-                IntVect iv(loc_i,loc_j,loc_k);
-                if(bx.contains(iv))
+                IntVect ivloc(loc_i,loc_j,loc_k);
+                
+                if(bx.contains(ivloc))
                 {
                     found=1;
-                    findlev=ilev;
+                    findlev_local=ilev;
                 }
             }
+        }
 
-            //reduce findlev in an array
-            //find proc with max findlev
+        findlev_global=findlev_local;
+        amrex::ParallelDescriptor::ReduceIntMax(findlev_global);
+
+        amrex::Real cs_charge=0.0;
+        int proc_with_charge=-1;
+
+        //find proc with max findlev
+        if(findlev_global==findlev_local)
+        {
+            proc_with_charge=amrex::ParallelDescriptor::MyProc();
             //probe in that processor to get charge
+            int ilev=findlev_local;
+            auto prob_lo = geom[ilev].ProbLoArray();
+            auto prob_hi = geom[ilev].ProbHiArray();
+            const auto dx = geom[ilev].CellSizeArray();
+            
+            int loc_i=amrex::Math::floor((cs_pin_locx[nch]-prob_lo[0])/dx[0]);
+            int loc_j=amrex::Math::floor((cs_pin_locy[nch]-prob_lo[1])/dx[1]);
+            int loc_k=amrex::Math::floor((cs_pin_locz[nch]-prob_lo[2])/dx[2]);
+            
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                Array4<Real> phi_arr   = phi_new[ilev].array(mfi);
+                IntVect ivloc(loc_i,loc_j,loc_k);
+
+                if(bx.contains(ivloc))
+                {
+                    cs_charge=(cs_voltages[nch]-phi_arr(ivloc,POT_ID))*4.0*PI*EPS0*dist_ch;
+                    break;
+                }
+            }
+        }
+
+        if(proc_with_charge!=-1)
+        {
+            ParallelDescriptor::Bcast(&cs_charge, 1, proc_with_charge);
         }
 
 
-    }
+        //for local gpu capture
+        amrex::Real q_x=cs_locx[nch];
+        amrex::Real q_y=cs_locy[nch];
+        amrex::Real q_z=cs_locz[nch];
 
+        //superimpose charge voltage
+        for (int ilev = 0; ilev <= finest_level; ilev++)
+        {
+            auto prob_lo = geom[ilev].ProbLoArray();
+            auto prob_hi = geom[ilev].ProbHiArray();
+            const auto dx = geom[ilev].CellSizeArray();
+            
+            for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                Array4<Real> phi_arr   = phi_new[ilev].array(mfi);
+
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+
+                    amrex::Real x=prob_lo[0]+(i+0.5)*dx[0];
+                    amrex::Real y=prob_lo[1]+(j+0.5)*dx[1];
+                    amrex::Real z=prob_lo[2]+(k+0.5)*dx[2];
+
+                    amrex::Real dist=std::sqrt(std::pow(x-q_x,2.0) 
+                                               + std::pow(y-q_y,2.0) 
+                                               + std::pow(z-q_z,2.0));
+
+                    phi_arr(i,j,k,POT_ID) += cs_charge/(4.0*PI*EPS0*dist);
+
+                });
+            }
+        }
+
+    }
 }

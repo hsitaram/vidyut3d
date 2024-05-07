@@ -227,8 +227,10 @@ public:
     amrex::Vector<amrex::Real> cs_pin_locx;
     amrex::Vector<amrex::Real> cs_pin_locy;
     amrex::Vector<amrex::Real> cs_pin_locz;
+    amrex::Vector<amrex::Real> cs_voltages;
 
     void update_cc_efields(amrex::Vector<MultiFab>& Sborder); 
+    void update_cs_technique_fields(); 
 
 
     // how often each level regrids the higher levels of refinement
