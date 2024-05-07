@@ -18,11 +18,15 @@ void Vidyut::Evolve()
 {
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;
+    Real plottime = 0.0;
+    Real chktime = 0.0;
 
     //there is a slight issue when restart file is not a multiple
     //a plot file may get the same number with an "old" file generated
     int plotfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(plot_int));
     int chkfilenum=amrex::Math::floor(amrex::Real(istep[0])/amrex::Real(chk_int));
+    if(plot_time > 0.0) plotfilenum=amrex::Math::floor(amrex::Real(cur_time)/amrex::Real(plot_time));
+    if(chk_time > 0.0) chkfilenum=amrex::Math::floor(amrex::Real(cur_time)/amrex::Real(chk_time));
     amrex::Real dt_edrift,dt_ediff,dt_diel_relax;
     amrex::Real dt_edrift_lev,dt_ediff_lev,dt_diel_relax_lev;
 
@@ -57,7 +61,7 @@ void Vidyut::Evolve()
         amrex::Print()<<"global minimum electron drift, diffusion and dielectric relaxation time scales (sec):"<<
         dt_edrift<<"\t"<<dt_ediff<<"\t"<<dt_diel_relax<<"\n";
 
-        ComputeDt();
+        ComputeDt(cur_time, adaptive_dt_delay, dt_edrift, dt_ediff, dt_diel_relax);
 
         if (max_level > 0 && regrid_int > 0)  // We may need to regrid
         {
@@ -236,6 +240,8 @@ void Vidyut::Evolve()
         }
 
         cur_time += dt_common;
+        plottime += dt_common;
+        chktime += dt_common;
 
         amrex::Print() << "Coarse STEP " << step + 1 << " ends."
         << " TIME = " << cur_time << " DT = " << dt_common << std::endl;
@@ -246,14 +252,29 @@ void Vidyut::Evolve()
             t_new[lev] = cur_time;
         }
 
-        if (plot_int > 0 && (step + 1) % plot_int == 0)
+        if (plot_time > 0){
+            if(plottime > plot_time){
+                last_plot_file_step = step + 1;
+                plotfilenum++;
+                WritePlotFile(plotfilenum);
+                plottime = 0.0;
+            }
+        }
+        else if (plot_int > 0 && (step + 1) % plot_int == 0)
         {
             last_plot_file_step = step + 1;
             plotfilenum++;
             WritePlotFile(plotfilenum);
         }
 
-        if (chk_int > 0 && (step + 1) % chk_int == 0)
+        if(chk_time > 0){
+            if(chktime > chk_time){
+                chkfilenum++;
+                WriteCheckpointFile(chkfilenum);
+                chktime = 0.0;
+            }
+        }
+        else if (chk_int > 0 && (step + 1) % chk_int == 0)
         {
             chkfilenum++;
             WriteCheckpointFile(chkfilenum);

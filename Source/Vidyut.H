@@ -166,9 +166,16 @@ public:
     amrex::Vector<int> neutral_bc_hi{ROBINBC, ROBINBC, ROBINBC};
     
     // advective cfl number - dt = cfl*dx/umax
-    amrex::Real cfl = 0.7;
+    amrex::Real advective_cfl = 0.7;
+    amrex::Real diffusive_cfl = 1.0;
+    amrex::Real dielectric_cfl = 1.0;
 
     amrex::Real fixed_dt=1e-12;
+    int adaptive_dt = 0;
+    amrex::Real dt_min=1e-14;
+    amrex::Real dt_max=1e-9;
+    amrex::Real adaptive_dt_delay = 0.0;
+    amrex::Real dt_stretch = std::numeric_limits<amrex::Real>::max();
 
     amrex::Real linsolve_reltol = 1e-10;
     amrex::Real linsolve_abstol = 1e-10;
@@ -242,10 +249,12 @@ public:
     // plotfile prefix and frequency
     std::string plot_file{"plt"};
     int plot_int = -1;
+    amrex::Real plot_time = -1.0;
 
     // checkpoint prefix and frequency
     std::string chk_file{"chk"};
     int chk_int = -1;
+    amrex::Real chk_time = -1.0;
 
     // Electron species index
     int E_IDX = 0;
@@ -279,7 +288,8 @@ private:
                  amrex::Vector<amrex::MultiFab*>& data, amrex::Vector<amrex::Real>& datatime);
 
     // a wrapper for EstTimeStep(0
-    void ComputeDt();
+    void ComputeDt(amrex::Real cur_time, amrex::Real dt_delay, amrex::Real dt_edrift, 
+                   amrex::Real dt_ediff, amrex::Real dt_diel_relax);
 
     // put together an array of multifabs for writing
     amrex::Vector<const amrex::MultiFab*> PlotFileMF() const;
