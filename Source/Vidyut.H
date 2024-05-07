@@ -227,7 +227,7 @@ public:
 
     int cs_technique=0;
     int cs_ncharges=0;
-    amrex::Vector<amrex::Real> cs_rads;
+    int cs_2d=0;
     amrex::Vector<amrex::Real> cs_locx;
     amrex::Vector<amrex::Real> cs_locy;
     amrex::Vector<amrex::Real> cs_locz;

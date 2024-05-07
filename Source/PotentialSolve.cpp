@@ -386,12 +386,19 @@ void Vidyut::update_cs_technique_fields()
     int findlev_local=-1;
     int findlev_global=-1;
     int found=0; 
+    amrex::Vector<amrex::Real> all_cs_charges(cs_ncharges);
+    int is2d=cs_2d; //GPU capture
 
     for(int nch=0;nch<cs_ncharges;nch++)
     {
-        amrex::Real dist_ch = std::sqrt(std::pow((cs_locx[nch]-cs_pin_locx[nch]),2.0) +
-                                        std::pow((cs_locy[nch]-cs_pin_locy[nch]),2.0) +
-                                        std::pow((cs_locz[nch]-cs_pin_locz[nch]),2.0));
+        
+        amrex::Real dist_ch = std::pow((cs_locx[nch]-cs_pin_locx[nch]),2.0) +
+                              std::pow((cs_locy[nch]-cs_pin_locy[nch]),2.0);
+        if(!is2d)
+        {
+              dist_ch+=std::pow((cs_locz[nch]-cs_pin_locz[nch]),2.0);
+        }
+        dist_ch=std::sqrt(dist_ch);
 
         for (int ilev = 0; ilev <= finest_level; ilev++)
         {
@@ -455,16 +462,23 @@ void Vidyut::update_cs_technique_fields()
             }
         }
 
-        if(proc_with_charge!=-1)
-        {
-            ParallelDescriptor::Bcast(&cs_charge, 1, proc_with_charge);
-        }
+        amrex::ParallelDescriptor::ReduceRealSum(cs_charge);
 
+        amrex::AllPrint()<<"cs_charge, proc:"<<cs_charge<<"\t"
+        <<amrex::ParallelDescriptor::MyProc()<<"\n";
 
+        all_cs_charges[nch]=cs_charge;
+    }
+
+    //update potential    
+    for(int nch=0;nch<cs_ncharges;nch++)
+    {
         //for local gpu capture
         amrex::Real q_x=cs_locx[nch];
         amrex::Real q_y=cs_locy[nch];
         amrex::Real q_z=cs_locz[nch];
+
+        amrex::Real cs_charge=all_cs_charges[nch];
 
         //superimpose charge voltage
         for (int ilev = 0; ilev <= finest_level; ilev++)
@@ -484,15 +498,19 @@ void Vidyut::update_cs_technique_fields()
                     amrex::Real y=prob_lo[1]+(j+0.5)*dx[1];
                     amrex::Real z=prob_lo[2]+(k+0.5)*dx[2];
 
-                    amrex::Real dist=std::sqrt(std::pow(x-q_x,2.0) 
-                                               + std::pow(y-q_y,2.0) 
-                                               + std::pow(z-q_z,2.0));
+                    amrex::Real dist=std::pow(x-q_x,2.0) 
+                                    +std::pow(y-q_y,2.0);
+
+                    if(!is2d)
+                    {
+                        dist+=std::pow(z-q_z,2.0);
+                    }
+                    dist=std::sqrt(dist);
 
                     phi_arr(i,j,k,POT_ID) += cs_charge/(4.0*PI*EPS0*dist);
 
                 });
             }
         }
-
     }
 }

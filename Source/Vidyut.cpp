@@ -363,7 +363,6 @@ void Vidyut::ReadParameters()
         if(cs_technique)
         {
            pp.get("cs_ncharges",cs_ncharges);
-           cs_rads.resize(cs_ncharges);
            cs_locx.resize(cs_ncharges);
            cs_locy.resize(cs_ncharges);
            cs_locz.resize(cs_ncharges);
@@ -372,7 +371,7 @@ void Vidyut::ReadParameters()
            cs_pin_locz.resize(cs_ncharges);
            cs_voltages.resize(cs_ncharges);
 
-           pp.getarr("cs_rads",cs_rads);
+           pp.query("cs_2d",cs_2d);
            pp.getarr("cs_locx",cs_locx);
            pp.getarr("cs_locy",cs_locy);
            pp.getarr("cs_locz",cs_locz);
