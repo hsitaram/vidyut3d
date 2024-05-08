@@ -32,17 +32,14 @@ Vidyut::Vidyut()
     plasma_param_names.resize(NUM_PLASMAVARS);
     plasma_param_names[0]="Electron_energy";
     plasma_param_names[1]="Electron_Temp";
-    plasma_param_names[2]="Eden_gradx";
-    plasma_param_names[3]="Eden_grady";
-    plasma_param_names[4]="Eden_gradz";
-    plasma_param_names[5]="Potential";
-    plasma_param_names[6]="Efieldx";
-    plasma_param_names[7]="Efieldy";
-    plasma_param_names[8]="Efieldz";
-    plasma_param_names[9]="Electron_Jheat";
-    plasma_param_names[10]="Electron_inelasticHeat";
-    plasma_param_names[11]="Electron_elasticHeat";
-    plasma_param_names[12]="ReducedEF";
+    plasma_param_names[2]="Potential";
+    plasma_param_names[3]="Efieldx";
+    plasma_param_names[4]="Efieldy";
+    plasma_param_names[5]="Efieldz";
+    plasma_param_names[6]="Electron_Jheat";
+    plasma_param_names[7]="Electron_inelasticHeat";
+    plasma_param_names[8]="Electron_elasticHeat";
+    plasma_param_names[9]="ReducedEF";
     
     allvarnames.resize(NVAR);
     for (int i = 0; i < NUM_SPECIES; i++)
@@ -366,14 +363,22 @@ void Vidyut::ReadParameters()
         if(cs_technique)
         {
            pp.get("cs_ncharges",cs_ncharges);
-           cs_rads.resize(cs_ncharges);
            cs_locx.resize(cs_ncharges);
            cs_locy.resize(cs_ncharges);
            cs_locz.resize(cs_ncharges);
-           pp.getarr("cs_rads",cs_rads);
+           cs_pin_locx.resize(cs_ncharges);
+           cs_pin_locy.resize(cs_ncharges);
+           cs_pin_locz.resize(cs_ncharges);
+           cs_voltages.resize(cs_ncharges);
+
+           pp.query("cs_2d",cs_2d);
            pp.getarr("cs_locx",cs_locx);
            pp.getarr("cs_locy",cs_locy);
            pp.getarr("cs_locz",cs_locz);
+           pp.getarr("cs_pin_locx",cs_pin_locx);
+           pp.getarr("cs_pin_locy",cs_pin_locy);
+           pp.getarr("cs_pin_locz",cs_pin_locz);
+           pp.getarr("cs_voltages",cs_voltages);
         }
     }
 }

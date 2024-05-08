@@ -227,12 +227,17 @@ public:
 
     int cs_technique=0;
     int cs_ncharges=0;
-    amrex::Vector<amrex::Real> cs_rads;
+    int cs_2d=0;
     amrex::Vector<amrex::Real> cs_locx;
     amrex::Vector<amrex::Real> cs_locy;
     amrex::Vector<amrex::Real> cs_locz;
+    amrex::Vector<amrex::Real> cs_pin_locx;
+    amrex::Vector<amrex::Real> cs_pin_locy;
+    amrex::Vector<amrex::Real> cs_pin_locz;
+    amrex::Vector<amrex::Real> cs_voltages;
 
     void update_cc_efields(amrex::Vector<MultiFab>& Sborder); 
+    void update_cs_technique_fields(); 
 
 
     // how often each level regrids the higher levels of refinement
