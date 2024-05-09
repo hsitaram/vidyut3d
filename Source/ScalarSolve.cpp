@@ -295,7 +295,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
-    int verbose = 0;
+    int linsolve_verbose = 1;
     int captured_spec_id=spec_id;
     int electron_flag=(spec_id==E_IDX)?1:0;
     int electron_energy_flag=(spec_id==EEN_ID)?1:0;
@@ -324,6 +324,13 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     amrex::Real captured_gaspres=gas_pressure;
     int userdefspec = user_defined_species;
     int eidx = E_IDX;
+
+#ifdef AMREX_USE_HYPRE
+    if(use_hypre)
+    {
+        amrex::Print()<<"using hypre\n";
+    }
+#endif
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_linsolve_lo 
@@ -414,7 +421,15 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
                                            DistributionMap(0,finest_level), info));
     MLMG mlmg(*linsolve_ptr);
     mlmg.setMaxIter(linsolve_maxiter);
-    mlmg.setVerbose(verbose);
+    mlmg.setVerbose(linsolve_verbose);
+
+#ifdef AMREX_USE_HYPRE
+        if (use_hypre)
+        {
+            mlmg.setHypreOptionsNamespace("vidyut.hypre");
+            mlmg.setBottomSolver(MLMG::BottomSolver::hypre);
+        }
+#endif
     linsolve_ptr->setDomainBC(bc_linsolve_lo, bc_linsolve_hi);
     linsolve_ptr->setScalars(ascalar, bscalar);
 
