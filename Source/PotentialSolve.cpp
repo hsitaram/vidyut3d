@@ -27,6 +27,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     Real ascalar = 1.0;
     Real bscalar = 1.0;
     ProbParm const* localprobparm = d_prob_parm;
+    int linsolve_verbose=1;
 
     //==================================================
     // amrex solves
@@ -55,6 +56,13 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     amrex::Real vfreq = voltage_freq;
     amrex::Real vdur = voltage_dur;
     amrex::Real vcen = voltage_center;
+
+#ifdef AMREX_USE_HYPRE
+    if(use_hypre)
+    {
+        amrex::Print()<<"using hypre\n";
+    }
+#endif
 
     // default to inhomogNeumann since it is defaulted to flux = 0.0 anyways
     std::array<LinOpBCType, AMREX_SPACEDIM> bc_potsolve_lo 
@@ -314,7 +322,16 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
 
     MLMG mlmg(*linsolve_ptr);
     mlmg.setMaxIter(linsolve_maxiter);
-    mlmg.setVerbose(verbose);
+    mlmg.setVerbose(linsolve_verbose);
+
+#ifdef AMREX_USE_HYPRE
+        if (use_hypre)
+        {
+            mlmg.setHypreOptionsNamespace("vidyut.hypre");
+            mlmg.setBottomSolver(MLMG::BottomSolver::hypre);
+        }
+#endif
+
     mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
 
     amrex::Print()<<"Solved Potential\n";

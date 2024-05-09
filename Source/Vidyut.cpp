@@ -289,7 +289,6 @@ void Vidyut::ReadParameters()
             pp.query("adaptive_dt_delay", adaptive_dt_delay);
             pp.query("dt_stretch", dt_stretch);
         }
-        pp.query("use_hypre",use_hypre);
 
         pp.query("linsolve_reltol",linsolve_reltol);
         pp.query("linsolve_abstol",linsolve_abstol);
@@ -358,28 +357,33 @@ void Vidyut::ReadParameters()
         } 
 
         pp.query("monitor_file_int", monitor_file_int);
-    
+
         pp.query("cs_technique",cs_technique);
         if(cs_technique)
         {
-           pp.get("cs_ncharges",cs_ncharges);
-           cs_locx.resize(cs_ncharges);
-           cs_locy.resize(cs_ncharges);
-           cs_locz.resize(cs_ncharges);
-           cs_pin_locx.resize(cs_ncharges);
-           cs_pin_locy.resize(cs_ncharges);
-           cs_pin_locz.resize(cs_ncharges);
-           cs_voltages.resize(cs_ncharges);
+            pp.get("cs_ncharges",cs_ncharges);
+            cs_locx.resize(cs_ncharges);
+            cs_locy.resize(cs_ncharges);
+            cs_locz.resize(cs_ncharges);
+            cs_pin_locx.resize(cs_ncharges);
+            cs_pin_locy.resize(cs_ncharges);
+            cs_pin_locz.resize(cs_ncharges);
+            cs_voltages.resize(cs_ncharges);
 
-           pp.query("cs_2d",cs_2d);
-           pp.getarr("cs_locx",cs_locx);
-           pp.getarr("cs_locy",cs_locy);
-           pp.getarr("cs_locz",cs_locz);
-           pp.getarr("cs_pin_locx",cs_pin_locx);
-           pp.getarr("cs_pin_locy",cs_pin_locy);
-           pp.getarr("cs_pin_locz",cs_pin_locz);
-           pp.getarr("cs_voltages",cs_voltages);
+            pp.query("cs_2d",cs_2d);
+            pp.getarr("cs_locx",cs_locx);
+            pp.getarr("cs_locy",cs_locy);
+            pp.getarr("cs_locz",cs_locz);
+            pp.getarr("cs_pin_locx",cs_pin_locx);
+            pp.getarr("cs_pin_locy",cs_pin_locy);
+            pp.getarr("cs_pin_locz",cs_pin_locz);
+            pp.getarr("cs_voltages",cs_voltages);
         }
+
+#ifdef AMREX_USE_HYPRE
+        pp.query("use_hypre",use_hypre);
+#endif
+
     }
 }
 

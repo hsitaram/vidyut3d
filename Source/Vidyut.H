@@ -244,7 +244,9 @@ public:
     // (after a level advances that many time steps)
     int regrid_int = 2;
 
+#ifdef AMREX_USE_HYPRE
     int use_hypre=0;
+#endif
 
     // plotfile prefix and frequency
     std::string plot_file{"plt"};
