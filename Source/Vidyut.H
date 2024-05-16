@@ -99,7 +99,8 @@ public:
                                             amrex::Real cur_time);
     
     void implicit_solve_scalar(Real current_time,Real dt,int spec_id,
-            Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl,
+            Vector<MultiFab>& Sborder, Vector<MultiFab>& Sborder_old,
+                                Vector<MultiFab>& dsdt_expl,
                          Vector<int>& bc_lo, Vector<int>& bc_hi,
                          Vector<Array<MultiFab,AMREX_SPACEDIM>>& grad_fc);
 
@@ -243,6 +244,7 @@ public:
     // how often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
     int regrid_int = 2;
+    int num_timestep_correctors=1;
 
 #ifdef AMREX_USE_HYPRE
     int use_hypre=0;

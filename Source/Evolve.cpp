@@ -91,11 +91,17 @@ void Vidyut::Evolve()
         Vector<MultiFab> expl_src(finest_level+1);
         Vector<MultiFab> rxn_src(finest_level+1);
         Vector<MultiFab> Sborder(finest_level+1);
+        Vector<MultiFab> Sborder_old(finest_level+1);
+        Vector<MultiFab> phi_tmp(finest_level+1);
 
         //copy new to old and update time
         for(int lev=0;lev<=finest_level;lev++)
         {
+            phi_tmp[lev].define(grids[lev], dmap[lev], phi_new[lev].nComp(), phi_new[lev].nGrow());
+            phi_tmp[lev].setVal(0.0);
             amrex::MultiFab::Copy(phi_old[lev], phi_new[lev], 
+                                  0, 0, phi_new[lev].nComp(), 0);
+            amrex::MultiFab::Copy(phi_tmp[lev], phi_new[lev], 
                                   0, 0, phi_new[lev].nComp(), 0);
             t_old[lev] = t_new[lev];
             t_new[lev] += dt_common;
@@ -106,125 +112,170 @@ void Vidyut::Evolve()
         {
             Sborder[lev].define(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
             Sborder[lev].setVal(0.0);
-            FillPatch(lev, cur_time, Sborder[lev], 0, Sborder[lev].nComp());
+            
+            Sborder_old[lev].define(grids[lev], dmap[lev], phi_new[lev].nComp(), num_grow);
+            Sborder_old[lev].setVal(0.0);
+           
+            FillPatch(lev, cur_time, Sborder_old[lev], 0, Sborder_old[lev].nComp());
 
-            for (int lev = 0; lev <= finest_level; lev++)
+            for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
             {
+                BoxArray ba = grids[lev];
+                ba.surroundingNodes(idim);
+
+                flux[lev][idim].define(ba, dmap[lev], 1, 0);
+                flux[lev][idim].setVal(0.0);
+
+                gradne_fc[lev][idim].define(ba, dmap[lev], 1, 0);
+                gradne_fc[lev][idim].setVal(0.0);
+
+                grad_fc[lev][idim].define(ba, dmap[lev], 1, 0);
+                grad_fc[lev][idim].setVal(0.0);
+            }
+            
+            expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
+            expl_src[lev].setVal(0.0);
+
+            rxn_src[lev].define(grids[lev], dmap[lev], NUM_SPECIES+1, 0);
+            rxn_src[lev].setVal(0.0);
+        }
+               
+
+        for(int niter=0;niter<num_timestep_correctors;niter++)
+        {
+            //reset all
+            for(int lev=0;lev<=finest_level;lev++)
+            {
+                Sborder[lev].setVal(0.0);
+            
+                //grab phi_new all the time
+                //at first iter phi new and old are same
+                FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+
                 for (int idim = 0; idim < AMREX_SPACEDIM; ++idim)
                 {
-                    BoxArray ba = grids[lev];
-                    ba.surroundingNodes(idim);
-
-                    flux[lev][idim].define(ba, dmap[lev], 1, 0);
                     flux[lev][idim].setVal(0.0);
-
-                    gradne_fc[lev][idim].define(ba, dmap[lev], 1, 0);
                     gradne_fc[lev][idim].setVal(0.0);
-
-                    grad_fc[lev][idim].define(ba, dmap[lev], 1, 0);
                     grad_fc[lev][idim].setVal(0.0);
                 }
-                expl_src[lev].define(grids[lev], dmap[lev], 1, 0);
                 expl_src[lev].setVal(0.0);
-
-                rxn_src[lev].define(grids[lev], dmap[lev], NUM_SPECIES+1, 0);
                 rxn_src[lev].setVal(0.0);
             }
-        }
 
-        solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi);
+            solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi);
 
-        if(cs_technique)
-        {
-           update_cs_technique_fields(); 
-        }
-
-        //fillpatching here to get the latest potentials in 
-        //sborder so that it can be used in efield calc
-        for(int lev=0;lev<=finest_level;lev++)
-        {
-            Sborder[lev].setVal(0.0);
-            FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-        }
-
-        //update cell-centered electric fields
-        update_cc_efields(Sborder);
-        //fillpatching here to get the latest efields 
-        //in sborder so that it can be used in drift vel calcs
-        //may be there is a clever way to improve performance 
-        for(int lev=0;lev<=finest_level;lev++)
-        {
-            Sborder[lev].setVal(0.0);
-            FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
-        }
-
-        // Calculate the reactive source terms for all species/levels
-        if(do_reactions)
-        {
-            update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
-        }
-
-        update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
-        implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
-
-        if(elecenergy_solve)
-        {
-            update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
-                                         eenrg_bc_lo,eenrg_bc_hi,
-                                         cur_time);
-            for (int lev = 0; lev <= finest_level; lev++)
+            if(cs_technique)
             {
-                compute_elecenergy_source(lev, Sborder[lev],
-                                          rxn_src[lev], 
-                                          gradne_fc[lev],
-                                          expl_src[lev], cur_time, dt_common);
+                update_cs_technique_fields(); 
             }
-            implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder, 
-                                  expl_src,eenrg_bc_lo,eenrg_bc_hi, grad_fc);
-        }
 
-        for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
-        {
-            bool solveflag=true;
-            auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
-            if(it != bg_specid_list.end())
+            //fillpatching here to get the latest potentials in 
+            //sborder so that it can be used in efield calc
+            for(int lev=0;lev<=finest_level;lev++)
             {
-                solveflag=false;
+                Sborder[lev].setVal(0.0);
+                FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
             }
-            if(solveflag)
+
+            //update cell-centered electric fields
+            update_cc_efields(Sborder);
+            //fillpatching here to get the latest efields 
+            //in sborder so that it can be used in drift vel calcs
+            //may be there is a clever way to improve performance 
+            for(int lev=0;lev<=finest_level;lev++)
             {
-                //electrons and ions
-                if(plasmachem::get_charge(ind)!=0 && ind!=E_IDX)
+                Sborder[lev].setVal(0.0);
+                FillPatch(lev, cur_time+dt_common, Sborder[lev], 0, Sborder[lev].nComp());
+            }
+
+            // Calculate the reactive source terms for all species/levels
+            if(do_reactions)
+            {
+                update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
+            }
+
+            update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
+            implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,Sborder_old,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
+
+            if(elecenergy_solve)
+            {
+                update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
+                                             eenrg_bc_lo,eenrg_bc_hi,
+                                             cur_time);
+                
+                for (int lev = 0; lev <= finest_level; lev++)
                 {
-                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
-                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
+                    compute_elecenergy_source(lev, Sborder[lev],
+                                              rxn_src[lev], 
+                                              gradne_fc[lev],
+                                              expl_src[lev], cur_time, dt_common);
                 }
-                //neutrals
-                else
+
+                implicit_solve_scalar(cur_time,dt_common,EEN_ID, Sborder,Sborder_old, 
+                                      expl_src,eenrg_bc_lo,eenrg_bc_hi, grad_fc);
+            }
+
+            for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
+            {
+                bool solveflag=true;
+                auto it=std::find(bg_specid_list.begin(),bg_specid_list.end(),ind);
+                if(it != bg_specid_list.end())
                 {
-                    update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, neutral_bc_lo, neutral_bc_hi, cur_time);
-                    implicit_solve_scalar(cur_time, dt_common, ind, Sborder, expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
+                    solveflag=false;
                 }
-            } else if (do_bg_reactions){
-                for (int ilev = 0; ilev <= finest_level; ilev++)
+                if(solveflag)
                 {
-                    amrex::Real minspecden=min_species_density; 
-                    int boundspecden = bound_specden;
-                    for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+                    //electrons and ions
+                    if(plasmachem::get_charge(ind)!=0 && ind!=E_IDX)
                     {
-                        const Box& bx = mfi.tilebox();
-                        Array4<Real> phi_arr = phi_new[ilev].array(mfi);
-                        Array4<Real> rxn_arr = rxn_src[ilev].array(mfi);
-                        amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-                            phi_arr(i,j,k,ind) += rxn_arr(i,j,k,ind)*dt_common;
-                            if(phi_arr(i,j,k,ind) < minspecden && boundspecden)
-                            {
-                                phi_arr(i,j,k,ind) = minspecden;
-                            }
-                        });
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
+                        implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
+                                              expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
+                    }
+                    //neutrals
+                    else
+                    {
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, 
+                                                     neutral_bc_lo, neutral_bc_hi, cur_time);
+                        implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
+                                              expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
+                    }
+                } else if (do_bg_reactions){
+                    for (int ilev = 0; ilev <= finest_level; ilev++)
+                    {
+                        amrex::Real minspecden=min_species_density; 
+                        int boundspecden = bound_specden;
+                        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+                        {
+                            const Box& bx = mfi.tilebox();
+                            Array4<Real> phi_arr = phi_new[ilev].array(mfi);
+                            Array4<Real> rxn_arr = rxn_src[ilev].array(mfi);
+                            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                                phi_arr(i,j,k,ind) += rxn_arr(i,j,k,ind)*dt_common;
+                                if(phi_arr(i,j,k,ind) < minspecden && boundspecden)
+                                {
+                                    phi_arr(i,j,k,ind) = minspecden;
+                                }
+                            });
+                        }
                     }
                 }
             }
+            
+            if(niter<num_timestep_correctors-1)
+            {
+                //copy new to old and update time
+                for(int lev=0;lev<=finest_level;lev++)
+                {
+                    amrex::Print()<<"averaging state at iter:"<<niter<<"\n";
+                    MultiFab::LinComb(phi_tmp[lev], 0.5, phi_old[lev], 0, 0.5, 
+                          phi_new[lev], 0, 0, phi_new[lev].nComp(), 0);
+            
+                    amrex::MultiFab::Copy(phi_new[lev], phi_tmp[lev], 
+                                  0, 0, phi_new[lev].nComp(), 0);
+                }
+            }
+            amrex::Print()<<"\n================== timestep iter:"<<niter<<" ================\n";
         }
 
 
@@ -294,6 +345,7 @@ void Vidyut::Evolve()
         grad_fc.clear();
         expl_src.clear();
         Sborder.clear();
+        phi_tmp.clear();
     }
 
     if (plot_int > 0 && istep[0] > last_plot_file_step)
