@@ -231,10 +231,6 @@ class Converter:
             cri.rmap(cpp, self.reaction_info)
             cri.get_rmap(cpp, self.reaction_info)
             cck.ckinu(cpp, self.mechanism, self.species_info, self.reaction_info)
-            cck.ckkfkr(cpp, self.mechanism, self.species_info)
-            cp.progress_rate_fr(
-                cpp, self.mechanism, self.species_info, self.reaction_info
-            )
             self.atomic_weight(cpp)
             cck.ckawt(cpp, self.mechanism)
             cck.ckncf(cpp, self.mechanism, self.species_info)
@@ -513,16 +509,6 @@ class Converter:
         cw.writer(fstream, "void CKSYMS_STR(amrex::Vector<std::string>& kname);")
         cw.writer(fstream, "void GET_RMAP(int * _rmap);")
         cw.writer(fstream, "void CKINU(const int i, int &nspec, int * ki, int * nu);")
-        cw.writer(
-            fstream,
-            "void CKKFKR(const amrex::Real P, const amrex::Real T,"
-            + "const amrex::Real * x, amrex::Real *  q_f, amrex::Real *  q_r);",
-        )
-        cw.writer(
-            fstream,
-            "void progressRateFR(amrex::Real *  q_f, amrex::Real *  q_r,"
-            + "amrex::Real *  sc, amrex::Real T);",
-        )
 
     def mechanism_header_includes(self, fstream):
         """Write the mechanism header includes."""
