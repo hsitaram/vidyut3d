@@ -58,7 +58,7 @@ else
     echo "Using PELE_PHYSICS_HOME: ${PELE_PHYSICS_HOME}"
 fi
 
-CEPTR_HOME="${VIDYUT_HOME}/ceptr_noThermo"
+CEPTR_HOME="${VIDYUT_HOME}/py_utils/ceptr_noThermo"
 
 case $filename in
   /*) ;; # filename is an absolute path
