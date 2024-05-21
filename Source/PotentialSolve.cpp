@@ -435,7 +435,7 @@ void Vidyut::update_cs_technique_fields()
             for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
             {
                 const Box& bx = mfi.tilebox();
-                IntVect ivloc(loc_i,loc_j,loc_k);
+                IntVect ivloc{AMREX_D_DECL(loc_i,loc_j,loc_k)};
                 
                 if(bx.contains(ivloc))
                 {
@@ -469,7 +469,7 @@ void Vidyut::update_cs_technique_fields()
             {
                 const Box& bx = mfi.tilebox();
                 Array4<Real> phi_arr   = phi_new[ilev].array(mfi);
-                IntVect ivloc(loc_i,loc_j,loc_k);
+                IntVect ivloc{AMREX_D_DECL(loc_i,loc_j,loc_k)};
 
                 if(bx.contains(ivloc))
                 {
