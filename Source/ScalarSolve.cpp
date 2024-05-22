@@ -452,6 +452,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         robin_f[ilev].setVal(0.0);
 
         rhs[ilev].setVal(0.0);
+
+        //adding U^n/dt and explicit sources
         MultiFab::LinComb(rhs[ilev], 1.0/dt, specdata[ilev], 0, 1.0, 
                           dsdt_expl[ilev], 0, 0, 1, 0);
         
@@ -630,7 +632,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, spec_id, 1, 0);
     }
-    // Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
+    
+    Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
 
     if(electron_energy_flag)
     {

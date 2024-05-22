@@ -223,12 +223,18 @@ void Vidyut::Evolve()
                 {
                     solveflag=false;
                 }
+                if(ind==E_IDX)
+                {
+                   solveflag=false;
+                }
+
                 if(solveflag)
                 {
-                    //electrons and ions
-                    if(plasmachem::get_charge(ind)!=0 && ind!=E_IDX)
+                    //ions
+                    if(plasmachem::get_charge(ind)!=0)
                     {
-                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, ion_bc_lo, ion_bc_hi, cur_time);
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
+                                                     expl_src, ion_bc_lo, ion_bc_hi, cur_time);
                         implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
                                               expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
                     }
@@ -261,7 +267,7 @@ void Vidyut::Evolve()
                     }
                 }
             }
-            
+
             if(niter<num_timestep_correctors-1)
             {
                 //copy new to old and update time
@@ -269,10 +275,10 @@ void Vidyut::Evolve()
                 {
                     amrex::Print()<<"averaging state at iter:"<<niter<<"\n";
                     MultiFab::LinComb(phi_tmp[lev], 0.5, phi_old[lev], 0, 0.5, 
-                          phi_new[lev], 0, 0, phi_new[lev].nComp(), 0);
-            
+                                      phi_new[lev], 0, 0, phi_new[lev].nComp(), 0);
+
                     amrex::MultiFab::Copy(phi_new[lev], phi_tmp[lev], 
-                                  0, 0, phi_new[lev].nComp(), 0);
+                                          0, 0, phi_new[lev].nComp(), 0);
                 }
             }
             amrex::Print()<<"\n================== timestep iter:"<<niter<<" ================\n";
