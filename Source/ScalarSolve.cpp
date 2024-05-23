@@ -286,7 +286,9 @@ void Vidyut::compute_axisym_correction(int lev, MultiFab& Sborder,MultiFab& dsdt
 }
 
 void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id, 
-                                   Vector<MultiFab>& Sborder, Vector<MultiFab>& dsdt_expl, 
+                                   Vector<MultiFab>& Sborder, 
+                                   Vector<MultiFab>& Sborder_old, 
+                                   Vector<MultiFab>& dsdt_expl, 
                                    Vector<int>& bc_lo, Vector<int>& bc_hi,
                                    Vector<Array<MultiFab,AMREX_SPACEDIM>>& grad_fc)
 {
@@ -438,7 +440,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         // Copy args (FabArray<FAB>& dst, FabArray<FAB> const& src, 
         // int srccomp, int dstcomp, int numcomp, const IntVect& nghost)
         specdata[ilev].setVal(0.0);
-        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 
+        amrex::Copy(specdata[ilev], Sborder_old[ilev], captured_spec_id, 
                     0, 1, num_grow);
 
         acoeff[ilev].setVal(1.0/dt);
@@ -450,8 +452,13 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         robin_f[ilev].setVal(0.0);
 
         rhs[ilev].setVal(0.0);
+
+        //adding U^n/dt and explicit sources
         MultiFab::LinComb(rhs[ilev], 1.0/dt, specdata[ilev], 0, 1.0, 
                           dsdt_expl[ilev], 0, 0, 1, 0);
+        
+        amrex::Copy(specdata[ilev], Sborder[ilev], captured_spec_id, 
+                    0, 1, num_grow);
 
         solution[ilev].setVal(0.0);
         amrex::MultiFab::Copy(solution[ilev], specdata[ilev], 0, 0, 1, 0);
@@ -625,7 +632,8 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
     {
         amrex::MultiFab::Copy(phi_new[ilev], solution[ilev], 0, spec_id, 1, 0);
     }
-    // Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
+    
+    Print()<<"Solved species:"<<allvarnames[spec_id]<<"\n";
 
     if(electron_energy_flag)
     {

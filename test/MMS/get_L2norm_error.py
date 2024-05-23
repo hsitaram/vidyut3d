@@ -23,6 +23,7 @@ def get_oned_data(arr3d,axialdir):
     return(linedata)
     
 
+plt.rcParams['font.size'] = 16
 ds=yt.load(argv[1])
 prob_lo=ds.domain_left_edge.d
 prob_hi=ds.domain_right_edge.d
@@ -66,7 +67,8 @@ ax[1].plot(x,pot_1d,'k*',label="Computed",markersize=2)
 ax[1].legend(loc="best")
 
 dir_char=axialdir_char
-fig.suptitle("AR and potential solution along "+dir_char+" direction ")
+#fig.suptitle("AR and potential solution along "+dir_char+" direction ")
+plt.tight_layout()
 plt.savefig("err_"+dir_char+".png")
 #=======================================
 
