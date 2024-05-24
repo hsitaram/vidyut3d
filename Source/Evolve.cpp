@@ -166,7 +166,7 @@ void Vidyut::Evolve()
 
             if(cs_technique)
             {
-                update_cs_technique_fields(); 
+                update_cs_technique_potential(); 
             }
 
             //fillpatching here to get the latest potentials in 
@@ -194,9 +194,11 @@ void Vidyut::Evolve()
                 update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
             }
 
+            //electron density solve
             update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
             implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,Sborder_old,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
 
+            //electron energy solve
             if(elecenergy_solve)
             {
                 update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
@@ -215,6 +217,7 @@ void Vidyut::Evolve()
                                       expl_src,eenrg_bc_lo,eenrg_bc_hi, grad_fc);
             }
 
+            //all species except electrons solve
             for(unsigned int ind=0;ind<NUM_SPECIES;ind++)
             {
                 bool solveflag=true;
@@ -235,6 +238,7 @@ void Vidyut::Evolve()
                     {
                         update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
                                                      expl_src, ion_bc_lo, ion_bc_hi, cur_time);
+                        
                         implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
                                               expl_src,ion_bc_lo,ion_bc_hi, grad_fc);
                     }
@@ -243,10 +247,13 @@ void Vidyut::Evolve()
                     {
                         update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, 
                                                      neutral_bc_lo, neutral_bc_hi, cur_time);
+
                         implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
                                               expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);
                     }
-                } else if (do_bg_reactions){
+                } 
+                else if (do_bg_reactions)
+                {
                     for (int ilev = 0; ilev <= finest_level; ilev++)
                     {
                         amrex::Real minspecden=min_species_density; 
@@ -351,6 +358,7 @@ void Vidyut::Evolve()
         grad_fc.clear();
         expl_src.clear();
         Sborder.clear();
+        Sborder_old.clear();
         phi_tmp.clear();
     }
 

@@ -398,7 +398,7 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
         }
     }
 }
-void Vidyut::update_cs_technique_fields()
+void Vidyut::update_cs_technique_potential()
 {
     int findlev_local=-1;
     int findlev_global=-1;

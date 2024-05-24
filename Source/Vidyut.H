@@ -238,7 +238,7 @@ public:
     amrex::Vector<amrex::Real> cs_voltages;
 
     void update_cc_efields(amrex::Vector<MultiFab>& Sborder); 
-    void update_cs_technique_fields(); 
+    void update_cs_technique_potential(); 
 
 
     // how often each level regrids the higher levels of refinement
