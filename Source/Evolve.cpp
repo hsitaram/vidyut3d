@@ -310,12 +310,6 @@ void Vidyut::Evolve()
         amrex::Print() << "Coarse STEP " << step + 1 << " ends."
         << " TIME = " << cur_time << " DT = " << dt_common << std::endl;
 
-        // sync up time
-        for (int lev = 0; lev <= finest_level; ++lev)
-        {
-            t_new[lev] = cur_time;
-        }
-
         if (plot_time > 0){
             if(plottime > plot_time){
                 last_plot_file_step = step + 1;
