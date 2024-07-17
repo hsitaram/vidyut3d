@@ -243,7 +243,7 @@ void Vidyut::update_surface_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
                             spec_C[sp] /= catalysis_scale; 
                         }
                         // Convert from 1/m2 to mol/cm2
-                        spec_C[sp] = sborder_arr(i,j,k,sp) * 1.0e-4 / N_A;
+                        spec_C[sp] *= 1.0e-4 / N_A;
                     } else {
                         // Convert from 1/m3 to mol/cm3
                         spec_C[sp] = sborder_arr(i,j,k,sp) * 1.0e-6 / N_A;

@@ -326,7 +326,7 @@ void Vidyut::ReadParameters()
         pp.query("reactor_scaling", reactor_scaling);
         // 1 for simple reactor scaling, 2 for reactor scaling as discussed in Maitre et al., J. Phys. Chem. C., 2022
         if(reactor_scaling == 1){  
-            pp.get("pellet_r", reactor_r_outer);
+            pp.get("pellet_r", pellet_r);
             catalysis_scale = 3.0/pellet_r;
         } else if(reactor_scaling == 2){
             pp.get("reactor_r_inner", reactor_r_inner);
