@@ -81,6 +81,7 @@ public:
     void compute_dsdt(int lev, int specid,
         Array<MultiFab,AMREX_SPACEDIM>& flux, 
         MultiFab& rxn_src,
+        MultiFab& surface_rxn_src,
         MultiFab& dsdt,
         Real time, Real dt);
 
@@ -90,12 +91,19 @@ public:
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
                                             Vector<MultiFab>& rxn_src, 
+                                            Vector<MultiFab>& surface_rxn_src, 
                                             Vector<MultiFab>& expl_src, 
                                             Vector<int>& bc_lo, Vector<int>& bc_hi,
                                             amrex::Real cur_time);
     
     void update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
                                             Vector<MultiFab>& rxn_src, 
+                                            amrex::Real cur_time);
+
+    void update_surface_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
+                                            Vector<MultiFab>& rxn_src,
+                                            Vector<int>& bc_lo,
+                                            Vector<int>& bc_hi,
                                             amrex::Real cur_time);
     
     void implicit_solve_scalar(Real current_time,Real dt,int spec_id,
@@ -183,6 +191,7 @@ public:
     amrex::Real linsolve_bot_reltol = 1e-10;
     amrex::Real linsolve_bot_abstol = -1.0;
     amrex::Real min_species_density=1e-20;
+    amrex::Real min_surface_species_density = 1e-20;
     amrex::Real min_electron_density=1e12;
     amrex::Real min_electron_temp=300.0;
 
@@ -208,6 +217,7 @@ public:
     int do_reactions=1;
     int do_transport=1;
     int do_spacechrg=1;
+    int do_surface_reactions=1;
     int user_defined_potential = 0;
     int user_defined_species = 0;
     int user_defined_vel = 0;
@@ -239,6 +249,22 @@ public:
 
     void update_cc_efields(amrex::Vector<MultiFab>& Sborder); 
     void update_cs_technique_potential(); 
+
+    // Options for 0D reactor scaling (assumes a packed cylindrical DBD reactor with porous spherical catalyst pellets)
+    int reactor_scaling = 0;
+    amrex::Real reactor_r_inner = 0.0;      // m
+    amrex::Real reactor_r_outer = 0.0;      // m
+    amrex::Real pellet_r = 0.0;             // m
+    amrex::Real reactor_h = 0.0;            // m
+    amrex::Real reactor_void = 0.0;         // -
+    amrex::Real pellet_porosity = 0.0;      // -
+    amrex::Real pellet_density = 1000.0;    // kg/m3
+    amrex::Real pellet_spec_area = 1000.0;  // m2/kg
+
+    amrex::Real reactor_V = 0.0;
+    amrex::Real void_total_V = 0.0;
+    amrex::Real pellet_area = 0.0;
+    amrex::Real catalysis_scale = 0.0;
 
 
     // how often each level regrids the higher levels of refinement
@@ -311,6 +337,7 @@ private:
     static void GotoNextLine(std::istream& is);
 
     Vector<int> bg_specid_list{-1};
+    Vector<int> surface_specid_list{-1};
 
     // Creates monitor file showing the maximum domain value of all variables 
     void WriteMonitorFile(amrex::Real time);

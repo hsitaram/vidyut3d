@@ -90,6 +90,7 @@ void Vidyut::Evolve()
         Vector< Array<MultiFab,AMREX_SPACEDIM> > grad_fc(finest_level+1);
         Vector<MultiFab> expl_src(finest_level+1);
         Vector<MultiFab> rxn_src(finest_level+1);
+        Vector<MultiFab> surface_rxn_src(finest_level+1);
         Vector<MultiFab> Sborder(finest_level+1);
         Vector<MultiFab> Sborder_old(finest_level+1);
         Vector<MultiFab> phi_tmp(finest_level+1);
@@ -138,6 +139,9 @@ void Vidyut::Evolve()
 
             rxn_src[lev].define(grids[lev], dmap[lev], NUM_SPECIES+1, 0);
             rxn_src[lev].setVal(0.0);
+
+            surface_rxn_src[lev].define(grids[lev], dmap[lev], NUM_SPECIES+1, 0);
+            surface_rxn_src[lev].setVal(0.0);
         }
                
 
@@ -160,6 +164,7 @@ void Vidyut::Evolve()
                 }
                 expl_src[lev].setVal(0.0);
                 rxn_src[lev].setVal(0.0);
+                surface_rxn_src[lev].setVal(0.0);
             }
 
             solve_potential(cur_time, Sborder, pot_bc_lo, pot_bc_hi);
@@ -193,17 +198,20 @@ void Vidyut::Evolve()
             {
                 update_rxnsrc_at_all_levels(Sborder, rxn_src, cur_time);
             }
+            if(do_surface_reactions)
+            {
+                update_surface_rxnsrc_at_all_levels(Sborder, surface_rxn_src, neutral_bc_lo, neutral_bc_hi, cur_time);
+            }
 
             //electron density solve
-            update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
+            update_explsrc_at_all_levels(E_IDX, Sborder, flux, rxn_src, surface_rxn_src, expl_src, eden_bc_lo, eden_bc_hi, cur_time);
             implicit_solve_scalar(cur_time,dt_common,E_IDX,Sborder,Sborder_old,expl_src,eden_bc_lo,eden_bc_hi, gradne_fc);
 
             //electron energy solve
             if(elecenergy_solve)
             {
-                update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, expl_src, 
-                                             eenrg_bc_lo,eenrg_bc_hi,
-                                             cur_time);
+                update_explsrc_at_all_levels(EEN_ID, Sborder, flux, rxn_src, surface_rxn_src, 
+                                             expl_src, eenrg_bc_lo, eenrg_bc_hi, cur_time);
                 
                 for (int lev = 0; lev <= finest_level; lev++)
                 {
@@ -236,7 +244,7 @@ void Vidyut::Evolve()
                     //ions
                     if(plasmachem::get_charge(ind)!=0)
                     {
-                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src,
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, surface_rxn_src,
                                                      expl_src, ion_bc_lo, ion_bc_hi, cur_time);
                         
                         implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
@@ -245,8 +253,8 @@ void Vidyut::Evolve()
                     //neutrals
                     else
                     {
-                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, expl_src, 
-                                                     neutral_bc_lo, neutral_bc_hi, cur_time);
+                        update_explsrc_at_all_levels(ind, Sborder, flux, rxn_src, surface_rxn_src, 
+                                                     expl_src, neutral_bc_lo, neutral_bc_hi, cur_time);
 
                         implicit_solve_scalar(cur_time, dt_common, ind, Sborder, Sborder_old,
                                               expl_src,neutral_bc_lo,neutral_bc_hi, grad_fc);

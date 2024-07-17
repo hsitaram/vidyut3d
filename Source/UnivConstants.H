@@ -7,7 +7,8 @@
 #define P_NTP 101325.0 //pressure at normal pressure and temperature
 #define T_NTP 293.15  //temperature at normal pressure and temperature
 #define FARADCONST 96485.332
-#define GASCONST   8.31446261815324
+#define GASCONST   8.31446261815324   // R in units of J/mol-K
+#define EVGASCONST 8.6173303e-5       // R in units of eV/K
 #define ECHARGE    1.60217662e-19
 #define EPS0       8.854187817e-12
 #define eV (ECHARGE/K_B)
@@ -15,6 +16,7 @@
 #define ME 9.10938188e-31 //electron mass
 #define M_AMU 1.66054e-27 //atomic mass units
 #define TDUNIT 1e-21 //townsend in V m2
+#define HBAR 1.054571817e-34  // Reduced Planck's constant (J-s)
 #define fivebythree (5.0/3.0)
 #define twothird (2.0/3.0)
 #endif

@@ -306,11 +306,13 @@ void Vidyut::ReadParameters()
         pp.query("min_species_density",min_species_density);
         pp.query("min_electron_density",min_electron_density);
         pp.query("min_electron_temp",min_electron_temp);
+        pp.query("min_surface_species_density",min_surface_species_density);
         pp.query("elecenergy_solve",elecenergy_solve);
         pp.query("hyp_order",hyp_order);
         pp.query("do_reactions",do_reactions);
         pp.query("do_transport",do_transport);
         pp.query("do_spacechrg",do_spacechrg);
+        pp.query("do_surface_reactions",do_surface_reactions);
         pp.query("user_defined_potential", user_defined_potential);
         pp.query("user_defined_species", user_defined_species);
         pp.query("user_defined_vel", user_defined_vel);
@@ -319,6 +321,27 @@ void Vidyut::ReadParameters()
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);
         pp.queryarr("bg_species_ids",bg_specid_list);
+        pp.queryarr("surface_species_ids",surface_specid_list);
+
+        pp.query("reactor_scaling", reactor_scaling);
+        // 1 for simple reactor scaling, 2 for reactor scaling as discussed in Maitre et al., J. Phys. Chem. C., 2022
+        if(reactor_scaling == 1){  
+            pp.get("pellet_r", reactor_r_outer);
+            catalysis_scale = 3.0/pellet_r;
+        } else if(reactor_scaling == 2){
+            pp.get("reactor_r_inner", reactor_r_inner);
+            pp.get("reactor_r_outer", reactor_r_outer);
+            pp.get("reactor_h", reactor_h);
+            pp.get("reactor_void", reactor_void);
+            pp.get("pellet_porosity", pellet_porosity);
+            pp.get("pellet_density", pellet_density);
+            pp.get("pellet_spec_area", pellet_spec_area);
+
+            reactor_V = PI*(reactor_r_outer - reactor_r_inner) * reactor_h;
+            void_total_V = (reactor_void*reactor_V) + (1.0 - reactor_void)*pellet_porosity*reactor_V;
+            pellet_area = pellet_density*(1.0 - reactor_void)*reactor_V*pellet_spec_area;
+            catalysis_scale = pellet_area/void_total_V;
+        }
 
         if(hyp_order==1) //first order upwind
         {

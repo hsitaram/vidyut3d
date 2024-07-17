@@ -17,6 +17,7 @@
 void Vidyut::compute_dsdt(int lev, int specid, 
                             Array<MultiFab,AMREX_SPACEDIM>& flux, 
                             MultiFab& rxn_src,
+                            MultiFab& surface_rxn_src,
                             MultiFab& dsdt,
                             Real time, Real dt)
 {
@@ -34,6 +35,7 @@ void Vidyut::compute_dsdt(int lev, int specid,
         const Box& bx = mfi.tilebox();
 
         Array4<Real> rxn_arr = rxn_src.array(mfi);
+        Array4<Real> surface_rxn_arr = surface_rxn_src.array(mfi);
         Array4<Real> dsdt_arr = dsdt.array(mfi);
 
         GpuArray<Array4<Real>, AMREX_SPACEDIM> flux_arr{
@@ -42,14 +44,39 @@ void Vidyut::compute_dsdt(int lev, int specid,
 
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
-            dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
-            + rxn_arr(i,j,k,captured_specid);
+
+            // Check if surface or gas-phase species
+            bool surfflag=false;
+            auto it=std::find(surface_specid_list.begin(),surface_specid_list.end(),specid);
+            if(it != surface_specid_list.end())
+            {
+              surfflag=true;
+            }
+
+            if(surfflag){
+                // Add on surface production rate, either 1/m2-s, or 1/m3-s if using 0D reactor scaling
+                if(reactor_scaling){
+                    dsdt_arr(i,j,k) = surface_rxn_arr(i,j,k,captured_specid)*catalysis_scale;
+                } else {
+                    dsdt_arr(i,j,k) = surface_rxn_arr(i,j,k,captured_specid);
+                }
+            
+            } else {
+                dsdt_arr(i, j, k) = (flux_arr[0](i, j, k) - flux_arr[0](i + 1, j, k)) / dx[0] 
+                + rxn_arr(i,j,k,captured_specid);
 #if AMREX_SPACEDIM > 1
-            dsdt_arr(i,j,k) += (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1];
+                dsdt_arr(i,j,k) += (flux_arr[1](i, j, k) - flux_arr[1](i, j + 1, k)) / dx[1];
 #if AMREX_SPACEDIM == 3
-            dsdt_arr(i,j,k) += (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2]; 
+                dsdt_arr(i,j,k) += (flux_arr[2](i, j, k) - flux_arr[2](i, j, k + 1)) / dx[2]; 
 #endif
 #endif
+                // Add on surface reactive source (1/m3-s)
+                if(reactor_scaling){
+                    dsdt_arr(i,j,k) += surface_rxn_arr(i,j,k,captured_specid)*catalysis_scale;
+                } else {
+                    dsdt_arr(i,j,k) += surface_rxn_arr(i,j,k,captured_specid)/dx[0];
+                }
+            }
         });
     }
 }
@@ -57,6 +84,7 @@ void Vidyut::compute_dsdt(int lev, int specid,
 void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
                                             Vector<MultiFab>& rxn_src, 
+                                            Vector<MultiFab>& surface_rxn_src, 
                                             Vector<MultiFab>& expl_src, 
                                             Vector<int>& bc_lo, Vector<int>& bc_hi,
                                             amrex::Real cur_time)
@@ -96,8 +124,8 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
     for(int lev=0;lev<=finest_level;lev++)
     {
         //FIXME: need to avoid this fillpatch
-        compute_dsdt(lev, specid, 
-                     flux[lev], rxn_src[lev], expl_src[lev], 
+        compute_dsdt(lev, specid, flux[lev], rxn_src[lev], 
+                     surface_rxn_src[lev], expl_src[lev], 
                      cur_time, dt[lev]);
     }
 
@@ -162,6 +190,93 @@ void Vidyut::update_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
                  prob_lo, prob_hi, dx, time, *localprobparm,
                  captured_gastemp,
                  captured_gaspres);
+            });
+        }
+    }
+}
+
+void Vidyut::update_surface_rxnsrc_at_all_levels(Vector<MultiFab>& Sborder,
+                                         Vector<MultiFab>& surface_rxn_src,
+                                         Vector<int>& bc_lo,
+                                         Vector<int>& bc_hi,
+                                         amrex::Real cur_time)
+{
+    amrex::Real time = cur_time;
+    ProbParm const* localprobparm = d_prob_parm;
+
+    for(int lev=0;lev<=finest_level;lev++)
+    {
+        amrex::Real captured_gastemp=gas_temperature;
+        amrex::Real captured_gaspres=gas_pressure;
+        const auto dx = geom[lev].CellSizeArray();
+        auto prob_lo = geom[lev].ProbLoArray();
+        auto prob_hi = geom[lev].ProbHiArray();
+
+        // Get the boundary ids
+        const int* domlo_arr = geom[lev].Domain().loVect();
+        const int* domhi_arr = geom[lev].Domain().hiVect();
+
+        for (MFIter mfi(surface_rxn_src[lev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            const Box& gbx = amrex::grow(bx, 1);
+
+            Array4<Real> sborder_arr = Sborder[lev].array(mfi);
+            Array4<Real> surface_rxn_arr = surface_rxn_src[lev].array(mfi);
+
+            // update residual
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                amrex::Real spec_C[NUM_SPECIES];
+                amrex::Real spec_wdot_surface[NUM_SPECIES];
+                for(int sp=0; sp<NUM_SPECIES; sp++) {
+                    bool surfflag=false;
+                    auto it=std::find(surface_specid_list.begin(),surface_specid_list.end(),sp);
+                    if(it != surface_specid_list.end())
+                    {
+                      surfflag=true;
+                    }
+
+                    if(surfflag){
+                        spec_C[sp] = sborder_arr(i,j,k,sp);
+                        if(reactor_scaling){
+                            // convert 1/m3 to 1/m2 using the scaling factor
+                            spec_C[sp] /= catalysis_scale; 
+                        }
+                        // Convert from 1/m2 to mol/cm2
+                        spec_C[sp] = sborder_arr(i,j,k,sp) * 1.0e-4 / N_A;
+                    } else {
+                        // Convert from 1/m3 to mol/cm3
+                        spec_C[sp] = sborder_arr(i,j,k,sp) * 1.0e-6 / N_A;
+                    }
+                }
+
+                // Check for catalyst BCs in x-dir
+                if((i==domlo_arr[0] && bc_lo[0]==CATBC) || (i==domhi_arr[0] && bc_hi[0]==CATBC))
+                {
+                    // Calculate surface reaction production rates
+                    SKWC(captured_gastemp, spec_C, spec_wdot_surface);
+
+                    // Convert from mol/cm2-s to 1/m2-s
+                    for(int sp = 0; sp<NUM_SPECIES; sp++) surface_rxn_arr(i,j,k,sp) = spec_wdot_surface[sp] * N_A * 1.0e4;
+                }
+                // Check for catalyst BCs in y-dir
+                if((j==domlo_arr[1] && bc_lo[1]==CATBC) || (j==domhi_arr[1] && bc_hi[1]==CATBC))
+                {
+                    // Calculate surface reaction production rates
+                    SKWC(captured_gastemp, spec_C, spec_wdot_surface);
+
+                    // Convert from mol/cm2-s to 1/m2-s
+                    for(int sp = 0; sp<NUM_SPECIES; sp++) surface_rxn_arr(i,j,k,sp) = spec_wdot_surface[sp] * N_A * 1.0e4;
+                }
+                // Check for catalyst BCs in z-dir
+                if((k==domlo_arr[2] && bc_lo[2]==CATBC) || (k==domhi_arr[2] && bc_hi[2]==CATBC))
+                {
+                    // Calculate surface reaction production rates
+                    SKWC(captured_gastemp, spec_C, spec_wdot_surface);
+
+                    // Convert from mol/cm2-s to 1/m2-s
+                    for(int sp = 0; sp<NUM_SPECIES; sp++) surface_rxn_arr(i,j,k,sp) = spec_wdot_surface[sp] * N_A * 1.0e4;
+                }
             });
         }
     }
@@ -297,7 +412,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
 
     // FIXME: add these as inputs
     int max_coarsening_level = linsolve_max_coarsening_level;
-    int linsolve_verbose = 1;
+    int linsolve_verbose = 0;
     int captured_spec_id=spec_id;
     int electron_flag=(spec_id==E_IDX)?1:0;
     int electron_energy_flag=(spec_id==EEN_ID)?1:0;
@@ -357,7 +472,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         {
             bc_linsolve_lo[idim] = LinOpBCType::Neumann;
         }
-        if (bc_lo[idim] == IHNEUBC)
+        if (bc_lo[idim] == IHNEUBC || bc_lo[idim] == CATBC)
         {
             bc_linsolve_lo[idim] = LinOpBCType::inhomogNeumann;
         }
@@ -380,7 +495,7 @@ void Vidyut::implicit_solve_scalar(Real current_time, Real dt, int spec_id,
         {
             bc_linsolve_hi[idim] = LinOpBCType::Neumann;
         }
-        if (bc_hi[idim] == IHNEUBC)
+        if (bc_hi[idim] == IHNEUBC || bc_hi[idim] == CATBC)
         {
             bc_linsolve_hi[idim] = LinOpBCType::inhomogNeumann;
         }

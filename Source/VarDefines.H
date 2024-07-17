@@ -20,5 +20,6 @@
 #define HNEUBC 2
 #define IHNEUBC 3
 #define ROBINBC 4
+#define CATBC 5
 
 #endif
