@@ -103,7 +103,7 @@ void Vidyut::update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
 
     // Additional source terms for axisymmetric geometry
     if(geom[0].IsRZ()){
-        for (int lev = finest_level; lev > 0; lev--)
+        for (int lev = 0; lev <= finest_level; lev++)
         {
             compute_axisym_correction(lev, Sborder[lev], expl_src[lev], cur_time, specid);   
         }
