@@ -180,6 +180,8 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
     int captured_specid = specid;
     //class member variable
     int captured_hyporder = hyp_order; 
+    int captured_wenoscheme = weno_scheme;
+    int userdefvel = user_defined_vel;
 
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
@@ -195,7 +197,6 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
     GpuArray<int,AMREX_SPACEDIM> bclo={AMREX_D_DECL(bc_lo[0], bc_lo[1], bc_lo[2])};
     GpuArray<int,AMREX_SPACEDIM> bchi={AMREX_D_DECL(bc_hi[0], bc_hi[1], bc_hi[2])};
 
-    int userdefvel = user_defined_vel;
 
 #ifdef _OPENMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
@@ -227,7 +228,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[0], 
                              captured_gastemp,captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             userdefvel); 
+                             userdefvel,weno_scheme); 
             });
 
 #if AMREX_SPACEDIM > 1
@@ -236,7 +237,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[1], 
                              captured_gastemp,captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             userdefvel); 
+                             userdefvel,weno_scheme); 
             });
 
 #if AMREX_SPACEDIM == 3
@@ -245,7 +246,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[2], 
                              captured_gastemp, captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             userdefvel);
+                             userdefvel,weno_scheme);
             });
 #endif
 #endif

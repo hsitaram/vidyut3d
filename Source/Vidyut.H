@@ -202,6 +202,7 @@ public:
     int bound_specden=0;
     int hyp_order=1;
     int ngrow_for_fillpatch=2;
+    int weno_scheme=1;
 
     // Include physics
     int elecenergy_solve=0;
