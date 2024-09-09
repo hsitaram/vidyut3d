@@ -319,6 +319,8 @@ void Vidyut::ReadParameters()
         pp.query("gas_temperature",gas_temperature);
         pp.query("gas_pressure",gas_pressure);
         pp.queryarr("bg_species_ids",bg_specid_list);
+        
+        pp.query("weno_scheme",weno_scheme);
 
         if(hyp_order==1) //first order upwind
         {
