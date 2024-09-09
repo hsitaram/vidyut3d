@@ -281,7 +281,7 @@ void Vidyut::compute_axisym_correction(int lev, MultiFab& Sborder,MultiFab& dsdt
           for (int dim = 0; dim < AMREX_SPACEDIM; dim++) Esum += std::pow(s_arr(i,j,k,EFX_ID+dim),2.0);
           amrex::Real efield_mag=std::sqrt(Esum);
           amrex::Real mu = specMob(specid, etemp, ndens, efield_mag,captured_gastemp);  
-          dsdt_arr(i,j,k,specid) -= mu * s_arr(i,j,k,specid) * s_arr(i,j,k,EFX_ID) / rval;
+          dsdt_arr(i,j,k) -= mu * s_arr(i,j,k,specid) * s_arr(i,j,k,EFX_ID) / rval;
         });
     }
 }

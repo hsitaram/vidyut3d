@@ -12,12 +12,13 @@ using namespace amrex;
 
 #define heps 1.0e-30
 
+//===========================================================================
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE amrex::Real 
-        gk(amrex::Real wk,amrex::Real gama_k)
+gk(amrex::Real wk,amrex::Real gama_k)
 {
     amrex::Real gkval=wk*(gama_k+gama_k*gama_k
                           -3.0*gama_k*wk+wk*wk)
-                        /(gama_k*gama_k+wk*(1-2.0*gama_k));
+    /(gama_k*gama_k+wk*(1-2.0*gama_k));
     return(gkval);
 }
 //===========================================================================
@@ -26,6 +27,12 @@ AMREX_FORCE_INLINE
 amrex::Real weno(amrex::Real phi_im2,amrex::Real phi_im1,amrex::Real phi_i,
                  amrex::Real phi_ip1,amrex::Real phi_ip2,int scheme=1)
 {
+
+    //see description of all flavors of WENO here
+    //Rathan, Samala, and G. Naga Raju. "A modified fifth-order WENO scheme 
+    //for hyperbolic conservation laws." Computers & Mathematics with 
+    //Applications 75.5 (2018): 1531-1549.
+
     amrex::Real eps=1e-20;
 
     amrex::Real phi_iphalf_1 = (1.0/3.0)*phi_im2 - (7.0/6.0)*phi_im1 + (11.0/6.0)*phi_i;
@@ -106,29 +113,28 @@ amrex::Real weno(amrex::Real phi_im2,amrex::Real phi_im1,amrex::Real phi_i,
 //====================================================================
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
-void
-weno_reconstruct(amrex::Real uim2,
-                 amrex::Real uim1,
-                 amrex::Real ui,
-                 amrex::Real uip1,
-                 amrex::Real uip2,
-                 amrex::Real uip3,
-                 amrex::Real &umhalf,
-                 amrex::Real &uphalf,
-                 int weno_scheme)
+void weno_reconstruct(amrex::Real uim2,
+                      amrex::Real uim1,
+                      amrex::Real ui,
+                      amrex::Real uip1,
+                      amrex::Real uip2,
+                      amrex::Real uip3,
+                      amrex::Real &umhalf,
+                      amrex::Real &uphalf,
+                      int weno_scheme)
 {
     uphalf=weno(uim2,uim1,ui,uip1,uip2,weno_scheme);
     umhalf = weno(uip3,uip2,uip1,ui,uim1,weno_scheme);
 }
 //====================================================================
-//MINBEE vesion of limiter for
-//WAF scheme, see page 502, 
-//Toro's Riemann solver textbook
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE 
 amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
                           amrex::Real diff_mid,
                           amrex::Real diff_right)
 {
+    //MINBEE vesion of limiter for
+    //WAF scheme, see page 502, 
+    //Toro's Riemann solver textbook
     amrex::Real r,lim;
     r=0.0;
     r=(c>=0.0)?diff_left/(diff_mid+heps):diff_right/(diff_mid+heps);
@@ -152,14 +158,16 @@ amrex::Real get_slope_lim(amrex::Real c,amrex::Real diff_left,
     }
     return(lim);
 }
-//See TVD Version of WAF schemes
-//Page 501, Toro's Riemann solver texbook
+//====================================================================
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 amrex::Real get_secondorder_WAF_flux(amrex::Real vel_L,amrex::Real vel_R,
                                      amrex::Real phi_Lm1,amrex::Real phi_L,
                                      amrex::Real phi_R,amrex::Real phi_Rp1,
                                      amrex::Real dx, amrex::Real dt)
 {
+    //See TVD Version of WAF schemes
+    //Page 501, Toro's Riemann solver texbook
+
     amrex::Real diff_left=phi_L-phi_Lm1;
     amrex::Real diff_mid=phi_R-phi_L;
     amrex::Real diff_right=phi_Rp1-phi_R;
@@ -175,6 +183,7 @@ amrex::Real get_secondorder_WAF_flux(amrex::Real vel_L,amrex::Real vel_R,
 
     return(flux);
 }
+//====================================================================
 AMREX_GPU_DEVICE AMREX_FORCE_INLINE
 amrex::Real get_firstorder_upwind_flux(amrex::Real vel_L,amrex::Real vel_R,
                                        amrex::Real phi_L,amrex::Real phi_R)
@@ -187,7 +196,7 @@ amrex::Real get_firstorder_upwind_flux(amrex::Real vel_L,amrex::Real vel_R,
     + fR *  0.5 * (1.0 - vel_sgn);
     return(flux);
 }
-
+//====================================================================
 AMREX_GPU_DEVICE
 AMREX_FORCE_INLINE
 void compute_flux(
@@ -262,7 +271,7 @@ void compute_flux(
         right2[sweepdir] += 2;
 
         amrex::Real vel_Lm1, vel_Lm2, vel_Rp1, vel_Rp2;
-        
+
         if(user_defined_vel == 1){
             vel_Lm1 = user_transport::compute_vel(left1,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
             vel_Lm2 = user_transport::compute_vel(left2,sweepdir,specid,phi,dx,time,prob_parm,Tg,Pg);
@@ -281,7 +290,7 @@ void compute_flux(
         amrex::Real ur=phi(right,specid);
         amrex::Real urp1=phi(right1,specid);
         amrex::Real urp2=phi(right2,specid);
-        
+
         amrex::Real flm2=ulm2*vel_Lm2;
         amrex::Real flm1=ulm1*vel_Lm1;
         amrex::Real fl=ul*vel_L;
@@ -315,4 +324,5 @@ void compute_flux(
         fx(face)=0.0;
     }
 }
+//====================================================================
 #endif
