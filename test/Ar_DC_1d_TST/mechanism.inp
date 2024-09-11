@@ -1,0 +1,23 @@
+! Argon-CO2 plasma mechanism
+ELEMENTS
+E  AR
+END
+SPECIES
+E   AR  ARm   ARp
+END
+!THERMO
+!END
+TRANS ALL
+E                  0   850.        425.      0.000     0.000     1.000
+AR                 0   136.500     3.330     0.000     0.000     0.000
+ARm                0   136.500     3.330     0.000     0.000     0.000
+ARp                0   136.500     3.330     0.000     0.000     0.000
+END
+REACTIONS
+E+AR=>E+ARm                          7.07481107e15             0.0   0.0
+E+AR=>2E+ARp                         4.25813536e13             0.0   0.0
+E+ARm=>2E+ARp                        7.50117865e16            0.0   0.0
+ARm+ARm=>E+AR+ARp                    3.73372733e14             0.0   0.0
+E+ARm=>E+AR                          1.20442817e17            0.0   0.0
+AR+ARm=>AR+AR                        1.5055352e9              0.0   0.0
+END
