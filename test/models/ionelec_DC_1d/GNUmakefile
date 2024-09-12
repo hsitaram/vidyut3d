@@ -1,5 +1,5 @@
-VIDYUT_DIR ?= ../../
-AMREX_HOME ?= ../../amrex
+VIDYUT_DIR ?= ../../../
+AMREX_HOME ?= ../../../../amrex
 
 PRECISION  = DOUBLE
 PROFILE    = FALSE
@@ -7,8 +7,8 @@ PROFILE    = FALSE
 DEBUG      = TRUE
 DEBUG      = FALSE
 
-#DIM        = 2
-DIM       = 3
+DIM        = 2
+#DIM       = 3
 
 COMP	   = gnu
 
