@@ -24,7 +24,7 @@ amr.regrid_int      = 5       # how often to regrid
 # TIME STEP CONTROL
 vidyut.dt             = 1e-13
 vidyut.num_timestep_correctors = 2
-vidyut.hyp_order = 2
+vidyut.hyp_order = 5
 
 # Voltage settings
 vidyut.voltage_amp_1=0.0

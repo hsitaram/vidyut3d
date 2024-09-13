@@ -85,7 +85,9 @@ public:
         Real time, Real dt);
 
     void solve_potential(Real current_time, Vector<MultiFab>& Sborder, 
-                         Vector<int>& bc_lo, Vector<int>& bc_hi);
+                         Vector<int>& bc_lo, Vector<int>& bc_hi,
+                         Vector<Array<MultiFab,AMREX_SPACEDIM>>& efield_ec);
+
 
     void update_explsrc_at_all_levels(int specid, Vector<MultiFab>& Sborder,
                                             Vector<Array<MultiFab,AMREX_SPACEDIM>>& flux,
@@ -107,6 +109,7 @@ public:
     void compute_elecenergy_source(int lev, 
                             MultiFab& Sborder, 
                             MultiFab& rxnsrc, 
+                            Array<MultiFab,AMREX_SPACEDIM>& efield,
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt);
