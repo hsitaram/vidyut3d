@@ -28,4 +28,4 @@ Vidyut is a massively-parallel plasma-fluid solver for low-temperature plasmas (
 
 * The outputs for a case are in the form of AMReX plotfiles
 * These plot files can be open using AMReX grid reader in ParaView (see https://amrex-codes.github.io/amrex/docs_html/Visualization.html#paraview)
-* Alternatively visit can be used after converting to vtp format. see https://amrex-codes.github.io/amrex/docs_html/Visualization_Chapter.html
+* Alternatively visit can be used. see https://amrex-codes.github.io/amrex/docs_html/Visualization_Chapter.html
