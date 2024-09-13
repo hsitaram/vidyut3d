@@ -1,5 +1,5 @@
-VIDYUT_DIR ?= ../../
-AMREX_HOME ?= ../../amrex
+VIDYUT_DIR ?= ../../../
+AMREX_HOME ?= ../../../../amrex
 
 PRECISION  = DOUBLE
 PROFILE    = FALSE
@@ -7,11 +7,12 @@ PROFILE    = FALSE
 DEBUG      = TRUE
 DEBUG      = FALSE
 
-DIM       = 2
+DIM        = 2
+#DIM       = 3
 
-COMP	   = llvm
+COMP	   = gnu
 
-USE_MPI    = FALSE
+USE_MPI    = TRUE
 USE_OMP    = FALSE 
 USE_CUDA   = FALSE
 
