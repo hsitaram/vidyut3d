@@ -324,7 +324,7 @@ wdot[3] += qdot;
 int rxntype = 2;
 amrex::Real eexci = 16.0;
 int elidx = 0;
-comp_ener_exch(qf, qr, sc, k_f, rxntype, eexci, elidx, enerExch, Ue, T, Te);
+comp_ener_exch(qf, qr, sc, k_f, rxntype, ee xci, elidx, enerExch, Ue, T, Te);
 }
 
 {

@@ -1,12 +1,12 @@
 max_step  = 2000000
-stop_time = 2e-8
+stop_time = 1e-7
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0  0  1
 geometry.coord_sys   =  1       # 0 => cart
 geometry.prob_lo     =  0.0   0.0     0.0 
-geometry.prob_hi     =  0.0125   0.0125 3.90625e-4
-amr.n_cell           =   2048  2048  4
+geometry.prob_hi     =  0.005   0.005 3.90625e-4
+amr.n_cell           =   256  256  4
 
 #use 4 cells minimum for hyp_order 5
 #other wise we wont have enough ghost cells 
@@ -31,7 +31,7 @@ vidyut.hyp_order = 5
 
 # Voltage settings
 vidyut.voltage_amp_1=0.0
-vidyut.voltage_amp_2=18.75e3
+vidyut.voltage_amp_2=7.0e3
 
 vidyut.user_defined_potential = 1
 vidyut.user_defined_species = 1
@@ -74,7 +74,7 @@ amr.plot_int   = 1000     # number of timesteps between plot files
 
 # CHECKPOINT
 amr.chk_file = chk      # root name of checkpoint file
-amr.chk_int  = 1000       # number of timesteps between checkpoint files
+amr.chk_int  = 50000       # number of timesteps between checkpoint files
 
 vidyut.bound_specden=1
 vidyut.min_species_density=1e0
@@ -82,10 +82,11 @@ vidyut.min_species_density=1e0
 vidyut.linsolve_maxiter=1000
 #vidyut.linsolve_reltol=1e-9
 vidyut.bg_species_ids=1
+vidyut.elecenergy_solve=1
 
 # PROB SPECIFIC
 prob.loc_x=0.0
-prob.loc_y=1.0e-2
+prob.loc_y=3.8e-3
 prob.loc_z=1.5625e-3
 prob.rad=0.4e-3
 prob.ampl=5e18
@@ -93,3 +94,4 @@ prob.bg=1e13
 prob.twod=1
 prob.nscale=1.0
 prob.potscale=1.0
+
