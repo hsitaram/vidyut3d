@@ -9,3 +9,5 @@ clean
 notes
 slurm_vidyut
 *.dat
+env_*
+.gitignore
