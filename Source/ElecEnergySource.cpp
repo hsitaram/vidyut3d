@@ -16,6 +16,7 @@
 void Vidyut::compute_elecenergy_source(int lev, 
                             MultiFab& Sborder, 
                             MultiFab& rxnsrc, 
+                            Array<MultiFab,AMREX_SPACEDIM>& efield, 
                             Array<MultiFab,AMREX_SPACEDIM>& gradne, 
                             MultiFab& dsdt,
                             Real time, Real dt)
@@ -53,6 +54,11 @@ void Vidyut::compute_elecenergy_source(int lev,
         gradne_arr{AMREX_D_DECL(gradne[0].array(mfi), 
                                 gradne[1].array(mfi), 
                                 gradne[2].array(mfi))};
+
+        GpuArray<Array4<Real>, AMREX_SPACEDIM>
+        ef_arr{AMREX_D_DECL(efield[0].array(mfi),
+                            efield[1].array(mfi),
+                            efield[2].array(mfi))};
 
         // update residual
         amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
@@ -116,7 +122,7 @@ void Vidyut::compute_elecenergy_source(int lev,
                               + sborder_arr(rcell,eidx));
 
                     //efield_face=ef_arr[idim](face);
-                    efield_face=efieldvec_face[idim];
+                    efield_face = (cs_technique) ? efieldvec_face[idim] : ef_arr[idim](face);
                     gradne_face=gradne_arr[idim](face);
 
                     amrex::Real ndens = 0.0;
