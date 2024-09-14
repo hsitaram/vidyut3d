@@ -1,0 +1,12 @@
+Backtrace*
+plt*
+chk*
+stdout
+stderr
+*.ex
+tmp_build_dir
+clean
+notes
+slurm_vidyut
+*.dat
+env_*
