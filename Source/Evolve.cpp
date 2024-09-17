@@ -30,6 +30,12 @@ void Vidyut::Evolve()
     amrex::Real dt_edrift,dt_ediff,dt_diel_relax;
     amrex::Real dt_edrift_lev,dt_ediff_lev,dt_diel_relax_lev;
 
+#ifdef AMREX_USE_EB
+    // Generate levelset data across the entire domain for the finest level 
+    // TODO: should this live somewhere else?
+    EBtools::init_eb(geom[0], grids[0], dmap[0], max_level, phi_new[0].nGrow());
+#endif
+
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)
     {
         amrex::Print() << "\nCoarse STEP " << step + 1 << " starts ..." << std::endl;
@@ -147,7 +153,6 @@ void Vidyut::Evolve()
             rxn_src[lev].define(grids[lev], dmap[lev], NUM_SPECIES+1, 0);
             rxn_src[lev].setVal(0.0);
         }
-               
 
         for(int niter=0;niter<num_timestep_correctors;niter++)
         {

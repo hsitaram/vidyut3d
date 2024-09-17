@@ -18,7 +18,9 @@
 #include <AMReX_MLABecLaplacian.H>
 #include <UnivConstants.H>
 #include <VarDefines.H>
-
+#ifdef AMREX_USE_EB
+#include <EB.H>
+#endif
 
 using namespace amrex;
 
