@@ -1,0 +1,14 @@
+#amrex.fpe_trap_invalid=1
+
+n_cell = 32 32 32
+max_grid_size = 32
+prob_lo=0.0 0.0 0.0
+prob_hi=1.0 1.0 1.0
+is_periodic=0 0 0
+
+#0 periodic
+#1 dirichlet
+#2 homogenous neumann
+#3 inhomogenous neumann
+lo_bc=1 1 1
+hi_bc=1 1 1 
