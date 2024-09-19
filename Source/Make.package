@@ -5,5 +5,4 @@ CEXE_headers += Vidyut.H Tagging.H BCfill.H Constants.H UnivConstants.H VarDefin
 CEXE_headers += compute_explicit_flux.H PlasmaChem.H HelperFuncs.H
 ifeq ($(USE_EB),TRUE)
   CEXE_sources += EB.cpp
-  CEXE_headers += EB.H
 endif

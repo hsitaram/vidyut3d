@@ -33,7 +33,7 @@ void Vidyut::Evolve()
 #ifdef AMREX_USE_EB
     // Generate levelset data across the entire domain for the finest level 
     // TODO: should this live somewhere else?
-    EBtools::init_eb(geom[0], grids[0], dmap[0], max_level, phi_new[0].nGrow());
+    init_eb(geom[0], grids[0], dmap[0], max_level, phi_new[0].nGrow());
 #endif
 
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step)

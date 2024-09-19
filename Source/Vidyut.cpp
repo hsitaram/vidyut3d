@@ -71,7 +71,10 @@ Vidyut::Vidyut()
 
     phi_new.resize(nlevs_max);
     phi_old.resize(nlevs_max);
-    
+#ifdef AMREX_USE_EB
+    lsphi.resize(nlevs_max);
+#endif
+
     ParmParse pp("vidyut");
     pp.queryarr("pot_bc_lo", pot_bc_lo, 0, AMREX_SPACEDIM);
     pp.queryarr("pot_bc_hi", pot_bc_hi, 0, AMREX_SPACEDIM);

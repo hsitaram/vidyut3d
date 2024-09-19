@@ -18,9 +18,6 @@
 #include <AMReX_MLABecLaplacian.H>
 #include <UnivConstants.H>
 #include <VarDefines.H>
-#ifdef AMREX_USE_EB
-#include <EB.H>
-#endif
 
 using namespace amrex;
 
@@ -142,6 +139,13 @@ public:
     // after advancing a level we use "swap".
     amrex::Vector<amrex::MultiFab> phi_new;
     amrex::Vector<amrex::MultiFab> phi_old;
+
+    // MFs for storing levelset data
+#ifdef AMREX_USE_EB
+    amrex::Vector<amrex::MultiFab> lsphi;
+    amrex::EBFArrayBoxFactory* ebfactory;
+    bool using_levelset_geometry;
+#endif
 
     // this is essentially a 2*DIM integer array storing the physical boundary
     // condition types at the lo/hi walls in each direction
@@ -320,6 +324,11 @@ private:
 
     // Creates monitor file showing the maximum domain value of all variables 
     void WriteMonitorFile(amrex::Real time);
+
+#ifdef AMREX_USE_EB
+    void init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,
+                 const amrex::DistributionMapping &dm, int max_lev, int nghost);
+#endif
 
 };
 
