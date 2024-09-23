@@ -141,12 +141,8 @@ public:
     amrex::Vector<amrex::MultiFab> phi_old;
 
     // MFs for storing levelset data and other IB variables
+    amrex::Vector<std::unique_ptr<amrex::FabFactory<amrex::FArrayBox>>> ebfactory;
 #ifdef AMREX_USE_EB
-
-    amrex::Vector<std::unique_ptr<amrex::EBFArrayBoxFactory>> ebfactory;
-
-
-    amrex::Vector<amrex::MultiFab> lsphi;
     bool using_levelset_geometry;
     amrex::Real vp_perm = 1e-4;
     amrex::Vector<amrex::Real> vp_eps;
@@ -335,8 +331,8 @@ private:
     void WriteMonitorFile(amrex::Real time);
 
 #ifdef AMREX_USE_EB
-    void init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,
-                 const amrex::DistributionMapping &dm, int max_lev, int nghost);
+    // Initializes the EB geometry
+    void init_eb();
 
     // static_cast factory into ebfactory
     amrex::EBFArrayBoxFactory const& EBFactory(int lev) const noexcept

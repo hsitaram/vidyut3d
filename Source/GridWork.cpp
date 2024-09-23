@@ -19,8 +19,8 @@ void Vidyut::MakeNewLevelFromCoarse(int lev, Real time, const BoxArray& ba, cons
     const int ncomp = phi_new[lev - 1].nComp();
     const int nghost = phi_new[lev - 1].nGrow();
 
-    phi_new[lev].define(ba, dm, ncomp, nghost);
-    phi_old[lev].define(ba, dm, ncomp, nghost);
+    phi_new[lev].define(ba, dm, ncomp, nghost, MFInfo(), *ebfactory[lev]);
+    phi_old[lev].define(ba, dm, ncomp, nghost, MFInfo(), *ebfactory[lev]);
 
     t_new[lev] = time;
     t_old[lev] = time - 1.e200;
@@ -36,8 +36,8 @@ void Vidyut::RemakeLevel(int lev, Real time, const BoxArray& ba, const Distribut
     const int ncomp = phi_new[lev].nComp();
     const int nghost = phi_new[lev].nGrow();
 
-    MultiFab new_state(ba, dm, ncomp, nghost);
-    MultiFab old_state(ba, dm, ncomp, nghost);
+    MultiFab new_state(ba, dm, ncomp, nghost, MFInfo(), *ebfactory[lev]);
+    MultiFab old_state(ba, dm, ncomp, nghost, MFInfo(), *ebfactory[lev]);
 
     FillPatch(lev, time, new_state, 0, ncomp);
 
@@ -64,8 +64,14 @@ void Vidyut::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, con
     const int nghost = 0;
     int ncomp = NVAR;
 
-    phi_new[lev].define(ba, dm, ncomp, nghost);
-    phi_old[lev].define(ba, dm, ncomp, nghost);
+#ifdef AMREX_USE_EB
+    ebfactory[lev] = makeEBFabFactory(geom[lev], ba, dm, {6, 6, 6}, EBSupport::full);
+#else
+    ebfactory[lev] = std::make_unique<FArrayBoxFactory>();
+#endif
+
+    phi_new[lev].define(ba, dm, ncomp, nghost, MFInfo(), *ebfactory[lev]);
+    phi_old[lev].define(ba, dm, ncomp, nghost, MFInfo(), *ebfactory[lev]);
 
     t_new[lev] = time;
     t_old[lev] = time - 1.e200;
@@ -88,6 +94,7 @@ void Vidyut::MakeNewLevelFromScratch(int lev, Real time, const BoxArray& ba, con
     }
     
     amrex::MultiFab::Copy(phi_old[lev], phi_new[lev], 0, 0, ncomp, 0);
+
 }
 
 // set covered coarse cells to be the average of overlying fine cells

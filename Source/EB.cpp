@@ -16,7 +16,7 @@
 #include <AMReX_EB_utils.H>
 #include <Vidyut.H>
 
-void Vidyut::init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,const amrex::DistributionMapping &dm, int max_lev, int nghost)
+void Vidyut::init_eb()
 {
 
     // Initialize volume penalization and other complex geometry variables
@@ -25,19 +25,19 @@ void Vidyut::init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,const
         amrex::ParmParse pp("vidyut");
         pp.query("kind_of_geometry",geom_kind);
         
-        vp_eps.resize(max_lev+1);
-        dxmin.resize(max_lev+1);
-        dxmin2.resize(max_lev+1);
+        vp_eps.resize(max_level+1);
+        dxmin.resize(max_level+1);
+        dxmin2.resize(max_level+1);
 
         // Find minimum grid spacing to calculate epsilon at each level
-        const auto dx = geom.CellSizeArray();
+        const auto dx = geom[0].CellSizeArray();
         amrex::Real dxmin0 = amrex::min(AMREX_D_DECL(dx[0], dx[1], dx[2]));
         pp.query("vp_epsfact", vp_epsfact);
         pp.query("vp_perm", vp_perm);
         pp.query("vp_iter", vp_iter);
 
-        for(int ilev=0; ilev <= max_lev; ilev++){
-            dxmin[ilev] = dxmin0*(pow(2.0, ilev));
+        for(int ilev=0; ilev <= max_level; ilev++){
+            dxmin[ilev] = dxmin0/(pow(2.0, ilev));
             dxmin2[ilev] = pow(dxmin[ilev], 2.0);
             vp_eps[ilev] = 1.0 / dxmin[ilev] * vp_epsfact;
         }
@@ -45,8 +45,6 @@ void Vidyut::init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,const
 
     // Generate levelset data at the finest level
     // NOTE: IB implementation assumes refinement factor of 2 for each level
-    int ls_ref = 1;
-    int max_ref = 2*max_lev;
     if(geom_kind == "pins"){
 
         const int max_pin=2;
@@ -62,10 +60,10 @@ void Vidyut::init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,const
         const amrex::Real *problo,*probhi;
         amrex::Real maxlen;
 
-        problo=geom.ProbLo();
-        probhi=geom.ProbHi();
+        problo=geom[0].ProbLo();
+        probhi=geom[0].ProbHi();
 
-        maxlen=amrex::max(AMREX_D_DECL(geom.ProbLength(0),geom.ProbLength(1), geom.ProbLength(2)));
+        maxlen=amrex::max(AMREX_D_DECL(geom[0].ProbLength(0),geom[0].ProbLength(1), geom[0].ProbLength(2)));
 
         //setting pins to be way outside the domain initially
         for(int ipin=0;ipin<max_pin;ipin++)
@@ -118,24 +116,8 @@ void Vidyut::init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,const
         auto allpin_IF = amrex::EB2::makeUnion(*impfunc_cylinders[0],*impfunc_cylinders[1],*impfunc_spheres[0],*impfunc_spheres[1]);
         auto gshop = amrex::EB2::makeShop(allpin_IF);
 
-        //make domain finest for levelset
-        amrex::Box dom_ls_max = geom.Domain();
-        dom_ls_max.refine(max_ref);
-        amrex::Geometry geom_ls(dom_ls_max);
-
         // Build EB
-        amrex::EB2::Build(gshop, geom_ls, max_lev, max_lev);
-
-        // Create geometries covering whole domain for each level and create EBFabFactories
-        for(int ilev = 0; ilev <= max_lev; ilev++){
-            amrex::Box dom_ls = geom.Domain();
-            dom_ls.refine(ls_ref);
-            amrex::Geometry geom_ls(dom_ls);
-            amrex::BoxArray ba_ls = amrex::refine(ba, ls_ref);
-            amrex::DistributionMapping dm_ls{ba_ls};
-            ebfactory[ilev] = makeEBFabFactory(geom_ls, ba_ls, dm_ls, {nghost, nghost, nghost}, EBSupport::full);
-            ls_ref *= 2;
-        }
+        amrex::EB2::Build(gshop, geom[max_level], max_level, max_level);
     }
     else
     {

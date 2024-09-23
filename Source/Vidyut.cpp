@@ -13,6 +13,9 @@
 #include <ProbParm.H>
 #include <stdio.h>
 #include <VarDefines.H>
+#ifdef AMREX_USE_EB
+#include <AMReX_EBAmrUtil.H>
+#endif
 
 using namespace amrex;
 
@@ -72,8 +75,8 @@ Vidyut::Vidyut()
     phi_new.resize(nlevs_max);
     phi_old.resize(nlevs_max);
 #ifdef AMREX_USE_EB
-    lsphi.resize(nlevs_max);
     ebfactory.resize(nlevs_max);
+    init_eb();
 #endif
 
     ParmParse pp("vidyut");
@@ -151,7 +154,6 @@ void Vidyut::InitData()
         {
             WriteCheckpointFile(0);
         }
-
     } 
     else
     {
@@ -255,6 +257,9 @@ void Vidyut::ErrorEst(int lev, TagBoxArray& tags, Real time, int ngrow)
                 stategrad_based_refinement(i, j, k, tagfab, statefab, refine_phigrad_dat, refine_phi_comps_dat, ntagged_comps, tagval);
             });
         }
+#ifdef AMREX_USE_EB
+        TagCutCells(tags, phi_new[lev]);
+#endif
     }
 }
 
