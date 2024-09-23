@@ -73,6 +73,7 @@ Vidyut::Vidyut()
     phi_old.resize(nlevs_max);
 #ifdef AMREX_USE_EB
     lsphi.resize(nlevs_max);
+    ebfactory.resize(nlevs_max);
 #endif
 
     ParmParse pp("vidyut");
@@ -389,7 +390,6 @@ void Vidyut::ReadParameters()
 #ifdef AMREX_USE_HYPRE
         pp.query("use_hypre",use_hypre);
 #endif
-
     }
 }
 

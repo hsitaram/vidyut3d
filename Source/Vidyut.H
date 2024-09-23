@@ -140,11 +140,20 @@ public:
     amrex::Vector<amrex::MultiFab> phi_new;
     amrex::Vector<amrex::MultiFab> phi_old;
 
-    // MFs for storing levelset data
+    // MFs for storing levelset data and other IB variables
 #ifdef AMREX_USE_EB
+
+    amrex::Vector<std::unique_ptr<amrex::EBFArrayBoxFactory>> ebfactory;
+
+
     amrex::Vector<amrex::MultiFab> lsphi;
-    amrex::EBFArrayBoxFactory* ebfactory;
     bool using_levelset_geometry;
+    amrex::Real vp_perm = 1e-4;
+    amrex::Vector<amrex::Real> vp_eps;
+    amrex::Vector<amrex::Real> dxmin;
+    amrex::Vector<amrex::Real> dxmin2;
+    amrex::Real vp_epsfact = 1.0;
+    int vp_iter = 0;
 #endif
 
     // this is essentially a 2*DIM integer array storing the physical boundary
@@ -328,6 +337,12 @@ private:
 #ifdef AMREX_USE_EB
     void init_eb(const amrex::Geometry &geom,const amrex::BoxArray &ba,
                  const amrex::DistributionMapping &dm, int max_lev, int nghost);
+
+    // static_cast factory into ebfactory
+    amrex::EBFArrayBoxFactory const& EBFactory(int lev) const noexcept
+    {
+      return static_cast<amrex::EBFArrayBoxFactory const&>(*ebfactory[lev]);
+    }
 #endif
 
 };
