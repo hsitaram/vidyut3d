@@ -15,49 +15,51 @@ amrex::Real get_efield_alongdir(int i,int j,int k,int dir,
           const GpuArray<int,AMREX_SPACEDIM> domlo,
           const GpuArray<int,AMREX_SPACEDIM> domhi, 
           const GpuArray<Real,AMREX_SPACEDIM> dx, 
+#ifdef AMREX_USE_EB
+          Array4<const amrex::EBCellFlag>const &flag,
+#endif
           Array4<Real>const &s_arr)
 {
     IntVect cellid{AMREX_D_DECL(i, j, k)};
-    Real efield_dir=0.0;
+    IntVect ip1{AMREX_D_DECL(i,j,k)};
+    IntVect im1{AMREX_D_DECL(i,j,k)};
+    IntVect ip2{AMREX_D_DECL(i,j,k)};
+    IntVect im2{AMREX_D_DECL(i,j,k)};
+    ip1[dir]+=1;
+    im1[dir]-=1;
+    ip2[dir]+=2;
+    im2[dir]-=2;
 
-    if(cellid[dir]>domlo[dir] && cellid[dir]<domhi[dir])
-    {
-        IntVect ip1{AMREX_D_DECL(i,j,k)};
-        IntVect im1{AMREX_D_DECL(i,j,k)};
+    Real efield_dir=1.0e-10;
+    if(flag(cellid).isCovered()) return(efield_dir);
 
-        ip1[dir]+=1;
-        im1[dir]-=1;
-
-        efield_dir=-0.5*(s_arr(ip1,POT_ID)-s_arr(im1,POT_ID))/dx[dir];
+    int side = 0;
+    if(cellid[dir]==domlo[dir]) side = 1;
+    else if(cellid[dir]==domhi[dir]) side = -1;
+#ifdef AMREX_USE_EB
+    if(flag(im1).isCovered()) {
+        side = 1;
     }
-    else if(cellid[dir]==domlo[dir])
-    {
-        IntVect ip1{AMREX_D_DECL(i,j,k)};
-        IntVect ip2{AMREX_D_DECL(i,j,k)};
-        ip1[dir]+=1;
-        ip2[dir]+=2;
-    
-        //fdash = (-f_{i+2}+4f_{i+1}-3f_i)/(2 dx)
+    else if (flag(ip1).isCovered()) { 
+        side = -1;
+    }
+#endif
+
+    if(side == 0){
+        efield_dir=-0.5*(s_arr(ip1,POT_ID)-s_arr(im1,POT_ID))/dx[dir]; 
+    } else if(side == 1){
         if(domhi[dir] - domlo[dir] > 2){
-            efield_dir=-0.5*(  -s_arr(ip2,POT_ID) 
-                      + 4.0*s_arr(ip1,POT_ID)
-                      - 3.0*s_arr(cellid,POT_ID))/dx[dir];
+            efield_dir=-0.5*(  -s_arr(ip2,POT_ID)
+                          + 4.0*s_arr(ip1,POT_ID)
+                          - 3.0*s_arr(cellid,POT_ID))/dx[dir]; 
         } else {
-            efield_dir=-(s_arr(ip1,POT_ID) - s_arr(cellid,POT_ID))/dx[dir];
+            efield_dir=-(s_arr(ip1,POT_ID) - s_arr(cellid,POT_ID))/dx[dir]; 
         }
-    }
-    else if(cellid[dir]==domhi[dir])
-    {
-        IntVect im1{AMREX_D_DECL(i,j,k)};
-        IntVect im2{AMREX_D_DECL(i,j,k)};
-        im1[dir]-=1;
-        im2[dir]-=2;
-    
-        //fdash = (f_{i-2}-4f_{i-1}+3f_i)/(2 dx)
+    } else if(side == -1){
         if(domhi[dir] - domlo[dir] > 2){
             efield_dir=-0.5*(     s_arr(im2,POT_ID)
-                        - 4.0*s_arr(im1,POT_ID)
-                        + 3.0*s_arr(cellid,POT_ID))/dx[dir];
+                            - 4.0*s_arr(im1,POT_ID)
+                            + 3.0*s_arr(cellid,POT_ID))/dx[dir];
         } else {
             efield_dir=-(s_arr(cellid,POT_ID) - s_arr(im1,POT_ID))/dx[dir];
         }
@@ -66,8 +68,10 @@ amrex::Real get_efield_alongdir(int i,int j,int k,int dir,
     {
         //there shouldnt be another option!
     }
+    // Floor efield component in case 0 causes issues
+    if(std::abs(efield_dir) < 1.0e-10) efield_dir = 1.0e-10;
+  
     return(efield_dir);
-
 }
 
 AMREX_GPU_HOST_DEVICE 

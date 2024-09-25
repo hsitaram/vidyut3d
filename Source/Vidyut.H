@@ -142,8 +142,8 @@ public:
 
     // MFs for storing levelset data and other IB variables
     amrex::Vector<std::unique_ptr<amrex::FabFactory<amrex::FArrayBox>>> ebfactory;
+    bool eb_in_domain = false;
 #ifdef AMREX_USE_EB
-    bool using_levelset_geometry;
     amrex::Real vp_perm = 1e-4;
     amrex::Vector<amrex::Real> vp_eps;
     amrex::Vector<amrex::Real> dxmin;

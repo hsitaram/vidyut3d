@@ -303,6 +303,43 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
             }
         }
 
+#ifdef AMREX_USE_EB
+        const auto& ebfact = EBFactory(ilev);                                                                                                                                 
+        const auto& vfrac = ebfact.getVolFrac();      
+        const auto& ccent = ebfact.getCentroid();      
+        for (MFIter mfi(phi_new[ilev], TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            const auto dx = geom[ilev].CellSizeArray();
+            auto prob_lo = geom[ilev].ProbLoArray();
+            auto prob_hi = geom[ilev].ProbHiArray();
+
+            Array4<Real> rhs_arr = rhs[ilev].array(mfi);
+            Array4<Real> a_arr = acoeff[ilev].array(mfi);
+            auto vf_arr = vfrac.const_array(mfi);
+
+            Real time = current_time; // for GPU capture
+
+            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                // Get y location
+                Real yloc = prob_lo[1] + (j+0.5)*dx[1];
+
+                // Overwrite cut and covered cell data
+                if(vf_arr(i,j,k) > 0.0 && vf_arr(i,j,k) < 1.0){
+                    int domend = (yloc < prob_hi[1] / 2.0) ? -1:1;
+                    amrex::Real app_voltage = get_applied_potential(time, domend, vprof, v1, v2, vfreq, vdur, vcen);
+                    a_arr(i,j,k) = 1.0 / vp_perm / dxmin2[ilev];
+                    rhs_arr(i,j,k) = app_voltage / vp_perm / dxmin2[ilev];
+                }
+                if(vf_arr(i,j,k) == 0.0){
+                    a_arr(i,j,k) = 1.0 / vp_perm / dxmin2[ilev];
+                    rhs_arr(i,j,k) = 0.0;
+                
+                }
+            });
+        }
+#endif
+
         linsolve_ptr->setACoeffs(ilev, acoeff[ilev]);
 
         // set b with diffusivities
@@ -343,7 +380,7 @@ void Vidyut::solve_potential(Real current_time, Vector<MultiFab>& Sborder,
     }
 
     // Use standard AMReX routines to get cell and edge-centered efields if not using charge technique
-    if(!cs_technique){
+    if(!cs_technique && !eb_in_domain){
         mlmg.getGradSolution(GetVecOfArrOfPtrs(efield_ec));
     
         for (int ilev = 0; ilev <= finest_level; ilev++)
@@ -409,34 +446,59 @@ void Vidyut::update_cc_efields(Vector<MultiFab>& Sborder)
             Array4<Real> s_arr   = Sborder[ilev].array(mfi);
             Array4<Real> phi_arr = phi_new[ilev].array(mfi);
 
-            amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+#ifdef AMREX_USE_EB
+            const auto& ebfact = EBFactory(ilev);
+            auto const& flagfab = ebfact.getMultiEBCellFlagFab()[mfi];
+            auto const& flag_arr = flagfab.const_array();
 
-                s_arr(i,j,k,EFX_ID)=0.0;
-                s_arr(i,j,k,EFY_ID)=0.0;
-                s_arr(i,j,k,EFZ_ID)=0.0;
+            const auto& vfrac = ebfact.getVolFrac();
+            auto vf_arr = vfrac.const_array(mfi);
 
-                s_arr(i,j,k,EFX_ID)=get_efield_alongdir(i,j,k,0,domlo,domhi,dx,s_arr);
-#if AMREX_SPACEDIM > 1
-                s_arr(i,j,k,EFY_ID)=get_efield_alongdir(i,j,k,1,domlo,domhi,dx,s_arr);
-#if AMREX_SPACEDIM == 3
-                s_arr(i,j,k,EFZ_ID)=get_efield_alongdir(i,j,k,2,domlo,domhi,dx,s_arr);
+            if (flagfab.getType(bx) == FabType::covered) { // Set to zero
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+                    s_arr(i,j,k,EFX_ID)=1.0e-10;
+                    s_arr(i,j,k,EFY_ID)=1.0e-10;
+                    s_arr(i,j,k,EFZ_ID)=1.0e-10;
+                    s_arr(i,j,k,REF_ID)=1.0e-10;
+                    phi_arr(i,j,k,EFX_ID)=1.0e-10;
+                    phi_arr(i,j,k,EFY_ID)=1.0e-10;
+                    phi_arr(i,j,k,EFZ_ID)=1.0e-10;
+                    phi_arr(i,j,k,REF_ID)=1.0e-10;
+                });
+            } else {
 #endif
+                amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) {
+#ifdef AMREX_USE_EB
+                    RealVect ef_vals {AMREX_D_DECL(get_efield_alongdir(i,j,k,0,domlo,domhi,dx,flag_arr,s_arr), 
+                                                   get_efield_alongdir(i,j,k,1,domlo,domhi,dx,flag_arr,s_arr), 
+                                                   get_efield_alongdir(i,j,k,2,domlo,domhi,dx,flag_arr,s_arr))};            
+                    for(int idim = 0; idim < AMREX_SPACEDIM; idim++) s_arr(i,j,k,EFX_ID+idim) = ef_vals[idim];
+#else
+                    RealVect ef_vals {AMREX_D_DECL(get_efield_alongdir(i,j,k,0,domlo,domhi,dx,s_arr), 
+                                                   get_efield_alongdir(i,j,k,1,domlo,domhi,dx,s_arr), 
+                                                   get_efield_alongdir(i,j,k,2,domlo,domhi,dx,s_arr))};            
+                    for(int idim = 0; idim < AMREX_SPACEDIM; idim++) s_arr(i,j,k,EFX_ID+idim) = ef_vals[idim];
 #endif
-                phi_arr(i,j,k,EFX_ID)=s_arr(i,j,k,EFX_ID);
-                phi_arr(i,j,k,EFY_ID)=s_arr(i,j,k,EFY_ID);
-                phi_arr(i,j,k,EFZ_ID)=s_arr(i,j,k,EFZ_ID);
 
-                RealVect Evect{AMREX_D_DECL(s_arr(i,j,k,EFX_ID),s_arr(i,j,k,EFY_ID),s_arr(i,j,k,EFZ_ID))};
-                amrex::Real ndens = 0.0;
-                amrex::Real Esum = 0.0; 
-                for(int sp=0; sp<NUM_SPECIES; sp++) ndens += s_arr(i,j,k,sp);
-                for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += Evect[dim]*Evect[dim];
-                s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / ndens) / 1.0e-21;
-                phi_arr(i,j,k,REF_ID) = s_arr(i,j,k,REF_ID);
-            });
+                    phi_arr(i,j,k,EFX_ID)=s_arr(i,j,k,EFX_ID);
+                    phi_arr(i,j,k,EFY_ID)=s_arr(i,j,k,EFY_ID);
+                    phi_arr(i,j,k,EFZ_ID)=s_arr(i,j,k,EFZ_ID);
+
+                    RealVect Evect{AMREX_D_DECL(s_arr(i,j,k,EFX_ID),s_arr(i,j,k,EFY_ID),s_arr(i,j,k,EFZ_ID))};
+                    amrex::Real ndens = 0.0;
+                    amrex::Real Esum = 0.0; 
+                    for(int sp=0; sp<NUM_SPECIES; sp++) ndens += s_arr(i,j,k,sp);
+                    for(int dim=0; dim<AMREX_SPACEDIM; dim++) Esum += Evect[dim]*Evect[dim];
+                    s_arr(i,j,k,REF_ID) = (pow(Esum, 0.5) / ndens) / 1.0e-21;
+                    phi_arr(i,j,k,REF_ID) = s_arr(i,j,k,REF_ID);
+                });
+#ifdef AMREX_USE_EB
+            }
+#endif
         }
     }
 }
+
 void Vidyut::update_cs_technique_potential()
 {
     int findlev_local=-1;

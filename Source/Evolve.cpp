@@ -186,8 +186,9 @@ void Vidyut::Evolve()
             }
 
             //update cell-centered electric fields using alternative method if cs_technique is used
-            if(cs_technique){
+            if(cs_technique || eb_in_domain){
                 update_cc_efields(Sborder);
+
                 //fillpatching here to get the latest efields 
                 //in sborder so that it can be used in drift vel calcs
                 //may be there is a clever way to improve performance 

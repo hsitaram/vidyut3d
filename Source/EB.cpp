@@ -18,7 +18,6 @@
 
 void Vidyut::init_eb()
 {
-
     // Initialize volume penalization and other complex geometry variables
     std::string geom_kind="all_regular";
     {
@@ -42,6 +41,7 @@ void Vidyut::init_eb()
             vp_eps[ilev] = 1.0 / dxmin[ilev] * vp_epsfact;
         }
     }
+    eb_in_domain = true;
 
     // Generate levelset data at the finest level
     // NOTE: IB implementation assumes refinement factor of 2 for each level
