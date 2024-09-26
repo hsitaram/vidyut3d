@@ -30,6 +30,7 @@ void Vidyut::compute_elecenergy_source(int lev,
     amrex::Real captured_gastemp=gas_temperature;
     amrex::Real captured_gaspres=gas_pressure;
     int consteletrans = const_ele_trans;
+    int captured_cs_technique=cs_technique;
     amrex::Real elemob = ele_mob;
     amrex::Real elediff = ele_diff;
     int eidx = E_IDX;
@@ -122,7 +123,7 @@ void Vidyut::compute_elecenergy_source(int lev,
                               + sborder_arr(rcell,eidx));
 
                     //efield_face=ef_arr[idim](face);
-                    efield_face = (cs_technique) ? efieldvec_face[idim] : ef_arr[idim](face);
+                    efield_face = (captured_cs_technique) ? efieldvec_face[idim] : ef_arr[idim](face);
                     gradne_face=gradne_arr[idim](face);
 
                     amrex::Real ndens = 0.0;
