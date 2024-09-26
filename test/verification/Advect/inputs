@@ -13,21 +13,22 @@ amr.v              = 1       # verbosity in Amr
 
 # REFINEMENT
 amr.max_level       = 0       # maximum level number allowed
-amr.blocking_factor_x = 4     # block factor in grid generation
-amr.blocking_factor_y = 4     # block factor in grid generation
-amr.blocking_factor_z = 4     # block factor in grid generation
-amr.max_grid_size   = 16
+amr.blocking_factor_x = 2     # block factor in grid generation
+amr.blocking_factor_y = 2     # block factor in grid generation
+amr.blocking_factor_z = 2     # block factor in grid generation
+amr.max_grid_size   = 10
 
 amr.regrid_int      = 2       # how often to regrid
 
 # TIME STEP CONTROL
 vidyut.dt             = 0.0001
 vidyut.hyp_order = 5
+vidyut.weno_scheme = 3
 
 vidyut.user_defined_potential = 1
 vidyut.user_defined_species = 1
 vidyut.user_defined_vel = 1
-vidyut.num_timestep_correctors=1
+vidyut.num_timestep_correctors=2
 
 # Tagging
 vidyut.tagged_vars = AR

@@ -25,6 +25,8 @@ def get_oned_data(arr3d,axialdir):
 
 plt.rcParams['font.size'] = 16
 ds=yt.load(argv[1])
+fintime=float(argv[2])
+vel=float(argv[3])
 prob_lo=ds.domain_left_edge.d
 prob_hi=ds.domain_right_edge.d
 
@@ -47,7 +49,7 @@ s1_1d=get_oned_data(s1,axialdir)
 x=np.linspace(prob_lo[axialdir]+0.5*dx_frb[axialdir],\
         prob_hi[axialdir]-0.5*dx_frb[axialdir],res[axialdir])
 
-exactsoln_s1=np.sin(np.pi*x-np.sin(np.pi*x)/np.pi)
+exactsoln_s1=np.sin(np.pi*(x-vel*fintime)-np.sin(np.pi*(x-vel*fintime))/np.pi)
 err_s1=np.sqrt(np.mean((s1_1d-exactsoln_s1)**2))
 print(dx_frb[axialdir],err_s1)
 #=======================================
