@@ -65,6 +65,6 @@ ax.legend(loc="best")
 dir_char=axialdir_char
 #fig.suptitle("AR and potential solution along "+dir_char+" direction ")
 plt.tight_layout()
-plt.savefig("err_"+dir_char+".png")
+plt.savefig("solncompare_"+dir_char+".png")
 #=======================================
 
