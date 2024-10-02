@@ -228,7 +228,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[0], 
                              captured_gastemp,captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             userdefvel,weno_scheme); 
+                             userdefvel,captured_wenoscheme); 
             });
 
 #if AMREX_SPACEDIM > 1
@@ -237,7 +237,7 @@ void Vidyut::compute_scalar_transport_flux(int lev, MultiFab& Sborder,
                              bclo, bchi, domlo, domhi, flux_arr[1], 
                              captured_gastemp,captured_gaspres,
                              time, dx, lev_dt, *localprobparm, captured_hyporder,
-                             userdefvel,weno_scheme); 
+                             userdefvel,captured_wenoscheme); 
             });
 
 #if AMREX_SPACEDIM == 3

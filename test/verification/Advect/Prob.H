@@ -17,6 +17,7 @@ void amrex_probinit (ProbParm & h_prob_parm, ProbParm & d_prob_parm)
 {
     // read problem specific parmparse parameters here
     amrex::ParmParse pp("prob");
+    pp.query("one_dim",h_prob_parm.one_dim);
     pp.query("blobrad", h_prob_parm.blobrad );
     pp.query("velx", h_prob_parm.velx );
     pp.query("vely", h_prob_parm.vely );
@@ -59,11 +60,22 @@ void initdomaindata(Box const& bx, Array4<Real> const& phi,
             for (int i = lo.x; i <= hi.x; ++i) 
             {
                 Real x = prob_lo[0] + (0.5+i) * dx[0];
-                //phi(i,j,k,AR_ID)  = exp(-0.25*((x-midx)*(x-midx)+(y-midy)*(y-midy))
-                //                        /prob_parm->blobrad/prob_parm->blobrad);
-                //phi(i,j,k,AR_ID)  = exp(-0.25*(x-midx)*(x-midx)
-                //                        /prob_parm->blobrad/prob_parm->blobrad);
-                phi(i,j,k,AR_ID)=sin(PI*x - sin(PI*x)/PI);
+                
+                if(prob_parm->one_dim)
+                {
+                    //using same conditions as
+                    //Ghosh, Debojyoti, and James D. Baeder. "Weighted non-linear 
+                    //compact schemes for the direct numerical simulation of 
+                    //compressible, turbulent flows." 
+                    //Journal of Scientific Computing 61 (2014): 61-89.
+                    phi(i,j,k,AR_ID)=sin(PI*x - sin(PI*x)/PI);
+                }
+                else
+                {
+                    phi(i,j,k,AR_ID)  = exp(-0.25*((x-midx)*(x-midx)+(y-midy)*(y-midy))
+                                            /prob_parm->blobrad/prob_parm->blobrad);
+                }
+
                 phi(i,j,k,E_ID) = 0.0;
                 phi(i,j,k,POT_ID) = 0.0;
                 phi(i,j,k,EFX_ID) = 0.0;
